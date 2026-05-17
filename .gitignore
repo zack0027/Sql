@@ -1,3 +1,6 @@
+# Releases (binarios versionados — excepción explícita)
+!releases/
+
 # ============== Python ==============
 __pycache__/
 *.py[cod]

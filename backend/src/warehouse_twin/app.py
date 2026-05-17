@@ -2,10 +2,10 @@
 FastAPI app: orquesta los 5 módulos del backend.
 
 Endpoints:
-  GET  /         - Health check
+  GET  /         - Dashboard web (UI)
   GET  /healthz  - Liveness para load balancers
   POST /ingest   - Recibir un movimiento desde un WMS externo
-  WS   /ws/alerts - Stream de alertas y narrativas para clientes Unity
+  WS   /ws/alerts - Stream de alertas y narrativas para clientes Unity/web
 
 Diseño POO: dependency injection vía lifespan. Las instancias singleton
 (detector, narrator, manager, broker, simulator) viven en app.state.
@@ -14,9 +14,12 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .detection import AnomalyDetector
@@ -24,6 +27,8 @@ from .models import Movement
 from .narration import MockNarrator, build_default_narrator
 from .simulation import MovementSimulator
 from .streaming import ConnectionManager, WebSocketBroker
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 log = logging.getLogger("warehouse_twin")
@@ -77,22 +82,23 @@ app = FastAPI(
     title="Warehouse Digital Twin API",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
-@app.get("/")
-async def root():
-    return {
-        "service": "warehouse-digital-twin",
-        "version": "1.0.0",
-        "endpoints": ["/healthz", "/ingest", "/ws/alerts"],
-    }
+@app.get("/", include_in_schema=False)
+async def dashboard():
+    """Sirve el dashboard web."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/healthz")

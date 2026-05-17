@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warehouse Digital Twin — v0.1</title>
+<style>
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #30363d;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --normal:   #238636;
+    --medium:   #d29922;
+    --high:     #da3633;
+    --critical: #f85149;
+    --accent:   #58a6ff;
+    --rack-bg:  #1c2128;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ─── TOP BAR ─────────────────────────────────────── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .5px;
+  }
+
+  header .badge {
+    font-size: 10px;
+    background: #1f6feb;
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #666;
+    transition: background .3s;
+  }
+  .status-dot.connected    { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+  .status-dot.disconnected { background: var(--high); }
+
+  #status-label { color: var(--muted); font-size: 12px; }
+
+  .spacer { flex: 1; }
+
+  .stat-chip {
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .stat-chip span { color: var(--text); font-weight: 600; }
+
+  /* ─── MAIN LAYOUT ─────────────────────────────────── */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: 1fr 220px;
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  section {
+    background: var(--bg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sec-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .sec-header .count {
+    margin-left: auto;
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1px 8px;
+    color: var(--text);
+    font-size: 11px;
+  }
+
+  /* ─── WAREHOUSE GRID ──────────────────────────────── */
+  #grid-section {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  #warehouse-grid {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .grid-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .grid-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .row-label {
+    width: 18px;
+    text-align: right;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .rack {
+    width: 38px;
+    height: 38px;
+    border-radius: 5px;
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: transform .1s, box-shadow .2s;
+    position: relative;
+    user-select: none;
+  }
+
+  .rack:hover { transform: scale(1.12); z-index: 2; }
+
+  .rack.medium  { background: rgba(210,153,34,.18); border-color: var(--medium);  color: var(--medium);  }
+  .rack.high    { background: rgba(218,54,51,.18);  border-color: var(--high);    color: var(--high);   }
+  .rack.critical{ background: rgba(248,81,73,.22);  border-color: var(--critical);color: var(--critical); }
+
+  .rack.pulse   { animation: pulse-anim 1.4s ease-out forwards; }
+
+  @keyframes pulse-anim {
+    0%   { box-shadow: 0 0 0 0 currentColor; }
+    50%  { box-shadow: 0 0 14px 4px currentColor; }
+    100% { box-shadow: 0 0 0 0 currentColor; }
+  }
+
+  .col-labels {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 0 0 22px;
+  }
+  .col-label {
+    width: 38px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  /* ─── ALERT FEED ──────────────────────────────────── */
+  #feed-section {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  #alert-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .alert-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    border-left: 3px solid var(--muted);
+    cursor: pointer;
+    transition: background .15s;
+    flex-shrink: 0;
+  }
+  .alert-card:hover { background: #1c2128; }
+
+  .alert-card.medium   { border-left-color: var(--medium); }
+  .alert-card.high     { border-left-color: var(--high); }
+  .alert-card.critical { border-left-color: var(--critical); }
+
+  .alert-card .card-row1 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+  }
+
+  .sev-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 4px;
+    letter-spacing: .5px;
+  }
+  .sev-badge.medium   { background: rgba(210,153,34,.25); color: var(--medium); }
+  .sev-badge.high     { background: rgba(218,54,51,.25);  color: var(--high); }
+  .sev-badge.critical { background: rgba(248,81,73,.28);  color: var(--critical); }
+
+  .alert-loc  { font-weight: 700; font-size: 11px; }
+  .alert-time { margin-left: auto; color: var(--muted); font-size: 10px; }
+  .alert-sku  { color: var(--muted); font-size: 10px; }
+  .alert-rules{ color: var(--muted); font-size: 10px; font-style: italic; }
+
+  /* ─── BOTTOM LEFT: INJECT FORM ────────────────────── */
+  #inject-section {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  #inject-form {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  input, select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 12px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+
+  select option { background: var(--surface); }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  button {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  button:hover  { opacity: .85; }
+  button:active { transform: scale(.97); }
+
+  .btn-primary { background: #1f6feb; color: #fff; }
+  .btn-danger  { background: rgba(248,81,73,.2); color: var(--critical); border: 1px solid var(--critical); }
+  .btn-warn    { background: rgba(210,153,34,.2); color: var(--medium);  border: 1px solid var(--medium); }
+  .btn-ghost   { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+  #inject-status {
+    font-size: 11px;
+    color: var(--muted);
+    min-height: 16px;
+    padding: 2px 0;
+  }
+  #inject-status.ok  { color: #3fb950; }
+  #inject-status.err { color: var(--critical); }
+
+  /* ─── BOTTOM RIGHT: NARRATIVE ─────────────────────── */
+  #narrative-section {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  #narrative-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .narrative-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 11px;
+    flex-shrink: 0;
+    animation: fadein .4s ease;
+  }
+  @keyframes fadein { from { opacity:0; transform: translateY(6px); } }
+
+  .narrative-loc  { font-weight: 700; color: var(--accent); font-size: 12px; }
+  .narrative-text { margin-top: 5px; line-height: 1.55; color: var(--text); }
+  .narrative-sub  { margin-top: 6px; }
+  .narrative-sub label { color: var(--muted); display: block; margin-bottom: 2px; }
+  .narrative-sub p { color: #cdd9e5; line-height: 1.5; }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+  }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header>
+  <div class="status-dot disconnected" id="status-dot"></div>
+  <h1>Warehouse Digital Twin</h1>
+  <span class="badge">v0.1</span>
+  <span id="status-label">Desconectado</span>
+  <div class="spacer"></div>
+  <div class="stat-chip">Alertas: <span id="cnt-total">0</span></div>
+  <div class="stat-chip">Críticas: <span id="cnt-critical">0</span></div>
+  <div class="stat-chip">Racks activos: <span id="cnt-racks">0</span></div>
+  <button class="btn-ghost" onclick="clearAll()">Limpiar</button>
+</header>
+
+<!-- MAIN -->
+<main>
+
+  <!-- GRID -->
+  <section id="grid-section">
+    <div class="sec-header">🏭 Grid del Almacén — 6 pasillos × 18 racks</div>
+    <div id="warehouse-grid">
+      <div>
+        <div class="col-labels" id="col-labels"></div>
+        <div class="grid-wrap" id="grid-wrap"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALERT FEED -->
+  <section id="feed-section">
+    <div class="sec-header">
+      ⚡ Feed de Alertas
+      <span class="count" id="feed-count">0</span>
+    </div>
+    <div id="alert-feed">
+      <div class="empty-state" id="feed-empty">Esperando anomalías…</div>
+    </div>
+  </section>
+
+  <!-- INJECT FORM -->
+  <section id="inject-section">
+    <div class="sec-header">⚙️ Inyectar Movimiento</div>
+    <div id="inject-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="f-type">
+            <option>RECEIVING</option>
+            <option>INSPECTION</option>
+            <option>PUTAWAY</option>
+            <option selected>PICK</option>
+            <option>ORDER</option>
+            <option>TRACEABILITY</option>
+            <option>MAQUILA</option>
+            <option>ADJUSTMENT</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ubicación</label>
+          <input id="f-loc" value="C-018" placeholder="C-018">
+        </div>
+        <div class="form-group">
+          <label>SKU</label>
+          <input id="f-sku" value="MX-0042" placeholder="MX-0042">
+        </div>
+        <div class="form-group">
+          <label>Usuario</label>
+          <input id="f-user" value="USR_001" placeholder="USR_001">
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input id="f-qty" type="number" value="10">
+        </div>
+        <div class="form-group">
+          <label>Duración (s)</label>
+          <input id="f-dur" type="number" value="60">
+        </div>
+        <div class="form-group">
+          <label>Hora (HH)</label>
+          <input id="f-hour" type="number" value="" placeholder="auto" min="0" max="23">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="injectMovement()">Enviar movimiento</button>
+        <button class="btn-danger"  onclick="injectAnomaly('negative_qty')">💀 Qty negativa</button>
+        <button class="btn-danger"  onclick="injectAnomaly('short_duration')">⚡ Duración corta</button>
+        <button class="btn-warn"    onclick="injectAnomaly('long_duration')">⏱ Duración larga</button>
+        <button class="btn-warn"    onclick="injectAnomaly('off_hours')">🌙 Fuera horario</button>
+      </div>
+      <div id="inject-status"></div>
+    </div>
+  </section>
+
+  <!-- NARRATIVE -->
+  <section id="narrative-section">
+    <div class="sec-header">🤖 Narrativa LLM</div>
+    <div id="narrative-panel">
+      <div class="empty-state" id="narr-empty">La narrativa aparece aquí tras cada anomalía…</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ────────────────────────────────────────────────────────
+// CONFIG
+// ────────────────────────────────────────────────────────
+const API  = `${location.protocol}//${location.hostname}:8000`;
+const WS_URL = `ws://${location.hostname}:8000/ws/alerts`;
+const ROWS = ['A','B','C','D','E','F'];
+const COLS = Array.from({length:18}, (_,i) => String(i+1).padStart(3,'0'));
+
+// ────────────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────────────
+let ws;
+let alertCount = 0, criticalCount = 0;
+const activeRacks = new Set();
+const rackEls = {};   // "C-018" → <div>
+
+// ────────────────────────────────────────────────────────
+// BUILD GRID
+// ────────────────────────────────────────────────────────
+function buildGrid() {
+  const colLabels = document.getElementById('col-labels');
+  COLS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'col-label';
+    d.textContent = c;
+    colLabels.appendChild(d);
+  });
+
+  const wrap = document.getElementById('grid-wrap');
+  ROWS.forEach(row => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'grid-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'row-label';
+    lbl.textContent = row;
+    rowDiv.appendChild(lbl);
+
+    COLS.forEach(col => {
+      const loc = `${row}-${col}`;
+      const rack = document.createElement('div');
+      rack.className = 'rack';
+      rack.textContent = col.replace(/^0+/,'');
+      rack.title = loc;
+      rack.onclick = () => filterByRack(loc);
+      rowDiv.appendChild(rack);
+      rackEls[loc] = rack;
+    });
+
+    wrap.appendChild(rowDiv);
+  });
+}
+
+// ────────────────────────────────────────────────────────
+// WEBSOCKET
+// ────────────────────────────────────────────────────────
+function connect() {
+  try { ws = new WebSocket(WS_URL); } catch(e) { scheduleReconnect(); return; }
+
+  ws.onopen = () => {
+    setStatus(true);
+  };
+
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'alert')     handleAlert(msg);
+    if (msg.type === 'narrative') handleNarrative(msg);
+  };
+
+  ws.onerror = () => {};
+  ws.onclose = () => {
+    setStatus(false);
+    scheduleReconnect();
+  };
+}
+
+function scheduleReconnect() {
+  setTimeout(connect, 3000);
+}
+
+function setStatus(connected) {
+  const dot   = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+  dot.className   = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+  label.textContent = connected ? 'Conectado al backend' : 'Reconectando…';
+}
+
+// ────────────────────────────────────────────────────────
+// HANDLE ALERT
+// ────────────────────────────────────────────────────────
+function handleAlert(msg) {
+  alertCount++;
+  if (msg.severity === 'critical') criticalCount++;
+
+  document.getElementById('cnt-total').textContent    = alertCount;
+  document.getElementById('cnt-critical').textContent = criticalCount;
+
+  // rack
+  const rack = rackEls[msg.location];
+  if (rack) {
+    rack.className = `rack ${msg.severity}`;
+    rack.classList.remove('pulse');
+    void rack.offsetWidth;  // reflow para reiniciar animación
+    rack.classList.add('pulse');
+    activeRacks.add(msg.location);
+    document.getElementById('cnt-racks').textContent = activeRacks.size;
+  }
+
+  // feed card
+  const feed = document.getElementById('alert-feed');
+  document.getElementById('feed-empty')?.remove();
+
+  const card = document.createElement('div');
+  card.className = `alert-card ${msg.severity}`;
+  card.dataset.loc = msg.location;
+  card.innerHTML = `
+    <div class="card-row1">
+      <span class="sev-badge ${msg.severity}">${msg.severity}</span>
+      <span class="alert-loc">${msg.location}</span>
+      <span class="alert-time">${msg.timestamp?.slice(11,19) || now()}</span>
+    </div>
+    <div class="alert-sku">${msg.movement_type} · SKU ${msg.sku} · qty ${msg.quantity} · ${msg.duration_sec}s</div>
+    ${msg.rule_reasons ? `<div class="alert-rules">${msg.rule_reasons}</div>` : ''}
+  `;
+  card.onclick = () => { document.getElementById('f-loc').value = msg.location; };
+  feed.insertBefore(card, feed.firstChild);
+
+  const count = document.getElementById('feed-count');
+  count.textContent = feed.querySelectorAll('.alert-card').length;
+
+  // keep max 60 cards
+  while (feed.querySelectorAll('.alert-card').length > 60)
+    feed.lastChild.remove();
+}
+
+// ────────────────────────────────────────────────────────
+// HANDLE NARRATIVE
+// ────────────────────────────────────────────────────────
+function handleNarrative(msg) {
+  const panel = document.getElementById('narrative-panel');
+  document.getElementById('narr-empty')?.remove();
+
+  // keep only 3 narratives
+  while (panel.querySelectorAll('.narrative-card').length >= 3)
+    panel.lastChild.remove();
+
+  const card = document.createElement('div');
+  card.className = 'narrative-card';
+  card.innerHTML = `
+    <div class="narrative-loc">📍 ${msg.location} <span style="color:var(--muted);font-size:10px;font-weight:400;">${msg.movement_id}</span></div>
+    <div class="narrative-text">${msg.narrative}</div>
+    <div class="narrative-sub">
+      <label>CAUSA PROBABLE</label>
+      <p>${msg.likely_cause}</p>
+    </div>
+    <div class="narrative-sub">
+      <label>ACCIÓN RECOMENDADA</label>
+      <p>${msg.recommended_action}</p>
+    </div>
+  `;
+  panel.insertBefore(card, panel.firstChild);
+}
+
+// ────────────────────────────────────────────────────────
+// INJECT MOVEMENT
+// ────────────────────────────────────────────────────────
+async function injectMovement(overrides = {}) {
+  const hour = document.getElementById('f-hour').value;
+  let ts = new Date().toISOString();
+  if (hour !== '') {
+    const d = new Date();
+    d.setHours(parseInt(hour), 0, 0, 0);
+    ts = d.toISOString();
+  }
+
+  const body = {
+    movement_id: `MV-WEB-${Date.now()}`,
+    timestamp:   ts,
+    movement_type: overrides.movement_type || document.getElementById('f-type').value,
+    sku:         overrides.sku  || document.getElementById('f-sku').value  || 'MX-0042',
+    location:    overrides.location || document.getElementById('f-loc').value || 'C-018',
+    user_id:     overrides.user_id  || document.getElementById('f-user').value || 'USR_001',
+    quantity:    overrides.quantity  !== undefined ? overrides.quantity  : parseInt(document.getElementById('f-qty').value) || 10,
+    duration_sec:overrides.duration_sec !== undefined ? overrides.duration_sec : parseInt(document.getElementById('f-dur').value) || 60,
+    ...overrides,
+  };
+
+  const status = document.getElementById('inject-status');
+  status.textContent = 'Enviando…';
+  status.className = '';
+
+  try {
+    const res = await fetch(`${API}/ingest`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      status.textContent = `✓ Movimiento ${body.movement_id} aceptado`;
+      status.className = 'ok';
+    } else {
+      const err = await res.json();
+      status.textContent = `✗ Error ${res.status}: ${JSON.stringify(err.detail)}`;
+      status.className = 'err';
+    }
+  } catch(e) {
+    status.textContent = `✗ No se pudo conectar con ${API}`;
+    status.className = 'err';
+  }
+}
+
+// ────────────────────────────────────────────────────────
+// INJECT ANOMALY PRESETS
+// ────────────────────────────────────────────────────────
+const anomalyPresets = {
+  negative_qty:   { movement_type:'INSPECTION', quantity:-3, duration_sec:4 },
+  short_duration: { movement_type:'INSPECTION', duration_sec:4 },
+  long_duration:  { duration_sec:400 },
+  off_hours:      { timestamp: (() => { const d=new Date(); d.setHours(3,15,0,0); return d.toISOString(); })() },
+};
+
+function injectAnomaly(kind) {
+  const overrides = anomalyPresets[kind] || {};
+  // timestamp especial para off_hours
+  if (kind === 'off_hours') {
+    const d = new Date();
+    d.setHours(3,15,0,0);
+    overrides.timestamp = d.toISOString();
+  }
+  injectMovement(overrides);
+}
+
+// ────────────────────────────────────────────────────────
+// UTILS
+// ────────────────────────────────────────────────────────
+function filterByRack(loc) {
+  document.getElementById('f-loc').value = loc;
+  document.querySelectorAll('.alert-card').forEach(c => {
+    c.style.opacity = c.dataset.loc === loc ? '1' : '0.35';
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.alert-card').forEach(c => c.style.opacity = '');
+  }, 2500);
+}
+
+function clearAll() {
+  alertCount = 0; criticalCount = 0;
+  activeRacks.clear();
+  document.getElementById('cnt-total').textContent    = '0';
+  document.getElementById('cnt-critical').textContent = '0';
+  document.getElementById('cnt-racks').textContent    = '0';
+
+  Object.values(rackEls).forEach(r => r.className = 'rack');
+
+  const feed = document.getElementById('alert-feed');
+  feed.innerHTML = '<div class="empty-state" id="feed-empty">Esperando anomalías…</div>';
+  document.getElementById('feed-count').textContent = '0';
+
+  const panel = document.getElementById('narrative-panel');
+  panel.innerHTML = '<div class="empty-state" id="narr-empty">La narrativa aparece aquí tras cada anomalía…</div>';
+}
+
+function now() {
+  return new Date().toTimeString().slice(0,8);
+}
+
+// ────────────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────────────
+buildGrid();
+connect();
+</script>
+</body>
+</html>

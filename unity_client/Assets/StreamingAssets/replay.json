@@ -1,0 +1,347 @@
+{
+  "name": "warehouse_demo_v1",
+  "duration_sec": 90,
+  "events": [
+    {
+      "t": 3.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-000300",
+        "timestamp": "2026-05-17 10:00:03",
+        "movement_type": "INSPECTION",
+        "sku": "MX-0017",
+        "location": "B-004",
+        "user_id": "USR_041",
+        "quantity": 0,
+        "duration_sec": 280,
+        "severity": "high",
+        "is_anomaly": true,
+        "rule_reasons": "duración_excesiva, sin_actualizacion_status"
+      }
+    },
+    {
+      "t": 6.22,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-000622",
+        "location": "B-004",
+        "narrative": "Movimiento de inspección con patrón irregular detectado en B-004. El operario registró duración inusual (280s) sobre el SKU MX-0017.",
+        "likely_cause": "Posible bloqueo del proceso de inspección o falta de actualización del estado en sistema.",
+        "recommended_action": "Verificar físicamente el rack y revisar el último login del usuario asignado.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 4.1,
+        "emitted_at": "2026-05-17 10:00:06"
+      }
+    },
+    {
+      "t": 8.5,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-000850",
+        "timestamp": "2026-05-17 10:00:08",
+        "movement_type": "INSPECTION",
+        "sku": "MX-0042",
+        "location": "C-018",
+        "user_id": "USR_016",
+        "quantity": -3,
+        "duration_sec": 4,
+        "severity": "critical",
+        "is_anomaly": true,
+        "rule_reasons": "cantidad_negativa, duracion_minima, fuera_horario"
+      }
+    },
+    {
+      "t": 11.95,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-001194",
+        "location": "C-018",
+        "narrative": "Movimiento de inspección con patrón irregular detectado en C-018. El operario registró duración inusual (4s) sobre el SKU MX-0042.",
+        "likely_cause": "Posible bloqueo del proceso de inspección o falta de actualización del estado en sistema.",
+        "recommended_action": "Verificar físicamente el rack y revisar el último login del usuario asignado.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 4.09,
+        "emitted_at": "2026-05-17 10:00:11"
+      }
+    },
+    {
+      "t": 15.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-001500",
+        "timestamp": "2026-05-17 10:00:15",
+        "movement_type": "PUTAWAY",
+        "sku": "MX-0008",
+        "location": "A-002",
+        "user_id": "USR_044",
+        "quantity": 12,
+        "duration_sec": 45,
+        "severity": "medium",
+        "is_anomaly": true,
+        "rule_reasons": "ubicacion_no_optima"
+      }
+    },
+    {
+      "t": 22.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-002200",
+        "timestamp": "2026-05-17 10:00:22",
+        "movement_type": "PICK",
+        "sku": "MX-0033",
+        "location": "D-011",
+        "user_id": "USR_048",
+        "quantity": 5,
+        "duration_sec": 180,
+        "severity": "high",
+        "is_anomaly": true,
+        "rule_reasons": "ot_sin_secuencia, tiempo_alto"
+      }
+    },
+    {
+      "t": 26.78,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-002678",
+        "location": "D-011",
+        "narrative": "Picking prolongado en D-011 para el SKU MX-0033. Duración registrada: 180s, más del triple del baseline.",
+        "likely_cause": "Producto difícil de localizar, falta de stock parcial, o pickeo con el equipo equivocado.",
+        "recommended_action": "Confirmar inventario físico y reportar al supervisor de turno.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 2.33,
+        "emitted_at": "2026-05-17 10:00:26"
+      }
+    },
+    {
+      "t": 29.5,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-002950",
+        "timestamp": "2026-05-17 10:00:29",
+        "movement_type": "TRACEABILITY",
+        "sku": "MX-0089",
+        "location": "F-005",
+        "user_id": "USR_028",
+        "quantity": 0,
+        "duration_sec": 8,
+        "severity": "critical",
+        "is_anomaly": true,
+        "rule_reasons": "lote_huerfano, sin_asn_origen"
+      }
+    },
+    {
+      "t": 32.56,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-003256",
+        "location": "F-005",
+        "narrative": "Trazabilidad rota en F-005: el lote del SKU MX-0089 no tiene ASN ni movimiento de entrada asociado.",
+        "likely_cause": "Recepción no registrada en sistema, o lote ingresado por proceso paralelo no auditado.",
+        "recommended_action": "Bloquear el lote y abrir investigación con calidad para validar origen.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 2.35,
+        "emitted_at": "2026-05-17 10:00:32"
+      }
+    },
+    {
+      "t": 38.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-003800",
+        "timestamp": "2026-05-17 10:00:38",
+        "movement_type": "RECEIVING",
+        "sku": "MX-0021",
+        "location": "B-001",
+        "user_id": "USR_015",
+        "quantity": 50,
+        "duration_sec": 92,
+        "severity": "medium",
+        "is_anomaly": true,
+        "rule_reasons": "cantidad_diferente_esperada"
+      }
+    },
+    {
+      "t": 45.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-004500",
+        "timestamp": "2026-05-17 10:00:45",
+        "movement_type": "PICK",
+        "sku": "MX-0055",
+        "location": "E-014",
+        "user_id": "USR_033",
+        "quantity": 2,
+        "duration_sec": 220,
+        "severity": "high",
+        "is_anomaly": true,
+        "rule_reasons": "duracion_excesiva, mismo_usuario_3x"
+      }
+    },
+    {
+      "t": 49.2,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-004920",
+        "location": "E-014",
+        "narrative": "Picking prolongado en E-014 para el SKU MX-0055. Duración registrada: 220s, más del triple del baseline.",
+        "likely_cause": "Producto difícil de localizar, falta de stock parcial, o pickeo con el equipo equivocado.",
+        "recommended_action": "Confirmar inventario físico y reportar al supervisor de turno.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 3.62,
+        "emitted_at": "2026-05-17 10:00:49"
+      }
+    },
+    {
+      "t": 53.5,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-005350",
+        "timestamp": "2026-05-17 10:00:53",
+        "movement_type": "MAQUILA",
+        "sku": "MX-0073",
+        "location": "C-006",
+        "user_id": "USR_046",
+        "quantity": -1,
+        "duration_sec": 6,
+        "severity": "critical",
+        "is_anomaly": true,
+        "rule_reasons": "stock_negativo, duracion_minima"
+      }
+    },
+    {
+      "t": 57.8,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-005779",
+        "location": "C-006",
+        "narrative": "Operación de maquila en C-006 resultó en stock negativo para el SKU MX-0073.",
+        "likely_cause": "Falta una entrada de transformación o el BOM del producto está mal configurado.",
+        "recommended_action": "Pausar la línea, revisar BOM en sistema y registrar la entrada faltante.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 3.57,
+        "emitted_at": "2026-05-17 10:00:57"
+      }
+    },
+    {
+      "t": 61.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-006100",
+        "timestamp": "2026-05-17 10:01:01",
+        "movement_type": "INSPECTION",
+        "sku": "MX-0019",
+        "location": "A-018",
+        "user_id": "USR_015",
+        "quantity": 4,
+        "duration_sec": 38,
+        "severity": "medium",
+        "is_anomaly": true,
+        "rule_reasons": "ubicacion_no_optima"
+      }
+    },
+    {
+      "t": 68.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-006800",
+        "timestamp": "2026-05-17 10:01:08",
+        "movement_type": "ORDER",
+        "sku": "MX-0044",
+        "location": "D-003",
+        "user_id": "USR_029",
+        "quantity": 8,
+        "duration_sec": 165,
+        "severity": "high",
+        "is_anomaly": true,
+        "rule_reasons": "ot_atorada, sin_progreso_5min"
+      }
+    },
+    {
+      "t": 72.18,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-007217",
+        "location": "D-003",
+        "narrative": "Orden de trabajo asignada al rack D-003 sin progreso por más de 5 minutos.",
+        "likely_cause": "Operario ausente, equipo de scanning con falla, o tarea bloqueada por otra OT activa.",
+        "recommended_action": "Reasignar tarea o liberar las dependencias bloqueantes desde la consola del supervisor.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 4.29,
+        "emitted_at": "2026-05-17 10:01:12"
+      }
+    },
+    {
+      "t": 75.5,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-007550",
+        "timestamp": "2026-05-17 10:01:15",
+        "movement_type": "TRACEABILITY",
+        "sku": "MX-0091",
+        "location": "F-012",
+        "user_id": "USR_001",
+        "quantity": 0,
+        "duration_sec": 7,
+        "severity": "critical",
+        "is_anomaly": true,
+        "rule_reasons": "lote_huerfano, fecha_caducidad_proxima"
+      }
+    },
+    {
+      "t": 80.02,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-008001",
+        "location": "F-012",
+        "narrative": "Trazabilidad rota en F-012: el lote del SKU MX-0091 no tiene ASN ni movimiento de entrada asociado.",
+        "likely_cause": "Recepción no registrada en sistema, o lote ingresado por proceso paralelo no auditado.",
+        "recommended_action": "Bloquear el lote y abrir investigación con calidad para validar origen.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 2.53,
+        "emitted_at": "2026-05-17 10:01:20"
+      }
+    },
+    {
+      "t": 83.0,
+      "msg": {
+        "type": "alert",
+        "movement_id": "MV-008300",
+        "timestamp": "2026-05-17 10:01:23",
+        "movement_type": "PUTAWAY",
+        "sku": "MX-0028",
+        "location": "B-016",
+        "user_id": "USR_028",
+        "quantity": 15,
+        "duration_sec": 195,
+        "severity": "high",
+        "is_anomaly": true,
+        "rule_reasons": "tiempo_excesivo, usuario_novato"
+      }
+    },
+    {
+      "t": 86.68,
+      "msg": {
+        "type": "narrative",
+        "movement_id": "MV-008668",
+        "location": "B-016",
+        "narrative": "Tarea de putaway en B-016 con desviación respecto al algoritmo de ubicación óptima para el SKU MX-0028.",
+        "likely_cause": "El sistema sugirió otra ubicación pero el operario la sobrescribió manualmente.",
+        "recommended_action": "Revisar la regla de slotting y validar capacidad del rack destino.",
+        "source": "ollama-replay",
+        "model": "llama-3.2-3b",
+        "latency_sec": 2.52,
+        "emitted_at": "2026-05-17 10:01:26"
+      }
+    }
+  ],
+  "loop": true,
+  "generated_by": "replay_generator.py"
+}

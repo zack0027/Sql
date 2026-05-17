@@ -1,0 +1,90 @@
+name: Build WebGL and Deploy to GitHub Pages
+
+# Cuándo correr: en push a main y manualmente desde la UI de Actions
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permisos necesarios para que la action de Pages pueda hacer deploy
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Evita deploys solapados
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build WebGL
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout del repo con LFS por si en el futuro agregamos assets pesados
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Cache de la carpeta Library para reducir tiempo de build de ~30min a ~5min
+      # en builds incrementales. La key invalida cuando cambian Assets o ProjectSettings.
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: unity_client/Library
+          key: Library-WebGL-${{ hashFiles('unity_client/Assets/**', 'unity_client/Packages/**', 'unity_client/ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-
+            Library-
+
+      # Liberar espacio para builds grandes (GameCI lo recomienda para WebGL)
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+
+      # Build con GameCI. Requiere los secrets configurados en el repo.
+      - name: Build WebGL
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: unity_client
+          targetPlatform: WebGL
+          buildName: WarehouseDemo
+          # Argumentos adicionales para optimizar la build
+          customParameters: -nographics
+
+      # Verificación rápida de que los archivos esperados existen
+      - name: Verify build output
+        run: |
+          ls -lh build/WebGL/WebGL/
+          test -f build/WebGL/WebGL/index.html || (echo "ERROR: no se generó index.html" && exit 1)
+          echo "Build OK"
+
+      # Empaquetar para Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/WebGL/WebGL
+
+  # Job separado para el deploy real a Pages (best practice de la doc oficial)
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

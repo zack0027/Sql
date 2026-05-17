@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "warehouse-digital-twin"
+version = "1.0.0"
+description = "Backend del gemelo digital WMS con detección de anomalías y narrativa LLM"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+    "httpx>=0.27.0",
+    "websockets>=13.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "scikit-learn>=1.5.0",
+    "pyod>=2.0.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.6.0",
+]
+
+[project.scripts]
+warehouse-twin = "warehouse_twin.app:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

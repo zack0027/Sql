@@ -1,0 +1,100 @@
+# ============== Python ==============
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtualenv
+.venv/
+venv/
+env/
+ENV/
+
+# Tests / linters
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Env vars
+.env
+.env.local
+
+# Models entrenados (versionarlos aparte con git-lfs si se desea)
+backend/models/*.pkl
+backend/data/*.csv
+
+# ============== Unity ==============
+unity_client/[Ll]ibrary/
+unity_client/[Tt]emp/
+unity_client/[Oo]bj/
+unity_client/[Bb]uild/
+unity_client/[Bb]uilds/
+unity_client/[Ll]ogs/
+unity_client/[Uu]ser[Ss]ettings/
+unity_client/[Mm]emoryCaptures/
+
+# Asset meta files generados
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity3D generated meta files
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Crashlytics generated file
+crashlytics-build.properties
+
+# Packed Addressables
+*[Aa]ddressables[Aa]ssets/*_[Bb]uildLogs.txt
+*[Aa]ddressables[Aa]ssets/*_[Bb]uild[Ll]ayout.txt
+
+# Bee Directory
+.bee/
+
+# Recorder Output
+unity_client/[Rr]ecordings/
+
+# Crashpad
+.gradle/
+
+# ============== Otros ==============
+node_modules/
+*.log

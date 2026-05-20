@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Callable, Optional
 
 from ..detection import AnomalyDetector
 from ..models import Movement
@@ -34,10 +35,12 @@ class WebSocketBroker:
         detector: AnomalyDetector,
         narrator: LLMNarrator,
         manager: ConnectionManager,
+        on_broadcast: Optional[Callable[[dict], None]] = None,
     ):
         self.detector = detector
         self.narrator = narrator
         self.manager = manager
+        self._on_broadcast = on_broadcast
         self._narration_tasks: set[asyncio.Task] = set()
 
     async def process_movement(self, movement: Movement) -> None:
@@ -50,7 +53,10 @@ class WebSocketBroker:
             return  # movimientos normales no se broadcastean
 
         # 1. Alerta inmediata
-        await self.manager.broadcast(anomaly.to_websocket_payload())
+        payload = anomaly.to_websocket_payload()
+        await self.manager.broadcast(payload)
+        if self._on_broadcast:
+            self._on_broadcast(payload)
 
         # 2. Narración en background (fire and forget con tracking)
         task = asyncio.create_task(self._narrate_and_broadcast(anomaly))

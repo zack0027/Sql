@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using JCain.WMS.Models;
@@ -17,8 +16,9 @@ namespace JCain.WMS.Connection
     /// local no es accesible públicamente. Este script hace que la demo funcione
     /// "self-contained" desde un static hosting.
     ///
-    /// Se carga desde StreamingAssets porque ese folder se serializa tal cual
-    /// en WebGL builds y queda accesible vía UnityWebRequest.
+    /// Diseño del tick: Update() con budget de eventos por frame.
+    /// Evita ráfagas visuales cuando un frame se atrasa y acumula varios
+    /// eventos vencidos — sin el budget, todos se dispararían en el mismo frame.
     /// </summary>
     [DisallowMultipleComponent]
     public class ReplayConnection : MonoBehaviour
@@ -35,6 +35,8 @@ namespace JCain.WMS.Connection
         [SerializeField] private float playbackSpeed = 1.0f;
         [Tooltip("Segundos de pausa antes de reiniciar el loop.")]
         [SerializeField] private float loopPauseSec = 2f;
+        [Tooltip("Máximo de eventos visuales despachados por frame. Evita ráfagas al recuperarse de lag.")]
+        [SerializeField] private int eventsPerFrameBudget = 3;
 
         [Header("Debug")]
         [SerializeField] private bool logEvents = false;
@@ -45,15 +47,84 @@ namespace JCain.WMS.Connection
         public static event Action<WMSMessage> OnAlert;
         public static event Action<WMSMessage> OnNarrative;
 
-        private Replay _replay;
-        private Coroutine _playbackCoroutine;
+        private Replay  _replay;
+        private bool    _playing;
+        private bool    _loopPausing;
+        private int     _nextIndex;
+        private float   _startTime;       // Time.time en que arrancó el loop actual
+        private float   _resumeTime;      // Time.time en que termina la pausa de loop
 
         private IEnumerator Start()
         {
             Application.runInBackground = true;
             yield return LoadReplay();
             if (autoStart && _replay != null)
-                _playbackCoroutine = StartCoroutine(Playback());
+                BeginPlayback();
+        }
+
+        /// <summary>
+        /// Tick principal. Despacha hasta <eventsPerFrameBudget> eventos por frame,
+        /// respetando el timestamp relativo de cada evento escalado por playbackSpeed.
+        /// </summary>
+        private void Update()
+        {
+            if (!_playing || _replay == null) return;
+
+            // Loop pause: esperamos antes de reiniciar
+            if (_loopPausing)
+            {
+                if (Time.time >= _resumeTime)
+                {
+                    _loopPausing = false;
+                    ResetPlayhead();
+                }
+                return;
+            }
+
+            float elapsed = (Time.time - _startTime) * Mathf.Max(0.01f, playbackSpeed);
+            int budget = eventsPerFrameBudget;
+
+            while (budget > 0 &&
+                   _nextIndex < _replay.events.Length &&
+                   _replay.events[_nextIndex].t <= elapsed)
+            {
+                DispatchEvent(_replay.events[_nextIndex].msg);
+                _nextIndex++;
+                budget--;
+            }
+
+            // Fin de la secuencia
+            if (_nextIndex >= _replay.events.Length)
+            {
+                if (loop)
+                {
+                    if (logEvents) Debug.Log("[Replay] Loop end — pausing before restart");
+                    _loopPausing = true;
+                    _resumeTime  = Time.time + loopPauseSec;
+                }
+                else
+                {
+                    _playing = false;
+                    OnDisconnected?.Invoke();
+                    WMSEventBus.RaiseDisconnected();
+                }
+            }
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        private void BeginPlayback()
+        {
+            _playing = false;
+            _loopPausing = false;
+            ResetPlayhead();
+            _playing = true;
+        }
+
+        private void ResetPlayhead()
+        {
+            _nextIndex = 0;
+            _startTime = Time.time;
         }
 
         private IEnumerator LoadReplay()
@@ -62,7 +133,6 @@ namespace JCain.WMS.Connection
             // no es un file:// sino una URL relativa al servidor.
             string url = System.IO.Path.Combine(Application.streamingAssetsPath, replayFileName);
             #if !UNITY_WEBGL || UNITY_EDITOR
-            // En editor y standalone, prefijar file:// si no lo tiene
             if (!url.Contains("://"))
                 url = "file://" + url;
             #endif
@@ -91,36 +161,6 @@ namespace JCain.WMS.Connection
             }
         }
 
-        private IEnumerator Playback()
-        {
-            do
-            {
-                float t0 = Time.time;
-                int idx = 0;
-
-                while (idx < _replay.events.Length)
-                {
-                    ReplayEvent ev = _replay.events[idx];
-                    float targetTime = ev.t / Mathf.Max(0.01f, playbackSpeed);
-
-                    // Espera hasta el momento adecuado
-                    float wait = targetTime - (Time.time - t0);
-                    if (wait > 0) yield return new WaitForSeconds(wait);
-
-                    DispatchEvent(ev.msg);
-                    idx++;
-                }
-
-                if (loop)
-                {
-                    if (logEvents) Debug.Log("[Replay] Loop restart");
-                    yield return new WaitForSeconds(loopPauseSec);
-                }
-            } while (loop);
-
-            OnDisconnected?.Invoke();
-        }
-
         private void DispatchEvent(WMSMessage msg)
         {
             if (msg == null || string.IsNullOrEmpty(msg.type)) return;
@@ -136,31 +176,29 @@ namespace JCain.WMS.Connection
                     OnNarrative?.Invoke(msg);
                     WMSEventBus.RaiseNarrative(msg);
                     break;
-                default: break;
             }
         }
 
         private void OnDisable()
         {
-            if (_playbackCoroutine != null)
-                StopCoroutine(_playbackCoroutine);
+            _playing = false;
         }
 
-        // ---- Modelos internos del replay ----
+        // ── Modelos internos del replay ───────────────────────────────────────
 
         [Serializable]
         public class Replay
         {
             public string name;
-            public float duration_sec;
-            public bool loop;
+            public float  duration_sec;
+            public bool   loop;
             public ReplayEvent[] events;
         }
 
         [Serializable]
         public class ReplayEvent
         {
-            public float t;
+            public float      t;
             public WMSMessage msg;
         }
     }

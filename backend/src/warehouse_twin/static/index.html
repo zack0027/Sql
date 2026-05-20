@@ -32,7 +32,7 @@
     overflow: hidden;
   }
 
-  /* ─── TOP BAR ─────────────────────────────────────── */
+  /* ─── HEADER ────────────────────────────────────────── */
   header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
@@ -40,35 +40,30 @@
     height: 48px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     flex-shrink: 0;
+    z-index: 100;
   }
 
   header h1 {
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--accent);
     letter-spacing: .5px;
-  }
-
-  header .badge {
-    font-size: 10px;
-    background: #1f6feb;
-    color: #fff;
-    padding: 1px 6px;
-    border-radius: 10px;
+    white-space: nowrap;
   }
 
   .status-dot {
-    width: 8px; height: 8px;
+    width: 9px; height: 9px;
     border-radius: 50%;
     background: #666;
     transition: background .3s;
+    flex-shrink: 0;
   }
   .status-dot.connected    { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
   .status-dot.disconnected { background: var(--high); }
 
-  #status-label { color: var(--muted); font-size: 12px; }
+  #status-label { color: var(--muted); font-size: 11px; white-space: nowrap; }
 
   .spacer { flex: 1; }
 
@@ -77,31 +72,68 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--muted);
+    white-space: nowrap;
   }
   .stat-chip span { color: var(--text); font-weight: 600; }
 
-  /* ─── MAIN LAYOUT ─────────────────────────────────── */
+  /* ─── NAV TABS ──────────────────────────────────────── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 0;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  nav button {
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 10px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  nav button:hover { color: var(--text); opacity: 1; }
+  nav button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  nav button:active { transform: none; }
+
+  /* ─── MAIN CONTENT ──────────────────────────────────── */
   main {
     flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    grid-template-rows: 1fr 220px;
-    gap: 1px;
-    background: var(--border);
     overflow: hidden;
+    position: relative;
   }
 
-  section {
-    background: var(--bg);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  .tab-panel {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
   }
+  .tab-panel.active { display: flex; flex-direction: column; gap: 14px; }
 
-  .sec-header {
+  /* ─── COMMON COMPONENTS ─────────────────────────────── */
+  .card {
     background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    background: var(--rack-bg);
     border-bottom: 1px solid var(--border);
     padding: 8px 14px;
     font-size: 11px;
@@ -112,208 +144,22 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-shrink: 0;
   }
 
-  .sec-header .count {
-    margin-left: auto;
-    background: var(--rack-bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1px 8px;
-    color: var(--text);
-    font-size: 11px;
-  }
-
-  /* ─── WAREHOUSE GRID ──────────────────────────────── */
-  #grid-section {
-    grid-row: 1;
-    grid-column: 1;
-  }
-
-  #warehouse-grid {
-    flex: 1;
-    overflow: auto;
-    padding: 16px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-  }
-
-  .grid-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .grid-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .row-label {
-    width: 18px;
-    text-align: right;
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 600;
-    flex-shrink: 0;
-  }
-
-  .rack {
-    width: 38px;
-    height: 38px;
-    border-radius: 5px;
-    background: var(--rack-bg);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8px;
-    color: var(--muted);
-    cursor: pointer;
-    transition: transform .1s, box-shadow .2s;
-    position: relative;
-    user-select: none;
-  }
-
-  .rack:hover { transform: scale(1.12); z-index: 2; }
-
-  .rack.medium  { background: rgba(210,153,34,.18); border-color: var(--medium);  color: var(--medium);  }
-  .rack.high    { background: rgba(218,54,51,.18);  border-color: var(--high);    color: var(--high);   }
-  .rack.critical{ background: rgba(248,81,73,.22);  border-color: var(--critical);color: var(--critical); }
-
-  .rack.pulse   { animation: pulse-anim 1.4s ease-out forwards; }
-
-  @keyframes pulse-anim {
-    0%   { box-shadow: 0 0 0 0 currentColor; }
-    50%  { box-shadow: 0 0 14px 4px currentColor; }
-    100% { box-shadow: 0 0 0 0 currentColor; }
-  }
-
-  .col-labels {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 0 0 22px;
-  }
-  .col-label {
-    width: 38px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 9px;
-  }
-
-  /* ─── ALERT FEED ──────────────────────────────────── */
-  #feed-section {
-    grid-row: 1;
-    grid-column: 2;
-  }
-
-  #alert-feed {
-    flex: 1;
-    overflow-y: auto;
-    padding: 6px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .alert-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 10px;
-    border-left: 3px solid var(--muted);
-    cursor: pointer;
-    transition: background .15s;
-    flex-shrink: 0;
-  }
-  .alert-card:hover { background: #1c2128; }
-
-  .alert-card.medium   { border-left-color: var(--medium); }
-  .alert-card.high     { border-left-color: var(--high); }
-  .alert-card.critical { border-left-color: var(--critical); }
-
-  .alert-card .card-row1 {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 3px;
-  }
+  .card-body { padding: 14px; }
 
   .sev-badge {
     font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    padding: 1px 5px;
+    padding: 2px 6px;
     border-radius: 4px;
     letter-spacing: .5px;
   }
   .sev-badge.medium   { background: rgba(210,153,34,.25); color: var(--medium); }
   .sev-badge.high     { background: rgba(218,54,51,.25);  color: var(--high); }
   .sev-badge.critical { background: rgba(248,81,73,.28);  color: var(--critical); }
-
-  .alert-loc  { font-weight: 700; font-size: 11px; }
-  .alert-time { margin-left: auto; color: var(--muted); font-size: 10px; }
-  .alert-sku  { color: var(--muted); font-size: 10px; }
-  .alert-rules{ color: var(--muted); font-size: 10px; font-style: italic; }
-
-  /* ─── BOTTOM LEFT: INJECT FORM ────────────────────── */
-  #inject-section {
-    grid-row: 2;
-    grid-column: 1;
-  }
-
-  #inject-form {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  label {
-    font-size: 10px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-
-  input, select {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    color: var(--text);
-    padding: 5px 8px;
-    font-size: 12px;
-    outline: none;
-    transition: border-color .15s;
-  }
-  input:focus, select:focus { border-color: var(--accent); }
-
-  select option { background: var(--surface); }
-
-  .btn-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
+  .sev-badge.normal   { background: rgba(35,134,54,.2);   color: var(--normal); }
 
   button {
     border: none;
@@ -331,190 +177,945 @@
   .btn-danger  { background: rgba(248,81,73,.2); color: var(--critical); border: 1px solid var(--critical); }
   .btn-warn    { background: rgba(210,153,34,.2); color: var(--medium);  border: 1px solid var(--medium); }
   .btn-ghost   { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+  .btn-green   { background: rgba(35,134,54,.2); color: #3fb950; border: 1px solid #3fb950; }
 
-  #inject-status {
-    font-size: 11px;
-    color: var(--muted);
-    min-height: 16px;
-    padding: 2px 0;
-  }
-  #inject-status.ok  { color: #3fb950; }
-  #inject-status.err { color: var(--critical); }
-
-  /* ─── BOTTOM RIGHT: NARRATIVE ─────────────────────── */
-  #narrative-section {
-    grid-row: 2;
-    grid-column: 2;
-  }
-
-  #narrative-panel {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .narrative-card {
+  input, select, textarea {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 9px 11px;
-    flex-shrink: 0;
-    animation: fadein .4s ease;
+    border-radius: 5px;
+    color: var(--text);
+    padding: 6px 9px;
+    font-size: 12px;
+    outline: none;
+    transition: border-color .15s;
+    font-family: inherit;
   }
-  @keyframes fadein { from { opacity:0; transform: translateY(6px); } }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: #1c2128; }
 
-  .narrative-loc  { font-weight: 700; color: var(--accent); font-size: 12px; }
-  .narrative-text { margin-top: 5px; line-height: 1.55; color: var(--text); }
-  .narrative-sub  { margin-top: 6px; }
-  .narrative-sub label { color: var(--muted); display: block; margin-bottom: 2px; }
-  .narrative-sub p { color: #cdd9e5; line-height: 1.5; }
+  label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
   .empty-state {
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--muted);
     font-size: 12px;
+    padding: 30px;
     text-align: center;
-    padding: 20px;
   }
 
   /* scrollbars */
-  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ─── TAB 1: DASHBOARD ──────────────────────────────── */
+  .stat-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stat-card .sc-icon { font-size: 22px; }
+  .stat-card .sc-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-card .sc-label { color: var(--muted); font-size: 11px; }
+  .stat-card.total    { border-left: 3px solid var(--accent); }
+  .stat-card.critical { border-left: 3px solid var(--critical); }
+  .stat-card.high     { border-left: 3px solid var(--high); }
+  .stat-card.medium   { border-left: 3px solid var(--medium); }
+
+  .dash-bottom {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    padding: 10px;
+    min-height: 180px;
+    max-height: 340px;
+  }
+
+  .recent-item {
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .recent-item .ri-loc { font-weight: 700; }
+  .recent-item .ri-time { margin-left: auto; color: var(--muted); font-size: 10px; }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+  .status-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .status-row .sr-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .status-row .sr-value { font-weight: 600; font-size: 13px; }
+
+  /* ─── TAB 2: ALMACÉN ────────────────────────────────── */
+  .warehouse-layout {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .warehouse-grid-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grid-scroll {
+    flex: 1;
+    overflow: auto;
+    padding: 14px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .grid-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .col-labels {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 24px;
+    margin-bottom: 2px;
+  }
+  .col-label {
+    width: 36px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  .grid-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .row-label {
+    width: 20px;
+    text-align: right;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .rack {
+    width: 36px;
+    height: 36px;
+    border-radius: 5px;
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: transform .1s, box-shadow .2s;
+    position: relative;
+    user-select: none;
+  }
+  .rack:hover { transform: scale(1.15); z-index: 2; }
+
+  .rack.medium  { background: rgba(210,153,34,.18); border-color: var(--medium);  color: var(--medium);  }
+  .rack.high    { background: rgba(218,54,51,.18);  border-color: var(--high);    color: var(--high);   }
+  .rack.critical{ background: rgba(248,81,73,.22);  border-color: var(--critical);color: var(--critical); }
+  .rack.selected{ outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .rack.pulse { animation: pulse-anim 1.4s ease-out forwards; }
+  @keyframes pulse-anim {
+    0%   { box-shadow: 0 0 0 0 currentColor; }
+    50%  { box-shadow: 0 0 16px 5px currentColor; }
+    100% { box-shadow: 0 0 0 0 currentColor; }
+  }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .rack-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .rack-detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ─── TAB 3: ALERTAS ────────────────────────────────── */
+  .alerts-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .alerts-left {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .filter-btn {
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 5px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .filter-btn:hover, .filter-btn.active { background: #1f6feb22; border-color: var(--accent); color: var(--accent); opacity: 1; }
+  .filter-btn:active { transform: scale(.97); }
+  .filter-btn.f-critical.active { background: rgba(248,81,73,.15); border-color: var(--critical); color: var(--critical); }
+  .filter-btn.f-high.active    { background: rgba(218,54,51,.15);  border-color: var(--high);     color: var(--high); }
+  .filter-btn.f-medium.active  { background: rgba(210,153,34,.15); border-color: var(--medium);   color: var(--medium); }
+
+  #alert-search {
+    flex: 1;
+    min-width: 120px;
+    max-width: 220px;
+  }
+
+  .alert-feed-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+  }
+
+  .alert-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 12px;
+    border-left: 3px solid var(--muted);
+    cursor: pointer;
+    transition: background .15s;
+    flex-shrink: 0;
+  }
+  .alert-card:hover  { background: var(--rack-bg); }
+  .alert-card.selected { background: #1f6feb1a; border-color: var(--accent); border-left-color: var(--accent); }
+  .alert-card.medium   { border-left-color: var(--medium); }
+  .alert-card.high     { border-left-color: var(--high); }
+  .alert-card.critical { border-left-color: var(--critical); }
+
+  .card-row1 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .alert-loc  { font-weight: 700; font-size: 12px; }
+  .alert-time { margin-left: auto; color: var(--muted); font-size: 10px; }
+  .alert-meta { color: var(--muted); font-size: 10px; line-height: 1.5; }
+  .alert-rules{ color: var(--muted); font-size: 10px; font-style: italic; margin-top: 2px; }
+
+  .narrative-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .narrative-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+  }
+  .narrative-loc { font-weight: 700; color: var(--accent); font-size: 13px; margin-bottom: 8px; }
+  .narrative-text { line-height: 1.6; color: var(--text); }
+  .narrative-section { margin-top: 12px; }
+  .narrative-section .ns-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .narrative-section p { color: #cdd9e5; line-height: 1.5; font-size: 12px; }
+
+  /* ─── TAB 4: INYECTAR ───────────────────────────────── */
+  .inject-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .form-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  #inject-status {
+    font-size: 11px;
+    color: var(--muted);
+    min-height: 18px;
+    padding: 3px 0;
+  }
+  #inject-status.ok  { color: #3fb950; }
+  #inject-status.err { color: var(--critical); }
+
+  .response-log {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    min-height: 100px;
+    max-height: 400px;
+  }
+
+  .log-item {
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 10px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    line-height: 1.5;
+    flex-shrink: 0;
+  }
+  .log-item.ok  { border-left: 3px solid #3fb950; }
+  .log-item.err { border-left: 3px solid var(--critical); }
+  .log-ts { color: var(--muted); }
+
+  /* ─── TAB 5: WMS / API ──────────────────────────────── */
+  .api-section { margin-bottom: 4px; }
+
+  .api-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .api-table th {
+    text-align: left;
+    background: var(--rack-bg);
+    color: var(--muted);
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .api-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .api-table tr:last-child td { border-bottom: none; }
+  .api-table tr:hover td { background: var(--rack-bg); }
+
+  .method-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .method-badge.GET    { background: rgba(35,134,54,.2); color: #3fb950; }
+  .method-badge.POST   { background: rgba(88,166,255,.2); color: var(--accent); }
+  .method-badge.WS     { background: rgba(210,153,34,.2); color: var(--medium); }
+
+  pre {
+    background: var(--rack-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 11px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+    overflow-x: auto;
+    line-height: 1.6;
+    color: #cdd9e5;
+    white-space: pre;
+  }
+
+  .api-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .api-link:hover { text-decoration: underline; }
+
+  .ws-contract {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
+<!-- HEADER -->
 <header>
   <div class="status-dot disconnected" id="status-dot"></div>
-  <h1>Warehouse Digital Twin</h1>
-  <span class="badge">v0.1</span>
+  <h1>WDT v0.1</h1>
   <span id="status-label">Desconectado</span>
   <div class="spacer"></div>
-  <div class="stat-chip">Alertas: <span id="cnt-total">0</span></div>
-  <div class="stat-chip">Críticas: <span id="cnt-critical">0</span></div>
-  <div class="stat-chip">Racks activos: <span id="cnt-racks">0</span></div>
-  <button class="btn-ghost" onclick="clearAll()">Limpiar</button>
+  <div class="stat-chip">Total Alertas: <span id="hdr-total">0</span></div>
+  <div class="stat-chip">Críticas: <span id="hdr-critical">0</span></div>
+  <div class="stat-chip">Conexiones WS: <span id="hdr-connections">0</span></div>
+  <button class="btn-ghost" id="btn-simulator" onclick="toggleSimulator()" style="margin-left:6px;">⏸ Simulador</button>
 </header>
+
+<!-- NAV -->
+<nav>
+  <button class="active" onclick="showTab('dashboard',this)">📊 Dashboard</button>
+  <button onclick="showTab('warehouse',this)">🏭 Almacén</button>
+  <button onclick="showTab('alerts',this)">⚡ Alertas</button>
+  <button onclick="showTab('inject',this)">⚙️ Inyectar</button>
+  <button onclick="showTab('api',this)">🔌 WMS / API</button>
+</nav>
 
 <!-- MAIN -->
 <main>
 
-  <!-- GRID -->
-  <section id="grid-section">
-    <div class="sec-header">🏭 Grid del Almacén — 6 pasillos × 18 racks</div>
-    <div id="warehouse-grid">
-      <div>
-        <div class="col-labels" id="col-labels"></div>
-        <div class="grid-wrap" id="grid-wrap"></div>
+  <!-- TAB 1: DASHBOARD -->
+  <div class="tab-panel active" id="tab-dashboard">
+    <!-- Stat cards -->
+    <div class="stat-cards-grid">
+      <div class="stat-card total">
+        <div class="sc-icon">📦</div>
+        <div class="sc-value" id="sc-total">0</div>
+        <div class="sc-label">Total anomalías</div>
+      </div>
+      <div class="stat-card critical">
+        <div class="sc-icon">💀</div>
+        <div class="sc-value" id="sc-critical">0</div>
+        <div class="sc-label">Críticas</div>
+      </div>
+      <div class="stat-card high">
+        <div class="sc-icon">🔴</div>
+        <div class="sc-value" id="sc-high">0</div>
+        <div class="sc-label">High</div>
+      </div>
+      <div class="stat-card medium">
+        <div class="sc-icon">🟡</div>
+        <div class="sc-value" id="sc-medium">0</div>
+        <div class="sc-label">Medium</div>
       </div>
     </div>
-  </section>
 
-  <!-- ALERT FEED -->
-  <section id="feed-section">
-    <div class="sec-header">
-      ⚡ Feed de Alertas
-      <span class="count" id="feed-count">0</span>
-    </div>
-    <div id="alert-feed">
-      <div class="empty-state" id="feed-empty">Esperando anomalías…</div>
-    </div>
-  </section>
-
-  <!-- INJECT FORM -->
-  <section id="inject-section">
-    <div class="sec-header">⚙️ Inyectar Movimiento</div>
-    <div id="inject-form">
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Tipo</label>
-          <select id="f-type">
-            <option>RECEIVING</option>
-            <option>INSPECTION</option>
-            <option>PUTAWAY</option>
-            <option selected>PICK</option>
-            <option>ORDER</option>
-            <option>TRACEABILITY</option>
-            <option>MAQUILA</option>
-            <option>ADJUSTMENT</option>
-          </select>
+    <div class="dash-bottom">
+      <!-- Recent anomalies -->
+      <div class="card" style="display:flex;flex-direction:column;min-height:0;">
+        <div class="card-header">
+          ⏱ Actividad reciente
+          <span style="margin-left:auto;font-size:10px;color:var(--muted);">Auto-refresh 5s</span>
         </div>
-        <div class="form-group">
-          <label>Ubicación</label>
-          <input id="f-loc" value="C-018" placeholder="C-018">
-        </div>
-        <div class="form-group">
-          <label>SKU</label>
-          <input id="f-sku" value="MX-0042" placeholder="MX-0042">
-        </div>
-        <div class="form-group">
-          <label>Usuario</label>
-          <input id="f-user" value="USR_001" placeholder="USR_001">
-        </div>
-        <div class="form-group">
-          <label>Cantidad</label>
-          <input id="f-qty" type="number" value="10">
-        </div>
-        <div class="form-group">
-          <label>Duración (s)</label>
-          <input id="f-dur" type="number" value="60">
-        </div>
-        <div class="form-group">
-          <label>Hora (HH)</label>
-          <input id="f-hour" type="number" value="" placeholder="auto" min="0" max="23">
+        <div class="recent-list" id="recent-list">
+          <div class="empty-state">Cargando…</div>
         </div>
       </div>
-      <div class="btn-row">
-        <button class="btn-primary" onclick="injectMovement()">Enviar movimiento</button>
-        <button class="btn-danger"  onclick="injectAnomaly('negative_qty')">💀 Qty negativa</button>
-        <button class="btn-danger"  onclick="injectAnomaly('short_duration')">⚡ Duración corta</button>
-        <button class="btn-warn"    onclick="injectAnomaly('long_duration')">⏱ Duración larga</button>
-        <button class="btn-warn"    onclick="injectAnomaly('off_hours')">🌙 Fuera horario</button>
-      </div>
-      <div id="inject-status"></div>
-    </div>
-  </section>
 
-  <!-- NARRATIVE -->
-  <section id="narrative-section">
-    <div class="sec-header">🤖 Narrativa LLM</div>
-    <div id="narrative-panel">
-      <div class="empty-state" id="narr-empty">La narrativa aparece aquí tras cada anomalía…</div>
+      <!-- System status -->
+      <div class="card">
+        <div class="card-header">🛠 Estado del sistema</div>
+        <div class="status-grid">
+          <div class="status-row">
+            <span class="sr-label">Simulador</span>
+            <span class="sr-value" id="sys-sim">—</span>
+          </div>
+          <div class="status-row">
+            <span class="sr-label">Rate (mov/s)</span>
+            <span class="sr-value" id="sys-rate">—</span>
+          </div>
+          <div class="status-row">
+            <span class="sr-label">Ratio anomalías</span>
+            <span class="sr-value" id="sys-ratio">—</span>
+          </div>
+          <div class="status-row">
+            <span class="sr-label">Ollama</span>
+            <span class="sr-value" id="sys-ollama">—</span>
+          </div>
+          <div class="status-row">
+            <span class="sr-label">Conexiones WS</span>
+            <span class="sr-value" id="sys-ws">—</span>
+          </div>
+          <div class="status-row">
+            <span class="sr-label">Anomalías (total)</span>
+            <span class="sr-value" id="sys-count">—</span>
+          </div>
+        </div>
+      </div>
     </div>
-  </section>
+  </div>
+
+  <!-- TAB 2: ALMACÉN -->
+  <div class="tab-panel" id="tab-warehouse">
+    <div class="warehouse-layout" style="flex:1;min-height:0;">
+      <!-- Grid -->
+      <div class="warehouse-grid-wrap">
+        <div class="card-header">
+          🏭 Grid 6×18 — 108 racks
+          <span style="margin-left:auto;color:var(--text);font-weight:600;" id="rack-active-count">0 racks activos</span>
+        </div>
+        <div class="grid-scroll">
+          <div class="grid-inner">
+            <div class="col-labels" id="wh-col-labels"></div>
+            <div id="wh-grid-wrap"></div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--rack-bg);border:1px solid var(--border);"></div> Normal</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(210,153,34,.4);border:1px solid var(--medium);"></div> Medium</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(218,54,51,.4);border:1px solid var(--high);"></div> High</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(248,81,73,.4);border:1px solid var(--critical);"></div> Critical</div>
+        </div>
+      </div>
+
+      <!-- Rack detail panel -->
+      <div class="rack-detail">
+        <div class="card-header" id="rack-detail-title">📍 Selecciona un rack</div>
+        <div class="rack-detail-body" id="rack-detail-body">
+          <div class="empty-state">Haz click en un rack para ver su historial</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: ALERTAS -->
+  <div class="tab-panel" id="tab-alerts">
+    <div class="alerts-layout" style="flex:1;min-height:0;">
+      <!-- Left: feed -->
+      <div class="alerts-left">
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">Todos</button>
+          <button class="filter-btn f-critical" data-filter="critical" onclick="setFilter('critical',this)">💀 Critical</button>
+          <button class="filter-btn f-high" data-filter="high" onclick="setFilter('high',this)">🔴 High</button>
+          <button class="filter-btn f-medium" data-filter="medium" onclick="setFilter('medium',this)">🟡 Medium</button>
+          <input id="alert-search" placeholder="Buscar ubicación o SKU…" oninput="applyFilter()">
+          <button class="btn-ghost" onclick="clearFeed()" style="margin-left:auto;">Limpiar feed</button>
+        </div>
+        <div class="alert-feed-scroll" id="alerts-feed"></div>
+      </div>
+
+      <!-- Right: narrative -->
+      <div class="narrative-panel">
+        <div class="card-header">🤖 Narrativa LLM</div>
+        <div class="narrative-body" id="narrative-display">
+          <div class="empty-state">Selecciona una alerta para ver la narrativa</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: INYECTAR -->
+  <div class="tab-panel" id="tab-inject">
+    <div class="inject-layout" style="flex:1;min-height:0;">
+      <!-- Form -->
+      <div class="card" style="display:flex;flex-direction:column;">
+        <div class="card-header">⚙️ Inyectar Movimiento</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px;overflow-y:auto;flex:1;">
+          <div class="form-grid-4">
+            <div class="form-group">
+              <label>Tipo</label>
+              <select id="f-type">
+                <option>RECEIVING</option>
+                <option>INSPECTION</option>
+                <option>PUTAWAY</option>
+                <option selected>PICK</option>
+                <option>ORDER</option>
+                <option>TRACEABILITY</option>
+                <option>MAQUILA</option>
+                <option>ADJUSTMENT</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ubicación</label>
+              <input id="f-loc" value="C-018" placeholder="C-018">
+            </div>
+            <div class="form-group">
+              <label>SKU</label>
+              <input id="f-sku" value="MX-0042" placeholder="MX-0042">
+            </div>
+            <div class="form-group">
+              <label>Usuario</label>
+              <input id="f-user" value="USR_001" placeholder="USR_001">
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input id="f-qty" type="number" value="10">
+            </div>
+            <div class="form-group">
+              <label>Duración (s)</label>
+              <input id="f-dur" type="number" value="60">
+            </div>
+            <div class="form-group">
+              <label>Hora override (0-23)</label>
+              <input id="f-hour" type="number" placeholder="auto" min="0" max="23">
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary" onclick="injectMovement()">📤 Enviar movimiento</button>
+            <button class="btn-danger"  onclick="injectAnomaly('negative_qty')">💀 Qty Negativa</button>
+            <button class="btn-danger"  onclick="injectAnomaly('short_duration')">⚡ Duración Corta</button>
+            <button class="btn-warn"    onclick="injectAnomaly('long_duration')">⏱ Duración Larga</button>
+            <button class="btn-warn"    onclick="injectAnomaly('off_hours')">🌙 Fuera de Horario</button>
+          </div>
+          <div id="inject-status"></div>
+        </div>
+      </div>
+
+      <!-- Response log -->
+      <div class="card" style="display:flex;flex-direction:column;min-height:0;">
+        <div class="card-header">📋 Log de respuestas</div>
+        <div class="response-log" id="response-log">
+          <div class="empty-state">Sin respuestas aún</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: WMS / API -->
+  <div class="tab-panel" id="tab-api">
+    <!-- WMS connection -->
+    <div class="card api-section">
+      <div class="card-header">🔌 Conexión al WMS</div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+        <p style="color:var(--muted);font-size:12px;line-height:1.6;">
+          El backend expone <code style="color:var(--accent);">POST /ingest</code> como punto de entrada principal.
+          Cualquier WMS externo puede enviar movimientos en formato JSON. Futuros adaptadores planificados para la
+          <strong style="color:var(--text);">Fase 4</strong>: SAP IDoc, importación CSV, MOCA protocol.
+        </p>
+        <pre>curl -X POST http://localhost:8000/ingest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "movement_id": "MV-SAP-20260520-001",
+    "timestamp": "2026-05-20T14:30:00",
+    "movement_type": "PICK",
+    "sku": "MX-0042",
+    "location": "C-018",
+    "user_id": "USR_001",
+    "quantity": 10,
+    "duration_sec": 60
+  }'</pre>
+        <p style="font-size:11px;color:var(--muted);">
+          Swagger UI: <a class="api-link" href="/api/docs" target="_blank">/api/docs</a>
+          &nbsp;|&nbsp;
+          ReDoc: <a class="api-link" href="/api/redoc" target="_blank">/api/redoc</a>
+          &nbsp;|&nbsp;
+          OpenAPI JSON: <a class="api-link" href="/api/openapi.json" target="_blank">/api/openapi.json</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Endpoints table -->
+    <div class="card api-section">
+      <div class="card-header">📋 Endpoints disponibles</div>
+      <table class="api-table">
+        <thead>
+          <tr>
+            <th>Método</th>
+            <th>Ruta</th>
+            <th>Descripción</th>
+            <th>Request / Response</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method-badge GET">GET</span></td>
+            <td><code>/</code></td>
+            <td style="color:var(--muted);">Dashboard web (esta página)</td>
+            <td style="color:var(--muted);">HTML</td>
+          </tr>
+          <tr>
+            <td><span class="method-badge GET">GET</span></td>
+            <td><code>/healthz</code></td>
+            <td style="color:var(--muted);">Liveness probe para load balancers</td>
+            <td><code style="font-size:10px;">{"ok":true,"connections":1,"ollama_available":false}</code></td>
+          </tr>
+          <tr>
+            <td><span class="method-badge POST">POST</span></td>
+            <td><code>/ingest</code></td>
+            <td style="color:var(--muted);">Recibir movimiento de WMS externo</td>
+            <td><code style="font-size:10px;">{"accepted":true,"movement_id":"MV-..."}</code></td>
+          </tr>
+          <tr>
+            <td><span class="method-badge WS">WS</span></td>
+            <td><code>/ws/alerts</code></td>
+            <td style="color:var(--muted);">Stream de alertas y narrativas (WebSocket)</td>
+            <td style="color:var(--muted);">JSON push: tipo <code>alert</code> o <code>narrative</code></td>
+          </tr>
+          <tr>
+            <td><span class="method-badge GET">GET</span></td>
+            <td><code>/api/status</code></td>
+            <td style="color:var(--muted);">Estado del sistema en tiempo real</td>
+            <td><code style="font-size:10px;">{"connections":1,"anomaly_count":5,...}</code></td>
+          </tr>
+          <tr>
+            <td><span class="method-badge GET">GET</span></td>
+            <td><code>/api/anomalies?limit=50</code></td>
+            <td style="color:var(--muted);">Últimas N anomalías (más recientes primero)</td>
+            <td><code style="font-size:10px;">[{"type":"alert","severity":"critical",...}]</code></td>
+          </tr>
+          <tr>
+            <td><span class="method-badge POST">POST</span></td>
+            <td><code>/api/simulator/toggle</code></td>
+            <td style="color:var(--muted);">Activar / desactivar simulador de movimientos</td>
+            <td><code style="font-size:10px;">{"running":true}</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- WS contract -->
+    <div class="card api-section">
+      <div class="card-header">🔗 Contrato WebSocket — /ws/alerts</div>
+      <div class="card-body">
+        <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
+          Al conectar, el servidor envía un mensaje <code>hello</code>. Luego llegan dos tipos de mensajes push:
+        </p>
+        <div class="ws-contract">
+          <div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Tipo: alert</p>
+            <pre>{
+  "type": "alert",          // siempre "alert"
+  "movement_id": "MV-...",  // ID único del movimiento
+  "severity": "critical",   // medium | high | critical
+  "location": "C-018",      // pasillo-rack
+  "movement_type": "PICK",  // tipo WMS
+  "sku": "MX-0042",         // referencia producto
+  "quantity": 10,           // unidades
+  "duration_sec": 60,       // duración operación
+  "timestamp": "2026-...",  // ISO 8601
+  "rule_reasons": "..."     // reglas disparadas
+}</pre>
+          </div>
+          <div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Tipo: narrative</p>
+            <pre>{
+  "type": "narrative",       // siempre "narrative"
+  "movement_id": "MV-...",  // correlaciona con alert
+  "location": "C-018",      // misma que alert
+  "narrative": "...",        // texto LLM principal
+  "likely_cause": "...",     // causa probable (LLM)
+  "recommended_action": "..." // acción recomendada
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 </main>
 
 <script>
-// ────────────────────────────────────────────────────────
-// CONFIG
-// ────────────────────────────────────────────────────────
-const API  = `${location.protocol}//${location.hostname}:8000`;
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const API    = `${location.protocol}//${location.hostname}:8000`;
 const WS_URL = `ws://${location.hostname}:8000/ws/alerts`;
-const ROWS = ['A','B','C','D','E','F'];
-const COLS = Array.from({length:18}, (_,i) => String(i+1).padStart(3,'0'));
+const ROWS   = ['A','B','C','D','E','F'];
+const COLS   = Array.from({length:18}, (_,i) => String(i+1).padStart(3,'0'));
 
-// ────────────────────────────────────────────────────────
-// STATE
-// ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
 let ws;
-let alertCount = 0, criticalCount = 0;
-const activeRacks = new Set();
-const rackEls = {};   // "C-018" → <div>
+let alertsLog       = [];   // max 200 alert objects
+const narrativesMap = new Map();  // movement_id → narrative msg
+const rackEls       = {};         // "C-018" → <div>
+const activeRacks   = new Set();
 
-// ────────────────────────────────────────────────────────
-// BUILD GRID
-// ────────────────────────────────────────────────────────
+// Local severity counters
+let cntTotal = 0, cntCritical = 0, cntHigh = 0, cntMedium = 0;
+
+// Alerts tab state
+let currentFilter      = 'all';
+let selectedMovementId = null;
+
+// ═══════════════════════════════════════════════════════════════
+//  TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ═══════════════════════════════════════════════════════════════
+function connect() {
+  try { ws = new WebSocket(WS_URL); } catch(e) { scheduleReconnect(); return; }
+
+  ws.onopen = () => setStatus(true);
+
+  ws.onmessage = ev => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch(_) { return; }
+    if (msg.type === 'alert')     handleAlert(msg);
+    if (msg.type === 'narrative') handleNarrative(msg);
+  };
+
+  ws.onerror = () => {};
+  ws.onclose = () => { setStatus(false); scheduleReconnect(); };
+}
+
+function scheduleReconnect() { setTimeout(connect, 3000); }
+
+function setStatus(connected) {
+  document.getElementById('status-dot').className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+  document.getElementById('status-label').textContent = connected ? 'Conectado al backend' : 'Reconectando…';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HANDLE ALERT
+// ═══════════════════════════════════════════════════════════════
+function handleAlert(msg) {
+  // Update counters
+  cntTotal++;
+  if (msg.severity === 'critical') cntCritical++;
+  else if (msg.severity === 'high')     cntHigh++;
+  else if (msg.severity === 'medium')   cntMedium++;
+
+  updateHeaderStats();
+  updateDashStats();
+
+  // Store in log
+  alertsLog.unshift(msg);
+  if (alertsLog.length > 200) alertsLog.length = 200;
+
+  // Update warehouse grid
+  updateRack(msg);
+
+  // Update alerts tab feed
+  renderAlertsTabCard(msg);
+}
+
+function updateHeaderStats() {
+  document.getElementById('hdr-total').textContent    = cntTotal;
+  document.getElementById('hdr-critical').textContent = cntCritical;
+}
+
+function updateDashStats() {
+  document.getElementById('sc-total').textContent    = cntTotal;
+  document.getElementById('sc-critical').textContent = cntCritical;
+  document.getElementById('sc-high').textContent     = cntHigh;
+  document.getElementById('sc-medium').textContent   = cntMedium;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HANDLE NARRATIVE
+// ═══════════════════════════════════════════════════════════════
+function handleNarrative(msg) {
+  narrativesMap.set(msg.movement_id, msg);
+  // If the corresponding alert is currently selected, update panel
+  if (selectedMovementId === msg.movement_id) {
+    renderNarrativePanel(msg);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WAREHOUSE GRID
+// ═══════════════════════════════════════════════════════════════
 function buildGrid() {
-  const colLabels = document.getElementById('col-labels');
+  // Column labels
+  const colLabels = document.getElementById('wh-col-labels');
   COLS.forEach(c => {
     const d = document.createElement('div');
     d.className = 'col-label';
@@ -522,7 +1123,7 @@ function buildGrid() {
     colLabels.appendChild(d);
   });
 
-  const wrap = document.getElementById('grid-wrap');
+  const wrap = document.getElementById('wh-grid-wrap');
   ROWS.forEach(row => {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'grid-row';
@@ -538,7 +1139,7 @@ function buildGrid() {
       rack.className = 'rack';
       rack.textContent = col.replace(/^0+/,'');
       rack.title = loc;
-      rack.onclick = () => filterByRack(loc);
+      rack.onclick = () => showRackDetail(loc);
       rowDiv.appendChild(rack);
       rackEls[loc] = rack;
     });
@@ -547,144 +1148,180 @@ function buildGrid() {
   });
 }
 
-// ────────────────────────────────────────────────────────
-// WEBSOCKET
-// ────────────────────────────────────────────────────────
-function connect() {
-  try { ws = new WebSocket(WS_URL); } catch(e) { scheduleReconnect(); return; }
-
-  ws.onopen = () => {
-    setStatus(true);
-  };
-
-  ws.onmessage = (ev) => {
-    const msg = JSON.parse(ev.data);
-    if (msg.type === 'alert')     handleAlert(msg);
-    if (msg.type === 'narrative') handleNarrative(msg);
-  };
-
-  ws.onerror = () => {};
-  ws.onclose = () => {
-    setStatus(false);
-    scheduleReconnect();
-  };
-}
-
-function scheduleReconnect() {
-  setTimeout(connect, 3000);
-}
-
-function setStatus(connected) {
-  const dot   = document.getElementById('status-dot');
-  const label = document.getElementById('status-label');
-  dot.className   = 'status-dot ' + (connected ? 'connected' : 'disconnected');
-  label.textContent = connected ? 'Conectado al backend' : 'Reconectando…';
-}
-
-// ────────────────────────────────────────────────────────
-// HANDLE ALERT
-// ────────────────────────────────────────────────────────
-function handleAlert(msg) {
-  alertCount++;
-  if (msg.severity === 'critical') criticalCount++;
-
-  document.getElementById('cnt-total').textContent    = alertCount;
-  document.getElementById('cnt-critical').textContent = criticalCount;
-
-  // rack
+function updateRack(msg) {
   const rack = rackEls[msg.location];
-  if (rack) {
-    rack.className = `rack ${msg.severity}`;
-    rack.classList.remove('pulse');
-    void rack.offsetWidth;  // reflow para reiniciar animación
-    rack.classList.add('pulse');
-    activeRacks.add(msg.location);
-    document.getElementById('cnt-racks').textContent = activeRacks.size;
+  if (!rack) return;
+
+  rack.className = `rack ${msg.severity}`;
+  rack.classList.remove('pulse');
+  void rack.offsetWidth; // reflow
+  rack.classList.add('pulse');
+  activeRacks.add(msg.location);
+
+  document.getElementById('rack-active-count').textContent = `${activeRacks.size} racks activos`;
+}
+
+function showRackDetail(loc) {
+  // Highlight selected rack
+  Object.values(rackEls).forEach(r => r.classList.remove('selected'));
+  if (rackEls[loc]) rackEls[loc].classList.add('selected');
+
+  document.getElementById('rack-detail-title').textContent = `📍 ${loc} — historial`;
+
+  const body = document.getElementById('rack-detail-body');
+  const history = alertsLog.filter(a => a.location === loc);
+
+  if (history.length === 0) {
+    body.innerHTML = '<div class="empty-state">Sin alertas para este rack</div>';
+    return;
   }
 
-  // feed card
-  const feed = document.getElementById('alert-feed');
-  document.getElementById('feed-empty')?.remove();
+  body.innerHTML = '';
+  history.forEach(msg => {
+    const item = document.createElement('div');
+    item.className = `alert-card ${msg.severity}`;
+    item.style.fontSize = '11px';
+    item.innerHTML = `
+      <div class="card-row1">
+        <span class="sev-badge ${msg.severity}">${msg.severity}</span>
+        <span class="alert-time">${fmtTime(msg.timestamp)}</span>
+      </div>
+      <div class="alert-meta">${msg.movement_type} · SKU ${msg.sku} · qty ${msg.quantity} · ${msg.duration_sec}s</div>
+      ${msg.rule_reasons ? `<div class="alert-rules">${msg.rule_reasons}</div>` : ''}
+    `;
+    body.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ALERTS TAB
+// ═══════════════════════════════════════════════════════════════
+function renderAlertsTabCard(msg) {
+  const feed = document.getElementById('alerts-feed');
+
+  // Remove empty state
+  const emptyEl = feed.querySelector('.empty-state');
+  if (emptyEl) emptyEl.remove();
 
   const card = document.createElement('div');
   card.className = `alert-card ${msg.severity}`;
-  card.dataset.loc = msg.location;
+  card.dataset.severity = msg.severity;
+  card.dataset.location = msg.location || '';
+  card.dataset.sku       = (msg.sku || '').toLowerCase();
+  card.dataset.mid       = msg.movement_id;
   card.innerHTML = `
     <div class="card-row1">
       <span class="sev-badge ${msg.severity}">${msg.severity}</span>
       <span class="alert-loc">${msg.location}</span>
-      <span class="alert-time">${msg.timestamp?.slice(11,19) || now()}</span>
+      <span class="alert-time">${fmtTime(msg.timestamp)}</span>
     </div>
-    <div class="alert-sku">${msg.movement_type} · SKU ${msg.sku} · qty ${msg.quantity} · ${msg.duration_sec}s</div>
+    <div class="alert-meta">${msg.movement_type} · SKU ${msg.sku} · qty ${msg.quantity} · ${msg.duration_sec}s</div>
     ${msg.rule_reasons ? `<div class="alert-rules">${msg.rule_reasons}</div>` : ''}
   `;
-  card.onclick = () => { document.getElementById('f-loc').value = msg.location; };
+  card.onclick = () => selectAlert(msg, card);
+
+  // Insert at top
   feed.insertBefore(card, feed.firstChild);
 
-  const count = document.getElementById('feed-count');
-  count.textContent = feed.querySelectorAll('.alert-card').length;
+  // Trim to max 200 cards
+  while (feed.querySelectorAll('.alert-card').length > 200)
+    feed.lastElementChild.remove();
 
-  // keep max 60 cards
-  while (feed.querySelectorAll('.alert-card').length > 60)
-    feed.lastChild.remove();
+  applyFilter();
 }
 
-// ────────────────────────────────────────────────────────
-// HANDLE NARRATIVE
-// ────────────────────────────────────────────────────────
-function handleNarrative(msg) {
-  const panel = document.getElementById('narrative-panel');
-  document.getElementById('narr-empty')?.remove();
+function selectAlert(msg, cardEl) {
+  document.querySelectorAll('#alerts-feed .alert-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+  selectedMovementId = msg.movement_id;
 
-  // keep only 3 narratives
-  while (panel.querySelectorAll('.narrative-card').length >= 3)
-    panel.lastChild.remove();
+  const narrative = narrativesMap.get(msg.movement_id);
+  if (narrative) {
+    renderNarrativePanel(narrative);
+  } else {
+    document.getElementById('narrative-display').innerHTML = `
+      <div style="color:var(--muted);font-size:12px;padding:14px;">
+        <p>⏳ Narrativa LLM en proceso…</p>
+        <br>
+        <p style="font-size:11px;"><strong>Movement ID:</strong> ${msg.movement_id}</p>
+        <p style="font-size:11px;"><strong>Severidad:</strong> ${msg.severity}</p>
+        <p style="font-size:11px;"><strong>Ubicación:</strong> ${msg.location}</p>
+        <p style="font-size:11px;"><strong>Tipo:</strong> ${msg.movement_type}</p>
+        <p style="font-size:11px;"><strong>SKU:</strong> ${msg.sku}</p>
+      </div>
+    `;
+  }
+}
 
-  const card = document.createElement('div');
-  card.className = 'narrative-card';
-  card.innerHTML = `
-    <div class="narrative-loc">📍 ${msg.location} <span style="color:var(--muted);font-size:10px;font-weight:400;">${msg.movement_id}</span></div>
-    <div class="narrative-text">${msg.narrative}</div>
-    <div class="narrative-sub">
-      <label>CAUSA PROBABLE</label>
-      <p>${msg.likely_cause}</p>
+function renderNarrativePanel(msg) {
+  document.getElementById('narrative-display').innerHTML = `
+    <div class="narrative-loc">📍 ${msg.location}
+      <span style="color:var(--muted);font-size:10px;font-weight:400;margin-left:6px;">${msg.movement_id}</span>
     </div>
-    <div class="narrative-sub">
-      <label>ACCIÓN RECOMENDADA</label>
-      <p>${msg.recommended_action}</p>
+    <div class="narrative-text">${msg.narrative || '—'}</div>
+    <div class="narrative-section">
+      <div class="ns-label">Causa probable</div>
+      <p>${msg.likely_cause || '—'}</p>
+    </div>
+    <div class="narrative-section">
+      <div class="ns-label">Acción recomendada</div>
+      <p>${msg.recommended_action || '—'}</p>
     </div>
   `;
-  panel.insertBefore(card, panel.firstChild);
 }
 
-// ────────────────────────────────────────────────────────
-// INJECT MOVEMENT
-// ────────────────────────────────────────────────────────
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  const search = (document.getElementById('alert-search')?.value || '').toLowerCase();
+  document.querySelectorAll('#alerts-feed .alert-card').forEach(card => {
+    const sevOk = currentFilter === 'all' || card.dataset.severity === currentFilter;
+    const searchOk = !search ||
+      card.dataset.location.toLowerCase().includes(search) ||
+      card.dataset.sku.includes(search);
+    card.style.display = (sevOk && searchOk) ? '' : 'none';
+  });
+}
+
+function clearFeed() {
+  document.getElementById('alerts-feed').innerHTML = '<div class="empty-state">Feed limpiado — esperando nuevas alertas…</div>';
+  selectedMovementId = null;
+  document.getElementById('narrative-display').innerHTML = '<div class="empty-state">Selecciona una alerta para ver la narrativa</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INJECT MOVEMENT
+// ═══════════════════════════════════════════════════════════════
 async function injectMovement(overrides = {}) {
-  const hour = document.getElementById('f-hour').value;
+  const hourVal = document.getElementById('f-hour').value;
   let ts = new Date().toISOString();
-  if (hour !== '') {
+  if (hourVal !== '') {
     const d = new Date();
-    d.setHours(parseInt(hour), 0, 0, 0);
+    d.setHours(parseInt(hourVal), 0, 0, 0);
     ts = d.toISOString();
   }
 
   const body = {
     movement_id: `MV-WEB-${Date.now()}`,
-    timestamp:   ts,
+    timestamp:   overrides.timestamp || ts,
     movement_type: overrides.movement_type || document.getElementById('f-type').value,
-    sku:         overrides.sku  || document.getElementById('f-sku').value  || 'MX-0042',
+    sku:         overrides.sku      || document.getElementById('f-sku').value  || 'MX-0042',
     location:    overrides.location || document.getElementById('f-loc').value || 'C-018',
     user_id:     overrides.user_id  || document.getElementById('f-user').value || 'USR_001',
-    quantity:    overrides.quantity  !== undefined ? overrides.quantity  : parseInt(document.getElementById('f-qty').value) || 10,
-    duration_sec:overrides.duration_sec !== undefined ? overrides.duration_sec : parseInt(document.getElementById('f-dur').value) || 60,
-    ...overrides,
+    quantity:    overrides.quantity  !== undefined ? overrides.quantity  : (parseInt(document.getElementById('f-qty').value) || 10),
+    duration_sec:overrides.duration_sec !== undefined ? overrides.duration_sec : (parseInt(document.getElementById('f-dur').value) || 60),
   };
 
   const status = document.getElementById('inject-status');
   status.textContent = 'Enviando…';
   status.className = '';
 
+  let logEntry;
   try {
     const res = await fetch(`${API}/ingest`, {
       method: 'POST',
@@ -692,79 +1329,146 @@ async function injectMovement(overrides = {}) {
       body: JSON.stringify(body),
     });
     if (res.ok) {
-      status.textContent = `✓ Movimiento ${body.movement_id} aceptado`;
+      const data = await res.json();
+      status.textContent = `✓ ${body.movement_id} aceptado`;
       status.className = 'ok';
+      logEntry = { ok: true, ts: nowStr(), id: body.movement_id, text: JSON.stringify(data) };
     } else {
-      const err = await res.json();
-      status.textContent = `✗ Error ${res.status}: ${JSON.stringify(err.detail)}`;
+      const err = await res.json().catch(()=>({}));
+      status.textContent = `✗ Error ${res.status}: ${JSON.stringify(err.detail || err)}`;
       status.className = 'err';
+      logEntry = { ok: false, ts: nowStr(), id: body.movement_id, text: `${res.status} ${JSON.stringify(err.detail || err)}` };
     }
   } catch(e) {
     status.textContent = `✗ No se pudo conectar con ${API}`;
     status.className = 'err';
+    logEntry = { ok: false, ts: nowStr(), id: body.movement_id, text: 'Connection failed' };
   }
+
+  addResponseLog(logEntry);
 }
 
-// ────────────────────────────────────────────────────────
-// INJECT ANOMALY PRESETS
-// ────────────────────────────────────────────────────────
+function addResponseLog(entry) {
+  const log = document.getElementById('response-log');
+  const emptyEl = log.querySelector('.empty-state');
+  if (emptyEl) emptyEl.remove();
+
+  const div = document.createElement('div');
+  div.className = `log-item ${entry.ok ? 'ok' : 'err'}`;
+  div.innerHTML = `<span class="log-ts">${entry.ts}</span>  ${entry.ok ? '✓' : '✗'}  <strong>${entry.id}</strong>  ${entry.text}`;
+  log.insertBefore(div, log.firstChild);
+
+  // Keep max 10 entries
+  while (log.querySelectorAll('.log-item').length > 10)
+    log.lastElementChild.remove();
+}
+
 const anomalyPresets = {
   negative_qty:   { movement_type:'INSPECTION', quantity:-3, duration_sec:4 },
   short_duration: { movement_type:'INSPECTION', duration_sec:4 },
   long_duration:  { duration_sec:400 },
-  off_hours:      { timestamp: (() => { const d=new Date(); d.setHours(3,15,0,0); return d.toISOString(); })() },
+  off_hours:      { _hourOverride: 3 },
 };
 
 function injectAnomaly(kind) {
-  const overrides = anomalyPresets[kind] || {};
-  // timestamp especial para off_hours
-  if (kind === 'off_hours') {
+  const preset = { ...(anomalyPresets[kind] || {}) };
+  if (preset._hourOverride !== undefined) {
     const d = new Date();
-    d.setHours(3,15,0,0);
-    overrides.timestamp = d.toISOString();
+    d.setHours(preset._hourOverride, 15, 0, 0);
+    preset.timestamp = d.toISOString();
+    delete preset._hourOverride;
   }
-  injectMovement(overrides);
+  injectMovement(preset);
 }
 
-// ────────────────────────────────────────────────────────
-// UTILS
-// ────────────────────────────────────────────────────────
-function filterByRack(loc) {
-  document.getElementById('f-loc').value = loc;
-  document.querySelectorAll('.alert-card').forEach(c => {
-    c.style.opacity = c.dataset.loc === loc ? '1' : '0.35';
+// ═══════════════════════════════════════════════════════════════
+//  API STATUS & ANOMALIES
+// ═══════════════════════════════════════════════════════════════
+async function loadStatus() {
+  try {
+    const res = await fetch(`${API}/api/status`);
+    if (!res.ok) return;
+    const d = await res.json();
+
+    // Header
+    document.getElementById('hdr-connections').textContent = d.connections ?? '—';
+
+    // Dashboard system card
+    document.getElementById('sys-sim').textContent     = d.simulator_enabled ? '🟢 ON' : '⚫ OFF';
+    document.getElementById('sys-rate').textContent    = d.simulator_rate ?? '—';
+    document.getElementById('sys-ratio').textContent   = d.anomaly_ratio ?? '—';
+    document.getElementById('sys-ollama').textContent  = d.ollama_available ? '✅ Disponible' : '❌ No disponible';
+    document.getElementById('sys-ws').textContent      = d.connections ?? '—';
+    document.getElementById('sys-count').textContent   = d.anomaly_count ?? '—';
+
+    // Simulator button label
+    const simBtn = document.getElementById('btn-simulator');
+    simBtn.textContent = d.simulator_enabled ? '⏸ Simulador ON' : '▶ Simulador OFF';
+    simBtn.className = d.simulator_enabled ? 'btn-green' : 'btn-ghost';
+  } catch(_) {}
+}
+
+async function loadRecentAnomalies() {
+  try {
+    const res = await fetch(`${API}/api/anomalies?limit=8`);
+    if (!res.ok) return;
+    const list = await res.json();
+    renderRecentList(list);
+  } catch(_) {}
+}
+
+function renderRecentList(list) {
+  const el = document.getElementById('recent-list');
+  if (!list || list.length === 0) {
+    el.innerHTML = '<div class="empty-state">Sin anomalías recientes</div>';
+    return;
+  }
+  el.innerHTML = '';
+  list.forEach(msg => {
+    const item = document.createElement('div');
+    item.className = 'recent-item';
+    item.innerHTML = `
+      <span class="sev-badge ${msg.severity}">${msg.severity}</span>
+      <span class="ri-loc">${msg.location || '—'}</span>
+      <span style="color:var(--muted);font-size:10px;">${msg.movement_type || ''} · SKU ${msg.sku || '—'}</span>
+      <span class="ri-time">${fmtTime(msg.timestamp)}</span>
+    `;
+    el.appendChild(item);
   });
-  setTimeout(() => {
-    document.querySelectorAll('.alert-card').forEach(c => c.style.opacity = '');
-  }, 2500);
 }
 
-function clearAll() {
-  alertCount = 0; criticalCount = 0;
-  activeRacks.clear();
-  document.getElementById('cnt-total').textContent    = '0';
-  document.getElementById('cnt-critical').textContent = '0';
-  document.getElementById('cnt-racks').textContent    = '0';
-
-  Object.values(rackEls).forEach(r => r.className = 'rack');
-
-  const feed = document.getElementById('alert-feed');
-  feed.innerHTML = '<div class="empty-state" id="feed-empty">Esperando anomalías…</div>';
-  document.getElementById('feed-count').textContent = '0';
-
-  const panel = document.getElementById('narrative-panel');
-  panel.innerHTML = '<div class="empty-state" id="narr-empty">La narrativa aparece aquí tras cada anomalía…</div>';
+async function toggleSimulator() {
+  try {
+    const res = await fetch(`${API}/api/simulator/toggle`, { method: 'POST' });
+    if (!res.ok) return;
+    await loadStatus();
+  } catch(_) {}
 }
 
-function now() {
+// ═══════════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════════
+function fmtTime(ts) {
+  if (!ts) return nowStr();
+  try { return new Date(ts).toTimeString().slice(0,8); } catch(_) { return ts; }
+}
+
+function nowStr() {
   return new Date().toTimeString().slice(0,8);
 }
 
-// ────────────────────────────────────────────────────────
-// INIT
-// ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
 buildGrid();
 connect();
+loadStatus();
+loadRecentAnomalies();
+
+setInterval(() => {
+  loadStatus();
+  loadRecentAnomalies();
+}, 5000);
 </script>
 </body>
 </html>

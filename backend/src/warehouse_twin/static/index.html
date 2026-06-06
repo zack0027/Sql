@@ -156,10 +156,9 @@
     border-radius: 4px;
     letter-spacing: .5px;
   }
+  .sev-badge.low      { background: rgba(88,166,255,.2);  color: var(--accent); }
   .sev-badge.medium   { background: rgba(210,153,34,.25); color: var(--medium); }
   .sev-badge.high     { background: rgba(218,54,51,.25);  color: var(--high); }
-  .sev-badge.critical { background: rgba(248,81,73,.28);  color: var(--critical); }
-  .sev-badge.normal   { background: rgba(35,134,54,.2);   color: var(--normal); }
 
   button {
     border: none;
@@ -245,9 +244,9 @@
   }
   .stat-card .sc-label { color: var(--muted); font-size: 11px; }
   .stat-card.total    { border-left: 3px solid var(--accent); }
-  .stat-card.critical { border-left: 3px solid var(--critical); }
   .stat-card.high     { border-left: 3px solid var(--high); }
   .stat-card.medium   { border-left: 3px solid var(--medium); }
+  .stat-card.low      { border-left: 3px solid var(--accent); }
 
   .dash-bottom {
     display: grid;
@@ -374,9 +373,9 @@
   }
   .rack:hover { transform: scale(1.15); z-index: 2; }
 
+  .rack.low     { background: rgba(88,166,255,.18); border-color: var(--accent);  color: var(--accent);  }
   .rack.medium  { background: rgba(210,153,34,.18); border-color: var(--medium);  color: var(--medium);  }
   .rack.high    { background: rgba(218,54,51,.18);  border-color: var(--high);    color: var(--high);   }
-  .rack.critical{ background: rgba(248,81,73,.22);  border-color: var(--critical);color: var(--critical); }
   .rack.selected{ outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .rack.pulse { animation: pulse-anim 1.4s ease-out forwards; }
@@ -460,9 +459,9 @@
   }
   .filter-btn:hover, .filter-btn.active { background: #1f6feb22; border-color: var(--accent); color: var(--accent); opacity: 1; }
   .filter-btn:active { transform: scale(.97); }
-  .filter-btn.f-critical.active { background: rgba(248,81,73,.15); border-color: var(--critical); color: var(--critical); }
   .filter-btn.f-high.active    { background: rgba(218,54,51,.15);  border-color: var(--high);     color: var(--high); }
   .filter-btn.f-medium.active  { background: rgba(210,153,34,.15); border-color: var(--medium);   color: var(--medium); }
+  .filter-btn.f-low.active     { background: rgba(88,166,255,.15); border-color: var(--accent);   color: var(--accent); }
 
   #alert-search {
     flex: 1;
@@ -491,9 +490,9 @@
   }
   .alert-card:hover  { background: var(--rack-bg); }
   .alert-card.selected { background: #1f6feb1a; border-color: var(--accent); border-left-color: var(--accent); }
+  .alert-card.low      { border-left-color: var(--accent); }
   .alert-card.medium   { border-left-color: var(--medium); }
   .alert-card.high     { border-left-color: var(--high); }
-  .alert-card.critical { border-left-color: var(--critical); }
 
   .card-row1 {
     display: flex;
@@ -655,7 +654,7 @@
   <span id="status-label">Desconectado</span>
   <div class="spacer"></div>
   <div class="stat-chip">Total Alertas: <span id="hdr-total">0</span></div>
-  <div class="stat-chip">Críticas: <span id="hdr-critical">0</span></div>
+  <div class="stat-chip">High: <span id="hdr-high">0</span></div>
   <div class="stat-chip">Conexiones WS: <span id="hdr-connections">0</span></div>
   <button class="btn-ghost" id="btn-simulator" onclick="toggleSimulator()" style="margin-left:6px;">⏸ Simulador</button>
 </header>
@@ -681,11 +680,6 @@
         <div class="sc-value" id="sc-total">0</div>
         <div class="sc-label">Total anomalías</div>
       </div>
-      <div class="stat-card critical">
-        <div class="sc-icon">💀</div>
-        <div class="sc-value" id="sc-critical">0</div>
-        <div class="sc-label">Críticas</div>
-      </div>
       <div class="stat-card high">
         <div class="sc-icon">🔴</div>
         <div class="sc-value" id="sc-high">0</div>
@@ -695,6 +689,11 @@
         <div class="sc-icon">🟡</div>
         <div class="sc-value" id="sc-medium">0</div>
         <div class="sc-label">Medium</div>
+      </div>
+      <div class="stat-card low">
+        <div class="sc-icon">🔵</div>
+        <div class="sc-value" id="sc-low">0</div>
+        <div class="sc-label">Low</div>
       </div>
     </div>
 
@@ -760,9 +759,9 @@
         </div>
         <div class="legend">
           <div class="legend-item"><div class="legend-dot" style="background:var(--rack-bg);border:1px solid var(--border);"></div> Normal</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,.4);border:1px solid var(--accent);"></div> Low</div>
           <div class="legend-item"><div class="legend-dot" style="background:rgba(210,153,34,.4);border:1px solid var(--medium);"></div> Medium</div>
           <div class="legend-item"><div class="legend-dot" style="background:rgba(218,54,51,.4);border:1px solid var(--high);"></div> High</div>
-          <div class="legend-item"><div class="legend-dot" style="background:rgba(248,81,73,.4);border:1px solid var(--critical);"></div> Critical</div>
         </div>
       </div>
 
@@ -783,10 +782,10 @@
       <div class="alerts-left">
         <div class="filter-bar">
           <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">Todos</button>
-          <button class="filter-btn f-critical" data-filter="critical" onclick="setFilter('critical',this)">💀 Critical</button>
           <button class="filter-btn f-high" data-filter="high" onclick="setFilter('high',this)">🔴 High</button>
           <button class="filter-btn f-medium" data-filter="medium" onclick="setFilter('medium',this)">🟡 Medium</button>
-          <input id="alert-search" placeholder="Buscar ubicación o SKU…" oninput="applyFilter()">
+          <button class="filter-btn f-low" data-filter="low" onclick="setFilter('low',this)">🔵 Low</button>
+          <input id="alert-search" placeholder="Buscar rack o tipo…" oninput="applyFilter()">
           <button class="btn-ghost" onclick="clearFeed()" style="margin-left:auto;">Limpiar feed</button>
         </div>
         <div class="alert-feed-scroll" id="alerts-feed"></div>
@@ -824,8 +823,8 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Ubicación</label>
-              <input id="f-loc" value="C-018" placeholder="C-018">
+              <label>Rack ID</label>
+              <input id="f-rack" value="C-018" placeholder="C-018">
             </div>
             <div class="form-group">
               <label>SKU</label>
@@ -841,11 +840,7 @@
             </div>
             <div class="form-group">
               <label>Duración (s)</label>
-              <input id="f-dur" type="number" value="60">
-            </div>
-            <div class="form-group">
-              <label>Hora override (0-23)</label>
-              <input id="f-hour" type="number" placeholder="auto" min="0" max="23">
+              <input id="f-dur" type="number" value="60" step="any">
             </div>
           </div>
           <div class="btn-row">
@@ -853,7 +848,8 @@
             <button class="btn-danger"  onclick="injectAnomaly('negative_qty')">💀 Qty Negativa</button>
             <button class="btn-danger"  onclick="injectAnomaly('short_duration')">⚡ Duración Corta</button>
             <button class="btn-warn"    onclick="injectAnomaly('long_duration')">⏱ Duración Larga</button>
-            <button class="btn-warn"    onclick="injectAnomaly('off_hours')">🌙 Fuera de Horario</button>
+            <button class="btn-warn"    onclick="injectAnomaly('traceability')">🔗 Trazabilidad</button>
+            <button class="btn-ghost"   onclick="injectAnomaly('unknown_rack')">❓ Rack Desconocido</button>
           </div>
           <div id="inject-status"></div>
         </div>
@@ -876,21 +872,21 @@
       <div class="card-header">🔌 Conexión al WMS</div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
         <p style="color:var(--muted);font-size:12px;line-height:1.6;">
-          El backend expone <code style="color:var(--accent);">POST /ingest</code> como punto de entrada principal.
+          El backend expone <code style="color:var(--accent);">POST /movements</code> como punto de entrada principal.
           Cualquier WMS externo puede enviar movimientos en formato JSON. Futuros adaptadores planificados para la
           <strong style="color:var(--text);">Fase 4</strong>: SAP IDoc, importación CSV, MOCA protocol.
         </p>
-        <pre>curl -X POST http://localhost:8000/ingest \
+        <pre>curl -X POST http://localhost:8000/movements \
   -H "Content-Type: application/json" \
   -d '{
-    "movement_id": "MV-SAP-20260520-001",
+    "id": "MV-SAP-20260520-001",
     "timestamp": "2026-05-20T14:30:00",
     "movement_type": "PICK",
     "sku": "MX-0042",
-    "location": "C-018",
+    "rack_id": "C-018",
     "user_id": "USR_001",
     "quantity": 10,
-    "duration_sec": 60
+    "duration_s": 60
   }'</pre>
         <p style="font-size:11px;color:var(--muted);">
           Swagger UI: <a class="api-link" href="/api/docs" target="_blank">/api/docs</a>
@@ -924,20 +920,20 @@
           <tr>
             <td><span class="method-badge GET">GET</span></td>
             <td><code>/healthz</code></td>
-            <td style="color:var(--muted);">Liveness probe para load balancers</td>
-            <td><code style="font-size:10px;">{"ok":true,"connections":1,"ollama_available":false}</code></td>
+            <td style="color:var(--muted);">Health probe para load balancers</td>
+            <td><code style="font-size:10px;">{"status":"ok","dependencies":{...}}</code></td>
           </tr>
           <tr>
             <td><span class="method-badge POST">POST</span></td>
-            <td><code>/ingest</code></td>
+            <td><code>/movements</code></td>
             <td style="color:var(--muted);">Recibir movimiento de WMS externo</td>
-            <td><code style="font-size:10px;">{"accepted":true,"movement_id":"MV-..."}</code></td>
+            <td><code style="font-size:10px;">{"accepted":true,"movement_id":"MV-...","anomalies":[...]}</code></td>
           </tr>
           <tr>
             <td><span class="method-badge WS">WS</span></td>
-            <td><code>/ws/alerts</code></td>
-            <td style="color:var(--muted);">Stream de alertas y narrativas (WebSocket)</td>
-            <td style="color:var(--muted);">JSON push: tipo <code>alert</code> o <code>narrative</code></td>
+            <td><code>/ws/events</code></td>
+            <td style="color:var(--muted);">Stream de anomalías y narraciones (WebSocket)</td>
+            <td style="color:var(--muted);">JSON push: tipo <code>anomaly</code> o <code>narration</code></td>
           </tr>
           <tr>
             <td><span class="method-badge GET">GET</span></td>
@@ -947,9 +943,9 @@
           </tr>
           <tr>
             <td><span class="method-badge GET">GET</span></td>
-            <td><code>/api/anomalies?limit=50</code></td>
+            <td><code>/anomalies/recent?limit=50</code></td>
             <td style="color:var(--muted);">Últimas N anomalías (más recientes primero)</td>
-            <td><code style="font-size:10px;">[{"type":"alert","severity":"critical",...}]</code></td>
+            <td><code style="font-size:10px;">[{"type":"anomaly","severity":"HIGH",...}]</code></td>
           </tr>
           <tr>
             <td><span class="method-badge POST">POST</span></td>
@@ -963,39 +959,47 @@
 
     <!-- WS contract -->
     <div class="card api-section">
-      <div class="card-header">🔗 Contrato WebSocket — /ws/alerts</div>
+      <div class="card-header">🔗 Contrato WebSocket — /ws/events</div>
       <div class="card-body">
         <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
           Al conectar, el servidor envía un mensaje <code>hello</code>. Luego llegan dos tipos de mensajes push:
         </p>
         <div class="ws-contract">
           <div>
-            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Tipo: alert</p>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Tipo: anomaly</p>
             <pre>{
-  "type": "alert",          // siempre "alert"
-  "movement_id": "MV-...",  // ID único del movimiento
-  "severity": "critical",   // medium | high | critical
-  "location": "C-018",      // pasillo-rack
-  "movement_type": "PICK",  // tipo WMS
-  "sku": "MX-0042",         // referencia producto
-  "quantity": 10,           // unidades
-  "duration_sec": 60,       // duración operación
-  "timestamp": "2026-...",  // ISO 8601
-  "rule_reasons": "..."     // reglas disparadas
+  "type": "anomaly",            // siempre "anomaly"
+  "id": "AN-...",               // ID único de la anomalía
+  "movement_id": "MV-...",      // movimiento de origen
+  "rack_id": "C-018",           // pasillo-rack
+  "anomaly_type": "DURATION_OUTLIER",
+       // NEGATIVE_QUANTITY | DURATION_OUTLIER |
+       // TRACEABILITY_BROKEN | UNKNOWN_RACK
+  "severity": "HIGH",           // LOW | MEDIUM | HIGH
+  "detail": "...",              // texto descriptivo
+  "detector": "rule",           // rule | ml
+  "timestamp": "2026-..."       // ISO 8601
 }</pre>
           </div>
           <div>
-            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Tipo: narrative</p>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Tipo: narration</p>
             <pre>{
-  "type": "narrative",       // siempre "narrative"
-  "movement_id": "MV-...",  // correlaciona con alert
-  "location": "C-018",      // misma que alert
-  "narrative": "...",        // texto LLM principal
-  "likely_cause": "...",     // causa probable (LLM)
-  "recommended_action": "..." // acción recomendada
+  "type": "narration",          // siempre "narration"
+  "anomaly_id": "AN-...",       // correlaciona con anomaly.id
+  "rack_id": "C-018",           // mismo que anomaly
+  "text": "...",                // narración principal
+  "likely_cause": "...",        // causa probable
+  "recommended_action": "...",  // acción recomendada
+  "model": "template-v1",       // motor de narración
+  "latency_ms": 0,              // latencia
+  "emitted_at": "2026-..."      // ISO 8601
 }</pre>
           </div>
         </div>
+        <p style="color:var(--muted);font-size:11px;margin-top:12px;line-height:1.6;">
+          <strong style="color:var(--text);">Runtime determinista sin LLM</strong> — la narración usa plantillas
+          pre-generadas offline (TemplateNarrator, latencia 0). El LLM (Ollama) solo se usa en la fase de diseño offline.
+        </p>
       </div>
     </div>
   </div>
@@ -1007,7 +1011,7 @@
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
 const API    = `${location.protocol}//${location.hostname}:8000`;
-const WS_URL = `ws://${location.hostname}:8000/ws/alerts`;
+const WS_URL = `ws://${location.hostname}:8000/ws/events`;
 const ROWS   = ['A','B','C','D','E','F'];
 const COLS   = Array.from({length:18}, (_,i) => String(i+1).padStart(3,'0'));
 
@@ -1015,17 +1019,20 @@ const COLS   = Array.from({length:18}, (_,i) => String(i+1).padStart(3,'0'));
 //  STATE
 // ═══════════════════════════════════════════════════════════════
 let ws;
-let alertsLog       = [];   // max 200 alert objects
-const narrativesMap = new Map();  // movement_id → narrative msg
+let alertsLog       = [];   // max 200 anomaly objects
+const narrativesMap = new Map();  // anomaly_id → narration msg
 const rackEls       = {};         // "C-018" → <div>
 const activeRacks   = new Set();
 
 // Local severity counters
-let cntTotal = 0, cntCritical = 0, cntHigh = 0, cntMedium = 0;
+let cntTotal = 0, cntHigh = 0, cntMedium = 0, cntLow = 0;
 
 // Alerts tab state
-let currentFilter      = 'all';
-let selectedMovementId = null;
+let currentFilter     = 'all';
+let selectedAnomalyId = null;
+
+// Severity helpers — backend sends UPPERCASE (LOW | MEDIUM | HIGH)
+function sevClass(sev) { return (sev || '').toLowerCase(); }
 
 // ═══════════════════════════════════════════════════════════════
 //  TAB NAVIGATION
@@ -1048,8 +1055,8 @@ function connect() {
   ws.onmessage = ev => {
     let msg;
     try { msg = JSON.parse(ev.data); } catch(_) { return; }
-    if (msg.type === 'alert')     handleAlert(msg);
-    if (msg.type === 'narrative') handleNarrative(msg);
+    if (msg.type === 'anomaly')   handleAnomaly(msg);
+    if (msg.type === 'narration') handleNarration(msg);
   };
 
   ws.onerror = () => {};
@@ -1064,14 +1071,14 @@ function setStatus(connected) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  HANDLE ALERT
+//  HANDLE ANOMALY
 // ═══════════════════════════════════════════════════════════════
-function handleAlert(msg) {
-  // Update counters
+function handleAnomaly(msg) {
+  // Update counters — severity is UPPERCASE (LOW | MEDIUM | HIGH)
   cntTotal++;
-  if (msg.severity === 'critical') cntCritical++;
-  else if (msg.severity === 'high')     cntHigh++;
-  else if (msg.severity === 'medium')   cntMedium++;
+  if (msg.severity === 'HIGH')        cntHigh++;
+  else if (msg.severity === 'MEDIUM') cntMedium++;
+  else if (msg.severity === 'LOW')    cntLow++;
 
   updateHeaderStats();
   updateDashStats();
@@ -1088,24 +1095,25 @@ function handleAlert(msg) {
 }
 
 function updateHeaderStats() {
-  document.getElementById('hdr-total').textContent    = cntTotal;
-  document.getElementById('hdr-critical').textContent = cntCritical;
+  document.getElementById('hdr-total').textContent = cntTotal;
+  document.getElementById('hdr-high').textContent  = cntHigh;
 }
 
 function updateDashStats() {
-  document.getElementById('sc-total').textContent    = cntTotal;
-  document.getElementById('sc-critical').textContent = cntCritical;
-  document.getElementById('sc-high').textContent     = cntHigh;
-  document.getElementById('sc-medium').textContent   = cntMedium;
+  document.getElementById('sc-total').textContent  = cntTotal;
+  document.getElementById('sc-high').textContent   = cntHigh;
+  document.getElementById('sc-medium').textContent = cntMedium;
+  document.getElementById('sc-low').textContent    = cntLow;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  HANDLE NARRATIVE
+//  HANDLE NARRATION
 // ═══════════════════════════════════════════════════════════════
-function handleNarrative(msg) {
-  narrativesMap.set(msg.movement_id, msg);
+function handleNarration(msg) {
+  // Narration correlates with the anomaly via anomaly_id ↔ anomaly.id
+  narrativesMap.set(msg.anomaly_id, msg);
   // If the corresponding alert is currently selected, update panel
-  if (selectedMovementId === msg.movement_id) {
+  if (selectedAnomalyId === msg.anomaly_id) {
     renderNarrativePanel(msg);
   }
 }
@@ -1149,14 +1157,14 @@ function buildGrid() {
 }
 
 function updateRack(msg) {
-  const rack = rackEls[msg.location];
+  const rack = rackEls[msg.rack_id];
   if (!rack) return;
 
-  rack.className = `rack ${msg.severity}`;
+  rack.className = `rack ${sevClass(msg.severity)}`;
   rack.classList.remove('pulse');
   void rack.offsetWidth; // reflow
   rack.classList.add('pulse');
-  activeRacks.add(msg.location);
+  activeRacks.add(msg.rack_id);
 
   document.getElementById('rack-active-count').textContent = `${activeRacks.size} racks activos`;
 }
@@ -1169,7 +1177,7 @@ function showRackDetail(loc) {
   document.getElementById('rack-detail-title').textContent = `📍 ${loc} — historial`;
 
   const body = document.getElementById('rack-detail-body');
-  const history = alertsLog.filter(a => a.location === loc);
+  const history = alertsLog.filter(a => a.rack_id === loc);
 
   if (history.length === 0) {
     body.innerHTML = '<div class="empty-state">Sin alertas para este rack</div>';
@@ -1179,15 +1187,15 @@ function showRackDetail(loc) {
   body.innerHTML = '';
   history.forEach(msg => {
     const item = document.createElement('div');
-    item.className = `alert-card ${msg.severity}`;
+    item.className = `alert-card ${sevClass(msg.severity)}`;
     item.style.fontSize = '11px';
     item.innerHTML = `
       <div class="card-row1">
-        <span class="sev-badge ${msg.severity}">${msg.severity}</span>
+        <span class="sev-badge ${sevClass(msg.severity)}">${msg.severity}</span>
         <span class="alert-time">${fmtTime(msg.timestamp)}</span>
       </div>
-      <div class="alert-meta">${msg.movement_type} · SKU ${msg.sku} · qty ${msg.quantity} · ${msg.duration_sec}s</div>
-      ${msg.rule_reasons ? `<div class="alert-rules">${msg.rule_reasons}</div>` : ''}
+      <div class="alert-meta">${msg.anomaly_type} · ${msg.detector || ''}</div>
+      ${msg.detail ? `<div class="alert-rules">${msg.detail}</div>` : ''}
     `;
     body.appendChild(item);
   });
@@ -1204,19 +1212,19 @@ function renderAlertsTabCard(msg) {
   if (emptyEl) emptyEl.remove();
 
   const card = document.createElement('div');
-  card.className = `alert-card ${msg.severity}`;
-  card.dataset.severity = msg.severity;
-  card.dataset.location = msg.location || '';
-  card.dataset.sku       = (msg.sku || '').toLowerCase();
-  card.dataset.mid       = msg.movement_id;
+  card.className = `alert-card ${sevClass(msg.severity)}`;
+  card.dataset.severity = sevClass(msg.severity);
+  card.dataset.location = msg.rack_id || '';
+  card.dataset.type     = (msg.anomaly_type || '').toLowerCase();
+  card.dataset.aid      = msg.id;
   card.innerHTML = `
     <div class="card-row1">
-      <span class="sev-badge ${msg.severity}">${msg.severity}</span>
-      <span class="alert-loc">${msg.location}</span>
+      <span class="sev-badge ${sevClass(msg.severity)}">${msg.severity}</span>
+      <span class="alert-loc">${msg.rack_id}</span>
       <span class="alert-time">${fmtTime(msg.timestamp)}</span>
     </div>
-    <div class="alert-meta">${msg.movement_type} · SKU ${msg.sku} · qty ${msg.quantity} · ${msg.duration_sec}s</div>
-    ${msg.rule_reasons ? `<div class="alert-rules">${msg.rule_reasons}</div>` : ''}
+    <div class="alert-meta">${msg.anomaly_type} · ${msg.detector || ''}</div>
+    ${msg.detail ? `<div class="alert-rules">${msg.detail}</div>` : ''}
   `;
   card.onclick = () => selectAlert(msg, card);
 
@@ -1233,21 +1241,21 @@ function renderAlertsTabCard(msg) {
 function selectAlert(msg, cardEl) {
   document.querySelectorAll('#alerts-feed .alert-card').forEach(c => c.classList.remove('selected'));
   cardEl.classList.add('selected');
-  selectedMovementId = msg.movement_id;
+  selectedAnomalyId = msg.id;
 
-  const narrative = narrativesMap.get(msg.movement_id);
-  if (narrative) {
-    renderNarrativePanel(narrative);
+  const narration = narrativesMap.get(msg.id);
+  if (narration) {
+    renderNarrativePanel(narration);
   } else {
     document.getElementById('narrative-display').innerHTML = `
       <div style="color:var(--muted);font-size:12px;padding:14px;">
-        <p>⏳ Narrativa LLM en proceso…</p>
+        <p>⏳ Narración en proceso…</p>
         <br>
-        <p style="font-size:11px;"><strong>Movement ID:</strong> ${msg.movement_id}</p>
+        <p style="font-size:11px;"><strong>Anomaly ID:</strong> ${msg.id}</p>
         <p style="font-size:11px;"><strong>Severidad:</strong> ${msg.severity}</p>
-        <p style="font-size:11px;"><strong>Ubicación:</strong> ${msg.location}</p>
-        <p style="font-size:11px;"><strong>Tipo:</strong> ${msg.movement_type}</p>
-        <p style="font-size:11px;"><strong>SKU:</strong> ${msg.sku}</p>
+        <p style="font-size:11px;"><strong>Rack:</strong> ${msg.rack_id}</p>
+        <p style="font-size:11px;"><strong>Tipo:</strong> ${msg.anomaly_type}</p>
+        <p style="font-size:11px;"><strong>Detalle:</strong> ${msg.detail || '—'}</p>
       </div>
     `;
   }
@@ -1255,10 +1263,10 @@ function selectAlert(msg, cardEl) {
 
 function renderNarrativePanel(msg) {
   document.getElementById('narrative-display').innerHTML = `
-    <div class="narrative-loc">📍 ${msg.location}
-      <span style="color:var(--muted);font-size:10px;font-weight:400;margin-left:6px;">${msg.movement_id}</span>
+    <div class="narrative-loc">📍 ${msg.rack_id}
+      <span style="color:var(--muted);font-size:10px;font-weight:400;margin-left:6px;">${msg.anomaly_id}</span>
     </div>
-    <div class="narrative-text">${msg.narrative || '—'}</div>
+    <div class="narrative-text">${msg.text || '—'}</div>
     <div class="narrative-section">
       <div class="ns-label">Causa probable</div>
       <p>${msg.likely_cause || '—'}</p>
@@ -1266,6 +1274,10 @@ function renderNarrativePanel(msg) {
     <div class="narrative-section">
       <div class="ns-label">Acción recomendada</div>
       <p>${msg.recommended_action || '—'}</p>
+    </div>
+    <div class="narrative-section">
+      <div class="ns-label">Motor</div>
+      <p>${msg.model || '—'} · ${msg.latency_ms ?? 0} ms</p>
     </div>
   `;
 }
@@ -1283,14 +1295,14 @@ function applyFilter() {
     const sevOk = currentFilter === 'all' || card.dataset.severity === currentFilter;
     const searchOk = !search ||
       card.dataset.location.toLowerCase().includes(search) ||
-      card.dataset.sku.includes(search);
+      card.dataset.type.includes(search);
     card.style.display = (sevOk && searchOk) ? '' : 'none';
   });
 }
 
 function clearFeed() {
   document.getElementById('alerts-feed').innerHTML = '<div class="empty-state">Feed limpiado — esperando nuevas alertas…</div>';
-  selectedMovementId = null;
+  selectedAnomalyId = null;
   document.getElementById('narrative-display').innerHTML = '<div class="empty-state">Selecciona una alerta para ver la narrativa</div>';
 }
 
@@ -1298,23 +1310,15 @@ function clearFeed() {
 //  INJECT MOVEMENT
 // ═══════════════════════════════════════════════════════════════
 async function injectMovement(overrides = {}) {
-  const hourVal = document.getElementById('f-hour').value;
-  let ts = new Date().toISOString();
-  if (hourVal !== '') {
-    const d = new Date();
-    d.setHours(parseInt(hourVal), 0, 0, 0);
-    ts = d.toISOString();
-  }
-
   const body = {
-    movement_id: `MV-WEB-${Date.now()}`,
-    timestamp:   overrides.timestamp || ts,
+    id:          `MV-WEB-${Date.now()}`,
+    timestamp:   overrides.timestamp || new Date().toISOString(),
     movement_type: overrides.movement_type || document.getElementById('f-type').value,
     sku:         overrides.sku      || document.getElementById('f-sku').value  || 'MX-0042',
-    location:    overrides.location || document.getElementById('f-loc').value || 'C-018',
+    rack_id:     overrides.rack_id  || document.getElementById('f-rack').value || 'C-018',
     user_id:     overrides.user_id  || document.getElementById('f-user').value || 'USR_001',
-    quantity:    overrides.quantity  !== undefined ? overrides.quantity  : (parseInt(document.getElementById('f-qty').value) || 10),
-    duration_sec:overrides.duration_sec !== undefined ? overrides.duration_sec : (parseInt(document.getElementById('f-dur').value) || 60),
+    quantity:    overrides.quantity   !== undefined ? overrides.quantity   : (parseInt(document.getElementById('f-qty').value) || 10),
+    duration_s:  overrides.duration_s !== undefined ? overrides.duration_s : (parseFloat(document.getElementById('f-dur').value) || 60),
   };
 
   const status = document.getElementById('inject-status');
@@ -1323,26 +1327,28 @@ async function injectMovement(overrides = {}) {
 
   let logEntry;
   try {
-    const res = await fetch(`${API}/ingest`, {
+    const res = await fetch(`${API}/movements`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body),
     });
     if (res.ok) {
       const data = await res.json();
-      status.textContent = `✓ ${body.movement_id} aceptado`;
+      const mid = data.movement_id || body.id;
+      const nAnom = Array.isArray(data.anomalies) ? data.anomalies.length : 0;
+      status.textContent = `✓ ${mid} aceptado · ${nAnom} anomalía(s)`;
       status.className = 'ok';
-      logEntry = { ok: true, ts: nowStr(), id: body.movement_id, text: JSON.stringify(data) };
+      logEntry = { ok: true, ts: nowStr(), id: mid, text: JSON.stringify(data) };
     } else {
       const err = await res.json().catch(()=>({}));
       status.textContent = `✗ Error ${res.status}: ${JSON.stringify(err.detail || err)}`;
       status.className = 'err';
-      logEntry = { ok: false, ts: nowStr(), id: body.movement_id, text: `${res.status} ${JSON.stringify(err.detail || err)}` };
+      logEntry = { ok: false, ts: nowStr(), id: body.id, text: `${res.status} ${JSON.stringify(err.detail || err)}` };
     }
   } catch(e) {
     status.textContent = `✗ No se pudo conectar con ${API}`;
     status.className = 'err';
-    logEntry = { ok: false, ts: nowStr(), id: body.movement_id, text: 'Connection failed' };
+    logEntry = { ok: false, ts: nowStr(), id: body.id, text: 'Connection failed' };
   }
 
   addResponseLog(logEntry);
@@ -1364,21 +1370,15 @@ function addResponseLog(entry) {
 }
 
 const anomalyPresets = {
-  negative_qty:   { movement_type:'INSPECTION', quantity:-3, duration_sec:4 },
-  short_duration: { movement_type:'INSPECTION', duration_sec:4 },
-  long_duration:  { duration_sec:400 },
-  off_hours:      { _hourOverride: 3 },
+  negative_qty:   { movement_type:'INSPECTION', quantity:-3, duration_s:4 },
+  short_duration: { movement_type:'INSPECTION', duration_s:4 },
+  long_duration:  { duration_s:400 },
+  traceability:   { movement_type:'TRACEABILITY', quantity:0 },
+  unknown_rack:   { rack_id:'Z-999' },
 };
 
 function injectAnomaly(kind) {
-  const preset = { ...(anomalyPresets[kind] || {}) };
-  if (preset._hourOverride !== undefined) {
-    const d = new Date();
-    d.setHours(preset._hourOverride, 15, 0, 0);
-    preset.timestamp = d.toISOString();
-    delete preset._hourOverride;
-  }
-  injectMovement(preset);
+  injectMovement({ ...(anomalyPresets[kind] || {}) });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1410,7 +1410,7 @@ async function loadStatus() {
 
 async function loadRecentAnomalies() {
   try {
-    const res = await fetch(`${API}/api/anomalies?limit=8`);
+    const res = await fetch(`${API}/anomalies/recent?limit=8`);
     if (!res.ok) return;
     const list = await res.json();
     renderRecentList(list);
@@ -1428,9 +1428,9 @@ function renderRecentList(list) {
     const item = document.createElement('div');
     item.className = 'recent-item';
     item.innerHTML = `
-      <span class="sev-badge ${msg.severity}">${msg.severity}</span>
-      <span class="ri-loc">${msg.location || '—'}</span>
-      <span style="color:var(--muted);font-size:10px;">${msg.movement_type || ''} · SKU ${msg.sku || '—'}</span>
+      <span class="sev-badge ${sevClass(msg.severity)}">${msg.severity}</span>
+      <span class="ri-loc">${msg.rack_id || '—'}</span>
+      <span style="color:var(--muted);font-size:10px;">${msg.anomaly_type || ''} · ${msg.detector || ''}</span>
       <span class="ri-time">${fmtTime(msg.timestamp)}</span>
     `;
     el.appendChild(item);

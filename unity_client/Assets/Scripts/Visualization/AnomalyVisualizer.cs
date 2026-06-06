@@ -71,22 +71,21 @@ namespace JCain.WMS.Visualization
 
         private void HandleAlert(WMSMessage msg)
         {
-            if (msg == null || string.IsNullOrEmpty(msg.location)) return;
+            if (msg == null || string.IsNullOrEmpty(msg.rack_id)) return;
             if (RackRegistry.Instance == null) return;
 
-            if (!RackRegistry.Instance.TryGet(msg.location, out RackId rack))
+            if (!RackRegistry.Instance.TryGet(msg.rack_id, out RackId rack))
             {
-                Debug.LogWarning($"[AnomalyVisualizer] No rack for {msg.location}");
+                Debug.LogWarning($"[AnomalyVisualizer] No rack for {msg.rack_id}");
                 return;
             }
 
             Severity sev = SeverityHelper.Parse(msg.severity);
-            if (sev == Severity.Normal) return;
 
-            if (_running.TryGetValue(msg.location, out Coroutine existing) && existing != null)
+            if (_running.TryGetValue(msg.rack_id, out Coroutine existing) && existing != null)
                 StopCoroutine(existing);
 
-            _running[msg.location] = StartCoroutine(PulseRack(rack, sev));
+            _running[msg.rack_id] = StartCoroutine(PulseRack(rack, sev));
         }
 
         private IEnumerator PulseRack(RackId rack, Severity sev)

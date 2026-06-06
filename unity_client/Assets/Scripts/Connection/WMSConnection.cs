@@ -17,8 +17,8 @@ namespace JCain.WMS.Connection
     public class WMSConnection : MonoBehaviour
     {
         [Header("Connection")]
-        [Tooltip("URL del WebSocket del backend. Ej: ws://localhost:8000/ws/alerts")]
-        [SerializeField] private string serverUrl = "ws://localhost:8000/ws/alerts";
+        [Tooltip("URL del WebSocket del backend. Ej: ws://localhost:8000/ws/events")]
+        [SerializeField] private string serverUrl = "ws://localhost:8000/ws/events";
 
         [Tooltip("Reintentar conexión automáticamente si se cae.")]
         [SerializeField] private bool autoReconnect = true;
@@ -134,11 +134,11 @@ namespace JCain.WMS.Connection
 
             switch (probe.type)
             {
-                case "alert":
+                case "anomaly":
                     OnAlert?.Invoke(msg);
                     WMSEventBus.RaiseAlert(msg);
                     break;
-                case "narrative":
+                case "narration":
                     OnNarrative?.Invoke(msg);
                     WMSEventBus.RaiseNarrative(msg);
                     break;

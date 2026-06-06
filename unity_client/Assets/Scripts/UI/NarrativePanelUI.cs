@@ -58,12 +58,12 @@ namespace JCain.WMS.UI
 
         private IEnumerator ShowNarrative(WMSMessage msg)
         {
-            if (locationLabel  != null) locationLabel.text  = msg.location;
-            if (narrativeBody  != null) narrativeBody.text  = msg.narrative;
+            if (locationLabel  != null) locationLabel.text  = msg.rack_id;
+            if (narrativeBody  != null) narrativeBody.text  = msg.text;
             if (causeLabel     != null) causeLabel.text     = $"Causa probable: {msg.likely_cause}";
             if (actionLabel    != null) actionLabel.text    = $"Acción: {msg.recommended_action}";
             if (sourceTag      != null)
-                sourceTag.text = $"{msg.source} · {msg.model} · {msg.latency_sec:F1}s";
+                sourceTag.text = $"{msg.model} · {msg.latency_ms}ms";
 
             yield return Fade(0f, 1f, fadeInSec);
             panelCanvasGroup.blocksRaycasts = true;

@@ -69,10 +69,9 @@ namespace JCain.WMS.UI
         [SerializeField] private TMP_Text detailLabel;
         [SerializeField] private Image background;
 
-        private static readonly Color CriticalBg = new Color(0.55f, 0.10f, 0.10f, 0.95f);
-        private static readonly Color HighBg     = new Color(0.55f, 0.30f, 0.05f, 0.95f);
-        private static readonly Color MediumBg   = new Color(0.40f, 0.40f, 0.10f, 0.95f);
-        private static readonly Color NormalBg   = new Color(0.20f, 0.20f, 0.22f, 0.90f);
+        private static readonly Color HighBg   = new Color(0.55f, 0.10f, 0.10f, 0.95f);
+        private static readonly Color MediumBg = new Color(0.55f, 0.30f, 0.05f, 0.95f);
+        private static readonly Color LowBg    = new Color(0.20f, 0.25f, 0.45f, 0.90f);
 
         public void Render(WMSMessage msg, Severity sev)
         {
@@ -80,21 +79,19 @@ namespace JCain.WMS.UI
             {
                 background.color = sev switch
                 {
-                    Severity.Critical => CriticalBg,
-                    Severity.High     => HighBg,
-                    Severity.Medium   => MediumBg,
-                    _                 => NormalBg,
+                    Severity.High   => HighBg,
+                    Severity.Medium => MediumBg,
+                    _               => LowBg,
                 };
             }
 
             if (headerLabel != null)
-                headerLabel.text = $"{msg.severity?.ToUpperInvariant()} · {msg.location}";
+                headerLabel.text = $"{msg.severity?.ToUpperInvariant()} · {msg.rack_id}";
 
             if (detailLabel != null)
                 detailLabel.text =
-                    $"{msg.movement_type} · {msg.sku}\n" +
-                    $"qty {msg.quantity} · {msg.duration_sec}s\n" +
-                    $"{msg.rule_reasons}";
+                    $"{msg.anomaly_type}\n" +
+                    $"{msg.detail}";
         }
     }
 }

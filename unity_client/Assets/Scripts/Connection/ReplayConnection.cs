@@ -164,15 +164,15 @@ namespace JCain.WMS.Connection
         private void DispatchEvent(WMSMessage msg)
         {
             if (msg == null || string.IsNullOrEmpty(msg.type)) return;
-            if (logEvents) Debug.Log($"[Replay] -> {msg.type} @ {msg.location}");
+            if (logEvents) Debug.Log($"[Replay] -> {msg.type} @ {msg.rack_id}");
 
             switch (msg.type)
             {
-                case "alert":
+                case "anomaly":
                     OnAlert?.Invoke(msg);
                     WMSEventBus.RaiseAlert(msg);
                     break;
-                case "narrative":
+                case "narration":
                     OnNarrative?.Invoke(msg);
                     WMSEventBus.RaiseNarrative(msg);
                     break;

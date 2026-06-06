@@ -4,39 +4,37 @@ using UnityEngine;
 namespace JCain.WMS.Models
 {
     /// <summary>
-    /// Mensaje genérico que llega por WebSocket. El backend manda 3 tipos:
-    /// "hello" al conectar, "alert" cuando hay anomalía, "narrative" cuando el LLM
-    /// termina de procesar. Esta clase mapea el superset de campos.
+    /// Mensaje genérico que llega por WebSocket (contrato v2). El backend manda 3 tipos:
+    /// "hello" al conectar, "anomaly" cuando hay anomalía, "narration" cuando el
+    /// generador de texto termina de procesar. Esta clase mapea el superset de campos
+    /// aplanados de ambos tipos.
     /// </summary>
     [Serializable]
     public class WMSMessage
     {
         public string type;
 
-        // Campos de "alert"
+        // Campos de "anomaly"
+        public string id;
         public string movement_id;
-        public string timestamp;
-        public string movement_type;
-        public string sku;
-        public string location;
-        public string user_id;
-        public int quantity;
-        public int duration_sec;
+        public string rack_id;
+        public string anomaly_type;
         public string severity;
-        public bool is_anomaly;
-        public string rule_reasons;
+        public string detail;
+        public string detector;
+        public string timestamp;
 
-        // Campos de "narrative"
-        public string narrative;
+        // Campos de "narration"
+        public string anomaly_id;
+        public string text;
         public string likely_cause;
         public string recommended_action;
-        public string source;
         public string model;
-        public float latency_sec;
+        public int latency_ms;
         public string emitted_at;
 
-        public bool IsAlert => type == "alert";
-        public bool IsNarrative => type == "narrative";
+        public bool IsAnomaly => type == "anomaly";
+        public bool IsNarration => type == "narration";
         public bool IsHello => type == "hello";
     }
 
@@ -51,28 +49,27 @@ namespace JCain.WMS.Models
     }
 
     /// <summary>
-    /// Niveles de severidad. El string del backend ("low" / "medium" / "high" / "critical")
-    /// se parsea con SeverityHelper.Parse.
+    /// Niveles de severidad del contrato v2. El string del backend
+    /// ("LOW" / "MEDIUM" / "HIGH") se parsea con SeverityHelper.Parse.
     /// </summary>
     public enum Severity
     {
-        Normal = 0,
+        Low = 0,
         Medium = 1,
-        High = 2,
-        Critical = 3
+        High = 2
     }
 
     public static class SeverityHelper
     {
         public static Severity Parse(string raw)
         {
-            if (string.IsNullOrEmpty(raw)) return Severity.Normal;
+            if (string.IsNullOrEmpty(raw)) return Severity.Low;
             switch (raw.Trim().ToLowerInvariant())
             {
-                case "critical": return Severity.Critical;
                 case "high":     return Severity.High;
                 case "medium":   return Severity.Medium;
-                default:         return Severity.Normal;
+                case "low":      return Severity.Low;
+                default:         return Severity.Low;
             }
         }
 
@@ -84,10 +81,10 @@ namespace JCain.WMS.Models
         {
             switch (s)
             {
-                case Severity.Critical: return new Color(2.5f, 0.1f, 0.1f); // rojo intenso
-                case Severity.High:     return new Color(2.0f, 0.6f, 0.0f); // ámbar
-                case Severity.Medium:   return new Color(1.2f, 1.2f, 0.2f); // amarillo
-                default:                return new Color(0.4f, 0.4f, 0.4f); // gris
+                case Severity.High:   return new Color(2.5f, 0.1f, 0.1f); // rojo HDR
+                case Severity.Medium: return new Color(2.0f, 0.8f, 0.0f); // ámbar
+                case Severity.Low:    return new Color(0.5f, 0.5f, 1.5f); // azul
+                default:              return new Color(0.5f, 0.5f, 1.5f); // azul
             }
         }
 
@@ -96,10 +93,10 @@ namespace JCain.WMS.Models
         {
             switch (s)
             {
-                case Severity.Critical: return 6f;
-                case Severity.High:     return 4f;
-                case Severity.Medium:   return 2.5f;
-                default:                return 1f;
+                case Severity.High:   return 4f;
+                case Severity.Medium: return 2.5f;
+                case Severity.Low:    return 1f;
+                default:              return 1f;
             }
         }
     }

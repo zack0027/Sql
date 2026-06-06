@@ -1,13 +1,28 @@
-# Warehouse Digital Twin
+# Warehouse Digital Twin · v2
 
-> Gemelo digital de un almacén WMS con detección de anomalías en tiempo real, narrativa generada por LLM, y visualización 3D en Unity.
+> Gemelo digital de un almacén WMS con detección híbrida de anomalías en tiempo real, narración determinista por plantilla (LLM destilado offline) y visualización 3D en Unity.
 
 [![Backend Tests](https://github.com/USER/warehouse-digital-twin/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/USER/warehouse-digital-twin/actions/workflows/backend-tests.yml)
 [![Deploy WebGL](https://github.com/USER/warehouse-digital-twin/actions/workflows/deploy-webgl.yml/badge.svg)](https://github.com/USER/warehouse-digital-twin/actions/workflows/deploy-webgl.yml)
 
 ## ¿Qué es esto?
 
-Un sistema que observa el flujo de movimientos de un Warehouse Management System (WMS), detecta anomalías operativas (cantidades negativas, duraciones atípicas, trazabilidad rota, etc.), las explica en lenguaje natural usando un LLM local, y las visualiza en un almacén 3D donde cada rack pulsa cuando algo anormal le sucede.
+Un sistema que observa el flujo de movimientos de un Warehouse Management System (WMS), detecta anomalías operativas (cantidades negativas, duraciones atípicas, trazabilidad rota, racks desconocidos), las explica en lenguaje natural y las visualiza en un almacén 3D donde cada rack pulsa cuando algo anormal le sucede.
+
+### La decisión que distingue a la v2: dos tiempos
+
+La arquitectura separa una **fase de diseño** (offline, con LLM, donde el no-determinismo es aceptable) de una **fase de runtime** (online, sin LLM, determinista y rápida). El LLM no opera en vivo: durante el diseño **destila** las reglas de detección y **pre-genera** las plantillas de narración, que quedan versionadas en git. En runtime el sistema corre sin LLM, con latencia cercana a cero y salida reproducible.
+
+```
+FASE DE DISEÑO (offline · LLM local · artefactos versionados)
+  simulador ─► Ollama (llama3.2) ─► reglas + narration_templates.json + metrics_report.md
+
+FASE DE RUNTIME (online · SIN LLM · determinista)
+  WMS/Simulator ─► HybridDetector ─► TemplateNarrator ─► WebSocketBroker ─► Unity/Web
+                  (reglas + ML)      (plantilla, 0 ms)     (WS /ws/events)   (3D / dashboard)
+```
+
+> **Fundamento:** Zhang & Jain (Amazon) muestran que destilar el conocimiento de un LLM en reglas interpretables logra F1 equivalente a una fracción del costo, sin la latencia, el no-determinismo ni las alucinaciones del LLM en línea.
 
 ## Demo
 
@@ -19,20 +34,21 @@ Un sistema que observa el flujo de movimientos de un Warehouse Management System
 ```
 ┌──────────────────────┐          ┌──────────────────────────┐
 │   WMS externo o      │  POST    │   Backend FastAPI        │
-│   Simulator interno  │ ─────▶   │   (Python, POO)          │
+│   Simulator interno  │ /movements│   (Python, POO)          │
 └──────────────────────┘          │  ┌────────────────────┐  │
-                                   │  │ AnomalyDetector    │  │
-                                   │  │ (rules + ML)       │  │
+                                   │  │ HybridDetector     │  │
+                                   │  │  ├ RuleBasedDetector│ │
+                                   │  │  └ MLAnomalyDetector│ │
                                    │  └────────────────────┘  │
                                    │  ┌────────────────────┐  │
-                                   │  │ LLMNarrator        │  │
-                                   │  │ (Ollama or Mock)   │  │
+                                   │  │ TemplateNarrator   │  │
+                                   │  │ (plantilla · 0 ms) │  │
                                    │  └────────────────────┘  │
                                    │  ┌────────────────────┐  │
                                    │  │ WebSocketBroker    │  │
                                    │  └─────────┬──────────┘  │
                                    └────────────┼─────────────┘
-                                                │ ws://
+                                                │ ws:///ws/events
                                                 ▼
                                    ┌──────────────────────────┐
                                    │   Unity Client           │
@@ -58,30 +74,37 @@ Un sistema que observa el flujo de movimientos de un Warehouse Management System
 warehouse-digital-twin/
 ├── backend/                            # Backend Python (FastAPI + IA + Ollama)
 │   ├── src/warehouse_twin/
-│   │   ├── models/                     # Modelos de dominio (POO)
-│   │   │   ├── movement.py             # Movement (Pydantic)
-│   │   │   ├── anomaly.py              # Anomaly (Pydantic)
-│   │   │   ├── narrative.py            # Narrative (Pydantic)
-│   │   │   └── severity.py             # Severity (Enum)
-│   │   ├── detection/                  # Motor de detección
-│   │   │   ├── anomaly_detector.py     # Facade del módulo
-│   │   │   ├── rule_engine.py          # Chain of Responsibility
-│   │   │   └── model_ensemble.py       # Strategy IA (heurística + IsolationForest)
-│   │   ├── narration/                  # Narrador LLM
+│   │   ├── models/                     # Modelos de dominio (Pydantic v2)
+│   │   │   ├── movement.py             # Movement + MovementType (id, rack_id, duration_s)
+│   │   │   ├── anomaly.py              # AnomalyEvent + AnomalyType (enum)
+│   │   │   ├── narrative.py            # NarrationResult
+│   │   │   └── severity.py             # Severity (LOW/MEDIUM/HIGH)
+│   │   ├── detection/                  # Detección (ABC + implementaciones)
+│   │   │   ├── base.py                 # AnomalyDetector (ABC)
+│   │   │   ├── rule_engine.py          # RuleBasedDetector (Strategy + Composite)
+│   │   │   ├── ml_detector.py          # MLAnomalyDetector (Isolation Forest)
+│   │   │   └── hybrid.py               # HybridDetector (Composite reglas + ML)
+│   │   ├── narration/                  # Narración (runtime sin LLM)
 │   │   │   ├── base.py                 # LLMNarrator (abstract)
-│   │   │   ├── mock_narrator.py        # Templates determinísticos
-│   │   │   ├── ollama_narrator.py      # Cliente Ollama HTTP
-│   │   │   └── fallback_narrator.py    # Chain Ollama → Mock
+│   │   │   ├── template_backend.py     # TemplateNarrator (runtime, 0 ms)
+│   │   │   ├── narration_templates.json# Plantillas pre-generadas offline
+│   │   │   ├── mock_narrator.py        # Fallback mínimo
+│   │   │   ├── ollama_narrator.py      # Cliente Ollama (solo fase de diseño)
+│   │   │   └── fallback_narrator.py    # Chain Template → Mock
+│   │   ├── design/                     # FASE DE DISEÑO offline (no runtime)
+│   │   │   ├── evaluate.py             # F1 por tipo → metrics_report.md
+│   │   │   ├── rule_distiller.py       # Destila reglas desde falsos negativos
+│   │   │   └── template_generator.py   # Genera plantillas con Ollama
 │   │   ├── streaming/                  # WebSocket
 │   │   │   ├── connection_manager.py   # Gestor de conexiones
-│   │   │   └── websocket_broker.py     # Mediator de flujo
-│   │   ├── simulation/                 # Simulador de eventos
-│   │   │   ├── anomaly_injector.py     # Generador sintético
+│   │   │   └── websocket_broker.py     # Mediator detect→narrate→publish
+│   │   ├── simulation/                 # Simulador (ground truth + drift)
+│   │   │   ├── anomaly_injector.py     # Generador sintético etiquetado
 │   │   │   └── movement_simulator.py   # Loop async
-│   │   ├── config/
-│   │   │   └── settings.py             # Pydantic Settings
+│   │   ├── static/index.html           # Dashboard web (cliente de pruebas)
+│   │   ├── config/settings.py          # Pydantic Settings
 │   │   └── app.py                      # FastAPI app (orquestador)
-│   ├── tests/                          # pytest (7 tests)
+│   ├── tests/                          # pytest (20 tests)
 │   └── pyproject.toml
 │
 ├── unity_client/                       # Cliente Unity 6 + URP
@@ -112,16 +135,27 @@ warehouse-digital-twin/
 
 ```bash
 cd backend
-pip install -e ".[dev]"
-pytest tests/                              # corre 7 tests
-uvicorn warehouse_twin.app:app --reload    # http://localhost:8000
+pip install -e ".[dev]"                     # núcleo (runtime sin LLM)
+pip install -e ".[dev,ml]"                  # opcional: añade Isolation Forest (sklearn)
+pytest tests/                               # corre 20 tests
+uvicorn warehouse_twin.app:app --reload     # http://localhost:8000
 ```
 
-Endpoints:
-- `GET  /` — info
-- `GET  /healthz` — health check
-- `POST /ingest` — recibe un Movement JSON
-- `WS   /ws/alerts` — stream de alertas y narrativas
+Endpoints (v2):
+- `GET  /` — dashboard web
+- `GET  /healthz` — health con estado de dependencias
+- `POST /movements` — recibe un Movement JSON y dispara la pipeline
+- `GET  /anomalies/recent?limit=N` — últimas anomalías
+- `WS   /ws/events` — stream de anomalías y narraciones
+- `GET  /api/docs` — Swagger
+
+Fase de diseño (offline, requiere Ollama corriendo):
+
+```bash
+python -m warehouse_twin.design.evaluate --n 5000          # F1 por tipo → metrics_report.md
+python -m warehouse_twin.design.template_generator --variants 3  # regenera plantillas
+python -m warehouse_twin.design.rule_distiller --n 3000    # propone reglas (revisión humana)
+```
 
 ### Cliente Unity
 
@@ -136,11 +170,13 @@ Ver `unity_client/docs/DEPLOY_GITHUB_PAGES.md`.
 
 | Módulo | Patrón | Por qué |
 |---|---|---|
-| `detection/rule_engine` | Chain of Responsibility | Reglas independientes, componibles |
-| `detection/model_ensemble` | Strategy | Cambiar heurística por IsolationForest sin tocar detector |
-| `detection/anomaly_detector` | Facade | Esconde composición de reglas + IA |
-| `narration/base` | Strategy + Abstract Base | Intercambiar backends LLM |
-| `narration/fallback_narrator` | Chain of Responsibility | Ollama → Mock automático |
+| `detection/base` | Abstract Base Class | Contrato `detect()` común a reglas, ML e híbrido |
+| `detection/rule_engine` | Strategy + Composite | Reglas independientes que el detector orquesta |
+| `detection/ml_detector` | Strategy | Isolation Forest tras la misma interfaz `AnomalyDetector` |
+| `detection/hybrid` | Composite | Compone reglas + ML deduplicando |
+| `narration/base` | Strategy + Abstract Base | Intercambiar backends de narración |
+| `narration/template_backend` | Strategy | Narración determinista 0 ms (sin LLM en runtime) |
+| `narration/fallback_narrator` | Chain of Responsibility | Template → Mock automático |
 | `streaming/websocket_broker` | Mediator | Coordina detector + narrator + manager |
 | `config/settings` | Singleton module-level | Configuración única tipada |
 | `app.py` | Composition Root | Único lugar donde se instancian concretos |

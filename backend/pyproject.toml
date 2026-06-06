@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "warehouse-digital-twin"
-version = "1.0.0"
-description = "Backend del gemelo digital WMS con detección de anomalías y narrativa LLM"
+version = "2.0.0"
+description = "Backend del gemelo digital WMS: detección híbrida de anomalías + narración determinista por plantilla (LLM offline)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

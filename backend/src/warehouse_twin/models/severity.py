@@ -1,4 +1,11 @@
-"""Severidad de anomalía como enumeración con utilidades de parseo."""
+"""Severidad de una anomalía como enumeración con utilidades de parseo.
+
+v2: tres niveles LOW/MEDIUM/HIGH, alineados con el mapeo de color del
+cliente Unity (§7.2 de la documentación técnica v2):
+  HIGH   → rojo HDR (activa Bloom)
+  MEDIUM → ámbar
+  LOW    → azul
+"""
 from __future__ import annotations
 
 from enum import Enum
@@ -6,38 +13,37 @@ from enum import Enum
 
 class Severity(str, Enum):
     """
-    Severidad de una anomalía.
+    Severidad de una anomalía detectada.
 
-    Hereda de str para que sea trivialmente serializable a JSON y
-    comparable con strings que vienen del frontend o de la base de datos.
+    Hereda de str para serialización trivial a JSON y comparación directa
+    con strings provenientes del frontend o de artefactos versionados.
     """
 
-    NORMAL = "normal"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
 
     @classmethod
     def parse(cls, raw: str | None) -> "Severity":
-        """Tolerante a None, mayúsculas, espacios."""
+        """Tolerante a None, minúsculas y espacios. Default LOW."""
         if not raw:
-            return cls.NORMAL
+            return cls.LOW
         try:
-            return cls(raw.strip().lower())
+            return cls(raw.strip().upper())
         except ValueError:
-            return cls.NORMAL
+            return cls.LOW
 
     @property
     def rank(self) -> int:
         """Orden numérico para comparaciones y umbrales."""
-        return {
-            Severity.NORMAL: 0,
-            Severity.MEDIUM: 1,
-            Severity.HIGH: 2,
-            Severity.CRITICAL: 3,
-        }[self]
+        return {Severity.LOW: 0, Severity.MEDIUM: 1, Severity.HIGH: 2}[self]
 
     def __ge__(self, other: object) -> bool:  # type: ignore[override]
         if isinstance(other, Severity):
             return self.rank >= other.rank
+        return NotImplemented
+
+    def __gt__(self, other: object) -> bool:  # type: ignore[override]
+        if isinstance(other, Severity):
+            return self.rank > other.rank
         return NotImplemented

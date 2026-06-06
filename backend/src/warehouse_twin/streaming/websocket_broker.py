@@ -1,18 +1,22 @@
-"""
-Broker que orquesta el flujo completo: movimiento → detección → broadcast
-alerta → narración asíncrona → broadcast narrativa.
+"""Broker del flujo runtime (v2, §8).
+
+movimiento → detección → narración (plantilla, 0 ms) → broadcast.
 
 Diseño POO: Mediator. Conoce a los tres colaboradores (detector, narrator,
 manager) y coordina su interacción. Los colaboradores no se conocen entre sí.
+
+Cambio v2: como el TemplateNarrator es instantáneo y determinista, la
+narración deja de ser una tarea asíncrona en background. detect→narrate→
+publish se completa en milisegundos (hipótesis H1: < 50 ms), eliminando el
+acople de latencia del LLM que tenía la v1.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from ..detection import AnomalyDetector
-from ..models import Movement
+from ..models import AnomalyEvent, Movement
 from ..narration import LLMNarrator
 from .connection_manager import ConnectionManager
 
@@ -20,15 +24,7 @@ log = logging.getLogger(__name__)
 
 
 class WebSocketBroker:
-    """
-    Mediator entre detección, narración y broadcast.
-
-    Garantiza:
-      1. La alerta llega al cliente Unity inmediatamente (< 10ms post detect).
-      2. La narrativa LLM se procesa en background sin bloquear el stream.
-      3. La narrativa llega al cliente 1-5s después con el mismo movement_id
-         para que el cliente correlacione.
-    """
+    """Mediator entre detección, narración y broadcast."""
 
     def __init__(
         self,
@@ -41,37 +37,32 @@ class WebSocketBroker:
         self.narrator = narrator
         self.manager = manager
         self._on_broadcast = on_broadcast
-        self._narration_tasks: set[asyncio.Task] = set()
 
-    async def process_movement(self, movement: Movement) -> None:
+    async def process_movement(self, movement: Movement) -> List[AnomalyEvent]:
         """
-        Punto de entrada principal. Llamado por el endpoint /ingest
-        o por el simulator interno.
+        Punto de entrada principal. Llamado por el endpoint /movements
+        o por el simulador interno. Devuelve las anomalías detectadas.
         """
-        anomaly = self.detector.detect(movement)
-        if not anomaly.is_anomaly:
-            return  # movimientos normales no se broadcastean
+        anomalies = self.detector.detect(movement)
+        for anomaly in anomalies:
+            await self._publish_anomaly(anomaly)
+        return anomalies
 
-        # 1. Alerta inmediata
+    async def _publish_anomaly(self, anomaly: AnomalyEvent) -> None:
+        # 1. Alerta (anomalía)
         payload = anomaly.to_websocket_payload()
         await self.manager.broadcast(payload)
         if self._on_broadcast:
             self._on_broadcast(payload)
 
-        # 2. Narración en background (fire and forget con tracking)
-        task = asyncio.create_task(self._narrate_and_broadcast(anomaly))
-        self._narration_tasks.add(task)
-        task.add_done_callback(self._narration_tasks.discard)
-
-    async def _narrate_and_broadcast(self, anomaly) -> None:
+        # 2. Narración determinista (latencia cero) en el mismo ciclo
         try:
-            narrative = await self.narrator.generate(anomaly)
-            if narrative is not None:
-                await self.manager.broadcast(narrative.to_websocket_payload())
+            narration = await self.narrator.narrate(anomaly)
+            if narration is not None:
+                await self.manager.broadcast(narration.to_websocket_payload())
         except Exception:
-            log.exception("Narration failed for movement %s", anomaly.movement.movement_id)
+            log.exception("Narración falló para anomalía %s", anomaly.id)
 
     async def shutdown(self) -> None:
-        """Espera que terminen las narraciones pendientes al cerrar el server."""
-        if self._narration_tasks:
-            await asyncio.gather(*self._narration_tasks, return_exceptions=True)
+        """Sin tareas en background que esperar en v2. Hook de cierre limpio."""
+        return None

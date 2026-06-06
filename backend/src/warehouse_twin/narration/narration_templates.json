@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "version": "template-v1",
+    "generated_by": "design-phase/template_generator.py (Ollama llama3.2, offline)",
+    "note": "Variantes pre-generadas offline por el LLM y parametrizadas en runtime. Placeholders: {rack}, {detail}, {sev}.",
+    "placeholders": ["rack", "detail", "sev"]
+  },
+  "NEGATIVE_QUANTITY": [
+    {
+      "text": "Cantidad negativa registrada en {rack} (severidad {sev}). {detail}",
+      "likely_cause": "Cierre prematuro de un ajuste o captura manual errónea sobre el inventario.",
+      "recommended_action": "Auditar el movimiento con el supervisor y validar el inventario físico del rack."
+    },
+    {
+      "text": "Movimiento con stock negativo en {rack}. {detail}",
+      "likely_cause": "Falta una entrada de transformación o el BOM del producto está mal configurado.",
+      "recommended_action": "Pausar la operación, revisar el BOM en sistema y registrar la entrada faltante."
+    }
+  ],
+  "DURATION_OUTLIER": [
+    {
+      "text": "Duración atípica en {rack} (severidad {sev}). {detail}",
+      "likely_cause": "Bloqueo del proceso, equipo de scanning con falla o tarea dependiente sin liberar.",
+      "recommended_action": "Verificar físicamente el rack y reasignar o liberar las dependencias bloqueantes."
+    },
+    {
+      "text": "Operación fuera del rango temporal esperado en {rack}. {detail}",
+      "likely_cause": "Inspección cerrada antes de completarse o picking sobre producto difícil de localizar.",
+      "recommended_action": "Confirmar el procedimiento con el operario y revisar el baseline del proceso."
+    }
+  ],
+  "TRACEABILITY_BROKEN": [
+    {
+      "text": "Trazabilidad rota en {rack} (severidad {sev}). {detail}",
+      "likely_cause": "Recepción no registrada en sistema o lote ingresado por un proceso paralelo no auditado.",
+      "recommended_action": "Bloquear el lote y abrir investigación con calidad para validar su origen."
+    }
+  ],
+  "UNKNOWN_RACK": [
+    {
+      "text": "Ubicación desconocida referida por un movimiento: {rack} (severidad {sev}). {detail}",
+      "likely_cause": "Código de ubicación mal escrito, rack fuera del layout o mapeo de slotting desactualizado.",
+      "recommended_action": "Corregir el código de ubicación o actualizar el layout maestro del almacén."
+    },
+    {
+      "text": "Movimiento sobre un rack fuera del layout canónico: {rack}. {detail}",
+      "likely_cause": "Error de captura o integración de un WMS externo con códigos no normalizados.",
+      "recommended_action": "Revisar el adaptador de ingesta y normalizar el catálogo de ubicaciones."
+    }
+  ]
+}

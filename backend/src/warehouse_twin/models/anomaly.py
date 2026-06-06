@@ -1,50 +1,64 @@
-"""Anomalía detectada: output del módulo detection."""
+"""Anomalía detectada: output del módulo detection.
+
+v2 (§4.4 y §9): la anomalía deja de ser un wrapper del movimiento con
+flag `is_anomaly`. Ahora `AnomalyEvent` es un evento de primera clase con
+un `id` propio, su `type` tipado (AnomalyType) y `detail` textual. El
+detector devuelve `list[AnomalyEvent]` (vacía cuando no hay anomalía),
+de modo que un mismo movimiento puede producir varias.
+"""
 from __future__ import annotations
 
-from typing import List
+import uuid
+from datetime import datetime
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
-from .movement import Movement
 from .severity import Severity
 
 
-class Anomaly(BaseModel):
-    """
-    Una anomalía detectada en un movimiento.
+class AnomalyType(str, Enum):
+    """Catálogo cerrado de anomalías que el sistema sabe reconocer (v2)."""
 
-    Combina el movimiento original con la decisión del detector
-    (severidad, score, reglas que disparó) para que el siguiente eslabón
-    de la cadena (narrador, broker WebSocket) tenga toda la info.
+    NEGATIVE_QUANTITY = "NEGATIVE_QUANTITY"
+    DURATION_OUTLIER = "DURATION_OUTLIER"
+    TRACEABILITY_BROKEN = "TRACEABILITY_BROKEN"
+    UNKNOWN_RACK = "UNKNOWN_RACK"
+
+
+class AnomalyEvent(BaseModel):
+    """
+    Una anomalía concreta detectada en un movimiento.
+
+    Lleva todo lo que los eslabones siguientes (narrador, broker, UI)
+    necesitan: a qué movimiento y rack pertenece, su tipo y severidad,
+    y un `detail` legible. La narración se correlaciona por `id`.
     """
 
-    movement: Movement
-    severity: Severity
-    score: float = Field(..., ge=0.0, le=1.0, description="Confianza del modelo IA")
-    is_anomaly: bool = Field(...)
-    rule_reasons: List[str] = Field(
-        default_factory=list,
-        description="Reglas humanas que dispararon, ej. 'cantidad_negativa'",
-    )
+    id: str = Field(default_factory=lambda: f"AN-{uuid.uuid4().hex[:12]}")
+    movement_id: str = Field(..., description="id del Movement que la originó")
+    rack_id: str = Field(..., description="Ubicación afectada")
+    type: AnomalyType = Field(..., description="Tipo de anomalía")
+    severity: Severity = Field(default=Severity.MEDIUM)
+    detail: str = Field(default="", description="Descripción legible de la evidencia")
+    detector: str = Field(default="rule", description="Origen: 'rule' | 'ml'")
+    timestamp: datetime = Field(default_factory=datetime.now)
 
     def to_websocket_payload(self) -> dict:
         """
-        Serializa al formato que espera el cliente Unity.
+        Serializa al formato que espera el cliente (Unity / dashboard web).
 
-        Aplana movement.* al top-level para que JsonUtility de Unity pueda
-        parsearlo sin campos anidados. Las keys aquí deben coincidir 1-a-1
-        con WMSMessage.cs.
+        Plano (sin anidamiento) para que JsonUtility de Unity lo parsee.
+        Las keys deben coincidir 1-a-1 con WMSMessage.cs.
         """
         return {
-            "type": "alert",
-            "movement_id": self.movement.movement_id,
-            "timestamp": self.movement.timestamp.isoformat(sep=" ", timespec="seconds"),
-            "movement_type": self.movement.movement_type,
-            "sku": self.movement.sku,
-            "location": self.movement.location,
-            "user_id": self.movement.user_id,
-            "quantity": self.movement.quantity,
-            "duration_sec": self.movement.duration_sec,
+            "type": "anomaly",
+            "id": self.id,
+            "movement_id": self.movement_id,
+            "rack_id": self.rack_id,
+            "anomaly_type": self.type.value,
             "severity": self.severity.value,
-            "is_anomaly": self.is_anomaly,
-            "rule_reasons": ", ".join(self.rule_reasons),
+            "detail": self.detail,
+            "detector": self.detector,
+            "timestamp": self.timestamp.isoformat(sep=" ", timespec="seconds"),
         }

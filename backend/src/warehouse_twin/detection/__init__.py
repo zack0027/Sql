@@ -1,24 +1,26 @@
-"""Módulo de detección de anomalías."""
-from .anomaly_detector import AnomalyDetector
-from .model_ensemble import HeuristicEnsemble, IsolationForestEnsemble, ModelEnsemble
+"""Módulo de detección de anomalías (v2: ABC + reglas + ML + híbrido)."""
+from .base import AnomalyDetector
+from .hybrid import HybridDetector
+from .ml_detector import MLAnomalyDetector
 from .rule_engine import (
-    ExcessiveDurationRule,
-    MinimumDurationRule,
+    DurationOutlierRule,
     NegativeQuantityRule,
-    OffHoursRule,
     Rule,
-    RuleEngine,
+    RuleBasedDetector,
+    TraceabilityRule,
+    UnknownRackRule,
+    default_rules,
 )
 
 __all__ = [
     "AnomalyDetector",
-    "ModelEnsemble",
-    "HeuristicEnsemble",
-    "IsolationForestEnsemble",
+    "RuleBasedDetector",
+    "MLAnomalyDetector",
+    "HybridDetector",
     "Rule",
-    "RuleEngine",
     "NegativeQuantityRule",
-    "MinimumDurationRule",
-    "ExcessiveDurationRule",
-    "OffHoursRule",
+    "DurationOutlierRule",
+    "TraceabilityRule",
+    "UnknownRackRule",
+    "default_rules",
 ]

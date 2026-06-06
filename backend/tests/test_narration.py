@@ -1,59 +1,71 @@
-"""Tests del narrador."""
+"""Tests del narrador (v2)."""
 from __future__ import annotations
-
-from datetime import datetime
 
 import pytest
 
-from warehouse_twin.detection import AnomalyDetector
-from warehouse_twin.models import Movement
-from warehouse_twin.narration import MockNarrator
+from warehouse_twin.models import AnomalyEvent, AnomalyType, Severity
+from warehouse_twin.narration import MockNarrator, TemplateNarrator
+from warehouse_twin.narration.fallback_narrator import build_runtime_narrator
 
 
-def make_anomaly():
-    detector = AnomalyDetector()
-    movement = Movement(
+def make_anomaly(atype=AnomalyType.NEGATIVE_QUANTITY) -> AnomalyEvent:
+    return AnomalyEvent(
+        id="AN-test-001",
         movement_id="MV-T1",
-        timestamp=datetime(2026, 5, 17, 14, 30, 0),
-        movement_type="INSPECTION",
-        sku="MX-0042",
-        location="C-018",
-        user_id="USR_001",
-        quantity=-3,
-        duration_sec=4,
+        rack_id="C-018",
+        type=atype,
+        severity=Severity.HIGH,
+        detail="Cantidad negativa (-3) detectada.",
     )
-    return detector.detect(movement)
+
+
+@pytest.mark.asyncio
+async def test_template_narrator_available():
+    assert await TemplateNarrator().is_available() is True
+
+
+@pytest.mark.asyncio
+async def test_template_narrator_zero_latency_and_deterministic():
+    narrator = TemplateNarrator()
+    anomaly = make_anomaly()
+    first = await narrator.narrate(anomaly)
+    second = await narrator.narrate(anomaly)
+    assert first is not None
+    assert first.latency_ms == 0.0           # runtime determinista, latencia cero
+    assert first.model == "template-v1"
+    assert first.text == second.text          # mismo id → misma variante
+    assert first.anomaly_id == "AN-test-001"
+
+
+@pytest.mark.asyncio
+async def test_template_covers_all_anomaly_types():
+    narrator = TemplateNarrator()
+    for atype in AnomalyType:
+        result = await narrator.narrate(make_anomaly(atype))
+        assert result is not None, f"sin plantilla para {atype}"
+        assert len(result.text) > 10
 
 
 @pytest.mark.asyncio
 async def test_mock_narrator_always_available():
-    narrator = MockNarrator()
-    assert await narrator.is_available() is True
+    assert await MockNarrator().is_available() is True
 
 
 @pytest.mark.asyncio
-async def test_mock_narrator_produces_narrative():
-    narrator = MockNarrator()
-    anomaly = make_anomaly()
-    narrative = await narrator.generate(anomaly)
-    assert narrative is not None
-    assert narrative.movement_id == "MV-T1"
-    assert narrative.source == "mock"
-    assert len(narrative.narrative) > 20
-    assert len(narrative.likely_cause) > 20
-    assert len(narrative.recommended_action) > 20
-
-
-@pytest.mark.asyncio
-async def test_websocket_payload_keys_match_unity_contract():
-    narrator = MockNarrator()
-    anomaly = make_anomaly()
-    narrative = await narrator.generate(anomaly)
-    payload = narrative.to_websocket_payload()
-
+async def test_narration_websocket_payload_keys():
+    result = await TemplateNarrator().narrate(make_anomaly())
+    payload = result.to_websocket_payload()
     expected = {
-        "type", "movement_id", "location", "narrative", "likely_cause",
-        "recommended_action", "source", "model", "latency_sec", "emitted_at",
+        "type", "anomaly_id", "rack_id", "text", "likely_cause",
+        "recommended_action", "model", "latency_ms", "emitted_at",
     }
     assert expected.issubset(payload.keys())
-    assert payload["type"] == "narrative"
+    assert payload["type"] == "narration"
+
+
+@pytest.mark.asyncio
+async def test_runtime_narrator_is_template_first():
+    narrator = build_runtime_narrator()
+    result = await narrator.narrate(make_anomaly())
+    assert result is not None
+    assert result.model == "template-v1"  # template gana sobre mock

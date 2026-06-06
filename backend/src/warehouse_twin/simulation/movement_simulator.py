@@ -55,6 +55,7 @@ class MovementSimulator:
 
     async def _run(self) -> None:
         interval = 1.0 / max(0.1, self.rate)
+        ticks = 0
         try:
             while self._running:
                 if self.injector.rng.random() < self.anomaly_ratio:
@@ -63,6 +64,13 @@ class MovementSimulator:
                     movement = self.injector.generate_normal()
 
                 await self.broker.process_movement(movement)
+
+                # Deriva temporal lenta: cada ~50 ticks empuja el baseline,
+                # volviendo obsoleto un umbral fijo (terreno del ML).
+                ticks += 1
+                if ticks % 50 == 0:
+                    self.injector.advance_drift(0.5)
+
                 await asyncio.sleep(interval)
         except asyncio.CancelledError:
             raise

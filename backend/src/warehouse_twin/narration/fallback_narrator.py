@@ -1,26 +1,30 @@
-"""
-Composite narrator: intenta una cadena de backends en orden, devuelve la
-primera narrativa exitosa.
+"""Cadena de narradores con fallback (v2).
 
-Esto es lo que el orquestador inyecta en producción. Permite que la demo
-funcione siempre: con Ollama si está disponible, con templates si no.
+Intenta una cadena de backends en orden y devuelve la primera narración
+exitosa. En runtime la cadena estándar es TemplateNarrator → MockNarrator:
+ambos deterministas y de latencia cero, sin LLM en vivo. Si el JSON de
+plantillas falta, TemplateNarrator no se construye y queda solo Mock
+(cierra el riesgo de fiabilidad descrito en §5.3).
 """
 from __future__ import annotations
 
+import logging
 from typing import List, Optional
 
-from ..models import Anomaly, Narrative
+from ..models import AnomalyEvent, NarrationResult
 from .base import LLMNarrator
 from .mock_narrator import MockNarrator
+
+log = logging.getLogger(__name__)
 
 
 class FallbackNarrator(LLMNarrator):
     """
     Cadena de narradores. Intenta cada uno en orden.
 
-    Patrón: Chain of Responsibility con fallback automático.
-    Si un backend falla o devuelve None, sigue con el siguiente.
-    El último siempre debería ser MockNarrator (garantiza no-null).
+    Patrón: Chain of Responsibility con fallback automático. Si un backend
+    falla o devuelve None, sigue con el siguiente. El último siempre debería
+    ser MockNarrator (garantiza no-null).
     """
 
     def __init__(self, backends: List[LLMNarrator]):
@@ -29,35 +33,36 @@ class FallbackNarrator(LLMNarrator):
         self.backends = backends
 
     @property
-    def source_name(self) -> str:
-        return "fallback-chain"
-
-    @property
     def model_name(self) -> str:
         return ",".join(b.model_name for b in self.backends)
 
     async def is_available(self) -> bool:
-        # Disponible si cualquiera del chain lo está
         for b in self.backends:
             if await b.is_available():
                 return True
         return False
 
-    async def generate(self, anomaly: Anomaly) -> Optional[Narrative]:
+    async def narrate(self, anomaly: AnomalyEvent) -> Optional[NarrationResult]:
         for b in self.backends:
-            result = await b.generate(anomaly)
+            result = await b.narrate(anomaly)
             if result is not None:
                 return result
-        return None  # solo si TODOS fallaron (no debería pasar con MockNarrator al final)
+        return None
 
 
-def build_default_narrator() -> LLMNarrator:
+def build_runtime_narrator() -> LLMNarrator:
     """
-    Factory que arma la cadena estándar: Ollama → Mock.
+    Factory del narrador de RUNTIME: TemplateNarrator → MockNarrator.
 
-    Si Ollama está corriendo en localhost, se usa. Si no, automáticamente
-    se cae a templates. Es transparente para el resto del sistema.
+    Sin LLM en vivo. Determinista y de latencia cero. Si el JSON de
+    plantillas no carga, queda solo MockNarrator.
     """
-    from .ollama_narrator import OllamaNarrator
+    from .template_backend import TemplateNarrator
 
-    return FallbackNarrator([OllamaNarrator(), MockNarrator()])
+    backends: List[LLMNarrator] = []
+    try:
+        backends.append(TemplateNarrator())
+    except Exception as ex:  # JSON ausente o corrupto
+        log.warning("TemplateNarrator no disponible (%s); usando MockNarrator", ex)
+    backends.append(MockNarrator())
+    return FallbackNarrator(backends)

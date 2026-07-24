@@ -1,0 +1,20 @@
+/* Fixture: MOCA command exercising pipelines, published variables,
+   bracketed SQL, catch(@?) and variable consumption. */
+[select numctl, prtnum, netwgt
+   from uc_insp_ent
+  where numctl = @numctl]
+|
+publish data
+    where numctl = @numctl
+      and prtnum = @prtnum
+      and netwgt = @netwgt
+|
+[update uc_insp_ent
+    set estado = 'CONFIRMADO'
+  where numctl = @numctl]
+|
+catch(@?)
+[
+    publish data
+      where errmsg = 'No se pudo confirmar la inspeccion @numctl'
+]

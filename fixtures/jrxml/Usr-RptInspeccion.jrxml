@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture: JasperReports report exercising every construct the JRXML analyzer
+     must detect: parameters (used and unused), fields (declared and undeclared),
+     variables, a SQL query, a relative image path and a subreport. -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              name="Usr-RptInspeccion"
+              pageWidth="595" pageHeight="842" columnWidth="555"
+              leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+
+    <parameter name="P_NUMCTL" class="java.lang.String"/>
+    <parameter name="P_PRTNUM" class="java.lang.String"/>
+    <!-- Declared but never referenced: the analyzer must report this. -->
+    <parameter name="P_UNUSED_FLAG" class="java.lang.Boolean"/>
+
+    <queryString>
+        <![CDATA[
+            select e.numctl,
+                   e.prtnum,
+                   e.netwgt,
+                   e.muestra_size_ver,
+                   p.prtdsc
+              from uc_insp_ent e
+              join prtmst p on p.prtnum = e.prtnum
+             where e.numctl = $P{P_NUMCTL}
+        ]]>
+    </queryString>
+
+    <field name="numctl" class="java.lang.String"/>
+    <field name="prtnum" class="java.lang.String"/>
+    <field name="netwgt" class="java.math.BigDecimal"/>
+    <field name="muestra_size_ver" class="java.lang.String"/>
+
+    <variable name="V_TOTAL_NETWGT" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{netwgt}]]></variableExpression>
+    </variable>
+
+    <title>
+        <band height="60">
+            <image>
+                <reportElement x="0" y="0" width="24" height="24"/>
+                <imageExpression><![CDATA["images/checkboxOn.png"]]></imageExpression>
+            </image>
+            <textField>
+                <reportElement x="30" y="0" width="300" height="20"/>
+                <textFieldExpression><![CDATA[$P{P_PRTNUM}]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <detail>
+        <band height="40">
+            <textField>
+                <reportElement x="0" y="0" width="120" height="20"/>
+                <textFieldExpression><![CDATA[$F{numctl}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="130" y="0" width="120" height="20"/>
+                <textFieldExpression><![CDATA[$F{muestra_size_ver}]]></textFieldExpression>
+            </textField>
+            <!-- Referenced but never declared as a <field>: must be reported. -->
+            <textField>
+                <reportElement x="260" y="0" width="120" height="20"/>
+                <textFieldExpression><![CDATA[$F{campo_no_declarado}]]></textFieldExpression>
+            </textField>
+            <subreport>
+                <reportElement x="0" y="22" width="555" height="18"/>
+                <subreportParameter name="P_NUMCTL">
+                    <subreportParameterExpression><![CDATA[$F{numctl}]]></subreportParameterExpression>
+                </subreportParameter>
+                <subreportExpression><![CDATA["Usr-RptInspeccionDetalle.jasper"]]></subreportExpression>
+            </subreport>
+        </band>
+    </detail>
+
+    <summary>
+        <band height="30">
+            <textField>
+                <reportElement x="0" y="0" width="200" height="20"/>
+                <textFieldExpression><![CDATA[$V{V_TOTAL_NETWGT}]]></textFieldExpression>
+            </textField>
+        </band>
+    </summary>
+</jasperReport>

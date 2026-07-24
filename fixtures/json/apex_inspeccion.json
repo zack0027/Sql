@@ -1,0 +1,29 @@
+{
+  "application": {
+    "id": 117,
+    "alias": "INSPECCION",
+    "name": "Control de Inspecciones"
+  },
+  "pages": [
+    {
+      "id": 117,
+      "name": "Registrar inspeccion",
+      "items": [
+        { "name": "P117_NUMCTL", "source": "UC_INSP_ENT.NUMCTL", "type": "text" },
+        { "name": "P117_PRTNUM", "source": "UC_INSP_ENT.PRTNUM", "type": "popup_lov" },
+        { "name": "P117_MUESTRA_SIZE_VER", "source": "UC_INSP_ENT.MUESTRA_SIZE_VER", "type": "number" },
+        { "name": "P117_NETWGT", "source": "UC_INSP_ENT.NETWGT", "type": "number" }
+      ],
+      "processes": [
+        { "name": "GUARDAR_INSPECCION", "file": "guardar_inspeccion.sql", "table": "UC_INSP_ENT" }
+      ]
+    }
+  ],
+  "reports": [
+    {
+      "name": "Usr-RptInspeccion",
+      "file": "Usr-RptInspeccion.jrxml",
+      "images": ["images/checkboxOn.png"]
+    }
+  ]
+}

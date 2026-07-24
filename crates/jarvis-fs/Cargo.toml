@@ -1,0 +1,18 @@
+[package]
+name = "jarvis-fs"
+version = "0.1.0"
+edition = "2021"
+description = "Secure filesystem scanning and hashing for the JARVIS Knowledge Engine"
+license = "MIT"
+
+# Its own workspace on purpose: this crate must build and test without pulling in
+# Tauri, so `cargo test -p jarvis-fs` works on machines that lack webkit2gtk.
+[workspace]
+
+[dependencies]
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

@@ -143,6 +143,12 @@ class EngineServer:
             worker.join(timeout=10)
 
     def _accept(self, text: str) -> None:
+        # PowerShell emits a UTF-8 BOM at the start of a stream when piping to a
+        # native executable, and plenty of Windows tooling writes one into files.
+        # Those three bytes are not JSON, so without this the *first* request of
+        # every such client failed while the rest went through — a baffling
+        # symptom for whoever hits it.
+        text = text.lstrip("﻿")
         try:
             request = json.loads(text)
         except json.JSONDecodeError as exc:

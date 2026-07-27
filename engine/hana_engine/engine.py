@@ -261,9 +261,30 @@ class KnowledgeEngine:
 def build_default_registry() -> AnalyzerRegistry:
     """Assemble the analyzer registry.
 
-    Empty until Etapa 2 registers the SQL, APEX, MOCA, JRXML and JSON analyzers.
-    The pipeline already runs whatever is registered here, so adding an analyzer
-    is a one-line change and needs no pipeline edits.
+    Registration order does not matter — the registry sorts by descending
+    priority — but the priorities do: a specific analyzer should see a file
+    before a generic one, so that the label recorded on the resulting knowledge
+    names the analyzer that actually understood the syntax.
+
+    Several analyzers may claim the same file, and that is intended. A ``.sql``
+    holding an APEX process is read by both :class:`SqlAnalyzer` (tables,
+    columns) and :class:`ApexAnalyzer` (items, page, column mappings); their
+    findings merge into one graph through the shared identity keys.
     """
+    from .analyzers.apex import ApexAnalyzer
+    from .analyzers.jrxml import JrxmlAnalyzer
+    from .analyzers.moca import MocaAnalyzer
+    from .analyzers.sql import SqlAnalyzer
+    from .analyzers.structured import CodeAnalyzer, JsonAnalyzer
+
     registry = AnalyzerRegistry()
+    for analyzer in (
+        JrxmlAnalyzer(),
+        MocaAnalyzer(),
+        SqlAnalyzer(),
+        ApexAnalyzer(),
+        JsonAnalyzer(),
+        CodeAnalyzer(),
+    ):
+        registry.register(analyzer)
     return registry

@@ -26,13 +26,25 @@ No es un chatbot. No es un servidor web. No usa OpenAI ni ninguna API externa.
 * Conserva todo el conocimiento al cerrar y reabrir la aplicación.
 * Funciona con el adaptador de red desconectado.
 
+* Extrae tablas y columnas Oracle, distinguiendo **lectura de escritura**.
+* Detecta items APEX (`:P117_NUMCTL`), infiere su página y, cuando el SQL lo
+  prueba, los conecta con la columna que alimentan.
+* Lee reportes JasperReports con un parser XML real: campos, parámetros,
+  variables, consultas, imágenes y subreportes — y avisa de campos usados sin
+  declarar y de parámetros declarados sin usar.
+* Descompone pipelines MOCA: comandos, variables `@x`, `publish data`,
+  `catch(@?)` y el SQL embebido.
+* Recorre JSON y código JavaScript/Python.
+
+Sobre las 5 carpetas de ejemplo produce **70 entidades, 143 relaciones y 242
+evidencias**, todas con archivo, línea y fragmento.
+
 ## Qué todavía no hace
 
-* Extraer tablas Oracle, items APEX o campos Jasper — falta la Etapa 2.
 * Mostrar el grafo interactivo — Etapa 3.
-* Visor de código y buscador global — Etapas 3 y 4.
+* Visor de código y buscador global en la interfaz — Etapas 3 y 4.
 
-El grafo actual contiene una entidad `File` por archivo analizado, con su
+La pantalla de inicio muestra los contadores reales, pero explorar el grafo
 evidencia. Es poco, pero es real: todo lo que se muestra viene de la base.
 
 ---

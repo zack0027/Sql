@@ -273,19 +273,25 @@ class JrxmlAnalyzer(Analyzer):
             sql = (element.text or "").strip()
             if not sql:
                 continue
-            line = line_of.get("queryString", 1)
-            span = SourceSpan(line, line)
+
+            # Where the query's text actually starts in the file. Anchoring every
+            # table on the `<queryString>` tag instead sent the reader to a line
+            # that does not mention the table at all — and "open the evidence and
+            # the proof is there" is the whole promise.
+            base_line = _content_line(context.content, sql, line_of.get("queryString", 1))
 
             cleaned = blank_noise(sql)
             excluded = cte_names(cleaned)
             for statement in find_statements(cleaned):
                 for reference in table_references(statement, excluded):
+                    line = base_line + sql[: reference.offset].count("\n")
+                    span = SourceSpan(line, line)
                     table = EntityDraft(
                         EntityType.ORACLE_TABLE,
                         reference.name,
                         span=span,
                         schema=reference.schema,
-                        evidence_snippet=_trim(sql),
+                        evidence_snippet=_line_text(context.content, line) or _trim(sql),
                     )
                     result.entities.append(table)
                     result.relationships.append(
@@ -294,7 +300,8 @@ class JrxmlAnalyzer(Analyzer):
                             relation_type=RelationType.REPORT_QUERIES_TABLE,
                             target_ref=table.ref,
                             span=span,
-                            evidence_snippet=_trim(sql),
+                            evidence_snippet=_line_text(context.content, line)
+                            or _trim(sql),
                             confidence=CONFIRMED,
                         )
                     )
@@ -419,6 +426,41 @@ def _is_absolute(path: str) -> bool:
 def _stem(path: str) -> str:
     name = path.replace("\\", "/").rsplit("/", 1)[-1]
     return name.rsplit(".", 1)[0] if "." in name else name
+
+
+def _content_line(content: str, fragment: str, fallback: int) -> int:
+    """1-based line where ``fragment`` begins in ``content``.
+
+    ``ElementTree`` discards source positions, so the text is located again by
+    searching. Both sides are normalised to ``\\n`` first: XML parsers collapse
+    ``\\r\\n`` to ``\\n`` as the specification requires, so on a Windows checkout
+    the parsed text never matches the bytes on disk and every citation silently
+    fell back to the enclosing tag's line. Normalising does not shift line
+    numbers, since either ending is still one line break.
+
+    A miss falls back to the caller's guess rather than failing the analysis — a
+    slightly wrong citation is a bad answer, a crash is a lost file.
+    """
+    normalized = _normalize_newlines(content)
+    probe = _normalize_newlines(fragment)[:60].strip()
+    if not probe:
+        return fallback
+    index = normalized.find(probe)
+    if index == -1:
+        return fallback
+    return normalized.count("\n", 0, index) + 1
+
+
+def _normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _line_text(content: str, line: int) -> str:
+    """The text of one line, for use as an evidence snippet."""
+    lines = content.splitlines()
+    if 1 <= line <= len(lines):
+        return lines[line - 1].strip()
+    return ""
 
 
 def _trim(text: str, limit: int = 400) -> str:

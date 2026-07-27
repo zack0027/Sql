@@ -25,6 +25,7 @@ from .pipeline.orchestrator import (
     CancellationToken,
     ProgressCallback,
 )
+from .query import QueryEngine
 
 #: Name of the knowledge base file inside the data directory.
 DATABASE_FILENAME = "hana.db"
@@ -105,6 +106,8 @@ class KnowledgeEngine:
         self.repos = Repositories(self.connection)
         self.registry = registry if registry is not None else build_default_registry()
         self.pipeline = AnalysisPipeline(self.repos, self.registry)
+        #: Answers questions about the graph. Deterministic: no model involved.
+        self.queries = QueryEngine(self.connection)
 
     def close(self) -> None:
         self.connection.close()

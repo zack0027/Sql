@@ -48,6 +48,14 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      # The engine has no runtime dependencies, but the test suite needs pytest
+      # and the packaging step needs PyInstaller — neither ships with the runner.
+      - name: Install the engine
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "engine[dev]"
+          python -m pip install pyinstaller
+
       # The three suites are independent of each other's toolchains, so a
       # failure here points at exactly one layer.
       - name: Test the engine
@@ -65,10 +73,7 @@ jobs:
       # Freezing the engine is what lets the installer run on a machine with no
       # Python. The script verifies the binary answers a ping before continuing.
       - name: Freeze the Python engine
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python scripts/build_sidecar.py --triple x86_64-pc-windows-msvc
+        run: python scripts/build_sidecar.py --triple x86_64-pc-windows-msvc
 
       - name: Build the application
         run: pnpm --filter @jarvis/desktop tauri:build
@@ -76,15 +81,22 @@ jobs:
       - name: Collect the installers
         shell: bash
         run: |
-          mkdir -p artifacts
-          find apps/desktop/src-tauri/target/release/bundle -type f \
-            \( -name '*.msi' -o -name '*.exe' \) -exec cp {} artifacts/ \;
-          # The portable executable is useful for a quick trial without installing.
-          cp "apps/desktop/src-tauri/target/release/JARVIS Knowledge Engine.exe" \
-            "artifacts/JARVIS-Knowledge-Engine-portable.exe" || true
-          cp apps/desktop/src-tauri/binaries/jarvis-engine-x86_64-pc-windows-msvc.exe \
-            artifacts/ || true
-          ls -la artifacts
+          set -euo pipefail
+          release=apps/desktop/src-tauri/target/release
+          echo "== contenido de $release =="
+          ls -la "$release" | head -30
+
+          mkdir -p artifacts/portable
+          find "$release/bundle" -type f \( -name '*.msi' -o -name '*.exe' \) \
+            -exec cp {} artifacts/ \;
+
+          # Portable copy: the application will not start without the engine
+          # next to it, so both files travel together or neither does.
+          cp "$release/jarvis-desktop.exe" artifacts/portable/
+          cp "$release/jarvis-engine.exe" artifacts/portable/
+
+          echo "== artefactos =="
+          find artifacts -type f -exec ls -la {} \;
 
       - uses: actions/upload-artifact@v4
         with:

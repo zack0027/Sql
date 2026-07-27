@@ -9,6 +9,8 @@
     "build": "pnpm --filter @jarvis/desktop build",
     "tauri:dev": "pnpm --filter @jarvis/desktop tauri:dev",
     "tauri:build": "pnpm --filter @jarvis/desktop tauri:build",
+    "build:sidecar": "python scripts/build_sidecar.py",
+    "build:desktop": "python scripts/build_sidecar.py && pnpm --filter @jarvis/desktop tauri:build",
     "typecheck": "pnpm -r typecheck",
     "test:ui": "pnpm --filter @jarvis/desktop test",
     "test:engine": "python -m pytest engine/tests",

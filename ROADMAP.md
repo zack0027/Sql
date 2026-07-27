@@ -106,14 +106,18 @@ Fase 5.
 
 ---
 
-## Etapa 5 — Empaquetado
+## Etapa 5 — Empaquetado (adelantada parcialmente)
 
-Fase 6. **El riesgo técnico más alto del proyecto.**
+Fase 6. Era **el riesgo técnico más alto del proyecto** (R2) y se adelantó para
+poder distribuir una versión de prueba.
 
-- [ ] Congelar el motor con PyInstaller como binario `externalBin`
-- [ ] Instalador de Windows (MSI y NSIS)
-- [ ] Verificar el arranque en frío sin Python instalado
+- [x] Congelar el motor con PyInstaller como binario `externalBin`
+- [x] Verificado: la aplicación empaquetada arranca el motor congelado, aplica
+      las migraciones y crea la base — sin Python en el proceso
+- [x] Flujo de trabajo de GitHub Actions que compila el instalador de Windows
+- [ ] Instalador de Windows verificado a mano sobre Windows real
 - [ ] Verificar funcionamiento con el adaptador de red desconectado
+- [ ] Firma de código (Windows marcará el ejecutable como no firmado)
 - [ ] Documentar la instalación para usuarios no técnicos
 
 ---

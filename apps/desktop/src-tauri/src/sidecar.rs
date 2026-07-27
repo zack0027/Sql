@@ -228,14 +228,38 @@ fn resolve_engine_command() -> (String, Vec<String>) {
     )
 }
 
+/// Locate the frozen engine that ships with the application.
+///
+/// Tauri copies an `externalBin` next to the executable with the target-triple
+/// suffix stripped, so the plain name is checked first. During `tauri dev` the
+/// binary can still be sitting in `binaries/` under its full name, so the
+/// directory is also scanned by prefix rather than hard-coding a triple this
+/// crate has no clean way to know at runtime.
 fn bundled_engine_path() -> Option<PathBuf> {
     let executable = std::env::current_exe().ok()?;
     let directory = executable.parent()?;
-    let name = if cfg!(windows) {
+
+    let plain = directory.join(if cfg!(windows) {
         "jarvis-engine.exe"
     } else {
         "jarvis-engine"
-    };
-    let candidate = directory.join(name);
-    candidate.exists().then_some(candidate)
+    });
+    if plain.is_file() {
+        return Some(plain);
+    }
+
+    for folder in [directory, &directory.join("binaries")] {
+        let Ok(entries) = std::fs::read_dir(folder) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("jarvis-engine") && entry.path().is_file() {
+                return Some(entry.path());
+            }
+        }
+    }
+
+    None
 }

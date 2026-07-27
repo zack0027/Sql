@@ -130,6 +130,26 @@ base de conocimiento.
 
 ---
 
+### Generar un ejecutable
+
+```bash
+python -m pip install pyinstaller
+pnpm build:desktop
+```
+
+Congela el motor Python en un binario propio y lo empaqueta dentro de la
+aplicación, de modo que **el instalador resultante no necesita Python** en la
+máquina destino. Los artefactos quedan en
+`apps/desktop/src-tauri/target/release/bundle/`.
+
+Para Windows sin tener Windows: el flujo de trabajo
+[`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml)
+compila el instalador `.msi`/`.exe` en un runner de GitHub. Se dispara desde la
+pestaña *Actions* → *Build Windows* → *Run workflow*, o publicando una etiqueta
+`v*`, que además crea una release con los archivos adjuntos.
+
+---
+
 ## Pruebas
 
 ```bash

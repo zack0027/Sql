@@ -32,3 +32,7 @@ apps/desktop/src-tauri/gen/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Frozen sidecar (built by scripts/build_sidecar.py, never committed)
+apps/desktop/src-tauri/binaries/
+build/

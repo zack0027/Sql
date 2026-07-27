@@ -115,7 +115,10 @@ poder distribuir una versión de prueba.
 - [x] Verificado: la aplicación empaquetada arranca el motor congelado, aplica
       las migraciones y crea la base — sin Python en el proceso
 - [x] Flujo de trabajo de GitHub Actions que compila el instalador de Windows
-- [ ] Instalador de Windows verificado a mano sobre Windows real
+- [x] Instalador `.msi` y `.exe` producidos en verde sobre windows-latest, con
+      las 155 pruebas del motor pasando en Windows
+- [ ] Instalador verificado a mano sobre un Windows real (pendiente: nadie lo
+      ha ejecutado todavía)
 - [ ] Verificar funcionamiento con el adaptador de red desconectado
 - [ ] Firma de código (Windows marcará el ejecutable como no firmado)
 - [ ] Documentar la instalación para usuarios no técnicos

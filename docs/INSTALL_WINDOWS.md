@@ -11,11 +11,15 @@ motor viaja congelado dentro del instalador.
    `jarvis-knowledge-engine-windows`.
 4. Descomprime el `.zip`. Dentro encontrarás:
 
-| Archivo | Qué es |
-|---|---|
-| `JARVIS Knowledge Engine_0.1.0_x64_en-US.msi` | Instalador MSI |
-| `JARVIS Knowledge Engine_0.1.0_x64-setup.exe` | Instalador NSIS |
-| `jarvis-engine-x86_64-pc-windows-msvc.exe` | El motor suelto, para la CLI |
+| Archivo | Tamaño | Qué es |
+|---|---|---|
+| `JARVIS Knowledge Engine_0.1.0_x64_en-US.msi` | 10,8 MB | Instalador MSI |
+| `JARVIS Knowledge Engine_0.1.0_x64-setup.exe` | 10,3 MB | Instalador NSIS |
+| `portable/jarvis-desktop.exe` | 3,5 MB | Aplicación, sin instalar |
+| `portable/jarvis-engine.exe` | 9,1 MB | Motor congelado |
+
+Los dos archivos de `portable/` **deben quedar en la misma carpeta**: la
+aplicación busca el motor junto a su propio ejecutable y no arranca sin él.
 
 Los artefactos de GitHub Actions **caducan a los 30 días** y requieren haber
 iniciado sesión en GitHub para descargarlos.
@@ -83,10 +87,10 @@ encuentra.
 
 ## 5. Usar el motor desde la terminal
 
-El motor suelto del artefacto funciona sin la interfaz:
+El motor congelado funciona sin la interfaz:
 
 ```powershell
-.\jarvis-engine-x86_64-pc-windows-msvc.exe C:\ruta\jarvis.db
+.\portable\jarvis-engine.exe C:\ruta\jarvis.db
 ```
 
 Queda a la espera de líneas JSON. Para probarlo:

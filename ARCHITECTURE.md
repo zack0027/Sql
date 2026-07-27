@@ -1,8 +1,8 @@
-# Arquitectura — JARVIS Knowledge Engine
+# Arquitectura — HANA Knowledge Engine
 
 ## 1. Idea central
 
-JARVIS no es un chatbot con acceso a archivos. Es un **motor de conocimiento**:
+HANA no es un chatbot con acceso a archivos. Es un **motor de conocimiento**:
 lee proyectos técnicos, los convierte en entidades y relaciones con procedencia
 verificable, y guarda ese grafo localmente.
 
@@ -18,7 +18,7 @@ Un modelo de lenguaje es opcional y sustituible. El grafo no lo es.
 ┌───────────────────────────▼──────────────────────────────────┐
 │  Host nativo (Rust + Tauri 2)                                │
 │  · Frontera de seguridad: raíces permitidas                  │
-│  · Escaneo y hashing (crates/jarvis-fs)                      │
+│  · Escaneo y hashing (crates/hana-fs)                      │
 │  · Ciclo de vida del proceso motor                           │
 │  · No escribe en la base de conocimiento                     │
 └───────────────────────────┬──────────────────────────────────┘
@@ -39,17 +39,17 @@ Un modelo de lenguaje es opcional y sustituible. El grafo no lo es.
 
 | Capa | Ubicación | Puede depender de | Nunca depende de |
 |---|---|---|---|
-| Dominio | `engine/jarvis_engine/domain/` | stdlib | persistencia, Tauri, UI |
-| Persistencia | `engine/jarvis_engine/persistence/` | dominio, sqlite3 | analizadores, UI |
-| Indexación | `engine/jarvis_engine/indexing/` | dominio | persistencia, UI |
-| Analizadores | `engine/jarvis_engine/analyzers/` | dominio | persistencia, red, disco |
-| Pipeline | `engine/jarvis_engine/pipeline/` | todas las anteriores | Tauri, UI |
-| Host nativo | `apps/desktop/src-tauri/` | `jarvis-fs`, Tauri | el motor como biblioteca |
-| Seguridad FS | `crates/jarvis-fs/` | stdlib, sha2, serde | Tauri, el motor |
-| UI | `apps/desktop/src/` | `@jarvis/shared-types` | SQLite, analizadores |
+| Dominio | `engine/hana_engine/domain/` | stdlib | persistencia, Tauri, UI |
+| Persistencia | `engine/hana_engine/persistence/` | dominio, sqlite3 | analizadores, UI |
+| Indexación | `engine/hana_engine/indexing/` | dominio | persistencia, UI |
+| Analizadores | `engine/hana_engine/analyzers/` | dominio | persistencia, red, disco |
+| Pipeline | `engine/hana_engine/pipeline/` | todas las anteriores | Tauri, UI |
+| Host nativo | `apps/desktop/src-tauri/` | `hana-fs`, Tauri | el motor como biblioteca |
+| Seguridad FS | `crates/hana-fs/` | stdlib, sha2, serde | Tauri, el motor |
+| UI | `apps/desktop/src/` | `@hana/shared-types` | SQLite, analizadores |
 
 La regla que las hace verificables: **`pytest engine/tests` corre sin Node y sin
-Rust; `cargo test -p jarvis-fs` corre sin Tauri y sin Python; `vitest` corre sin
+Rust; `cargo test -p hana-fs` corre sin Tauri y sin Python; `vitest` corre sin
 ninguno de los dos.**
 
 ## 3. Modelo de dominio
@@ -97,7 +97,7 @@ identity_key = tipo | esquema | contenedor | nombre_normalizado
   Oracle, APEX y MOCA son insensibles a mayúsculas.
 * Un componente vacío significa *desconocido*, y **desconocido nunca coincide con
   conocido**: `UC_INSP_ENT` sin esquema no se fusiona con `WMS.UC_INSP_ENT`. Ante
-  ambigüedad, JARVIS prefiere dos entidades separadas a una fusión inventada.
+  ambigüedad, HANA prefiere dos entidades separadas a una fusión inventada.
 
 Al fusionar, la primera grafía observada se conserva y **la confianza solo sube**:
 un avistamiento débil no degrada un hecho probado por un `INSERT INTO`.
@@ -155,7 +155,7 @@ no puede vaciar el grafo.
 ```
  1. El usuario selecciona una carpeta   (diálogo del SO)
  2. Rust canonicaliza la ruta           → raíz permitida
- 3. Rust recorre el árbol               (jarvis-fs, ignora, limita, hashea)
+ 3. Rust recorre el árbol               (hana-fs, ignora, limita, hashea)
  4. Rust envía el inventario            (JSON-Lines)
  5. El motor deriva el tipo de archivo  (una sola tabla, en Python)
  6. El motor compara contra SQLite      → nuevo | modificado | igual | borrado
@@ -181,7 +181,7 @@ Tablas: `projects`, `files`, `file_versions`, `entities`, `relationships`,
 (contenido externo + triggers).
 
 Migraciones versionadas y numeradas en
-`engine/jarvis_engine/persistence/migrations/`, aplicadas en orden y registradas
+`engine/hana_engine/persistence/migrations/`, aplicadas en orden y registradas
 en `schema_migrations`. Son idempotentes.
 
 ### Nota sobre el tokenizador
@@ -213,7 +213,7 @@ Protocolo completo: [`docs/IPC_PROTOCOL.md`](docs/IPC_PROTOCOL.md).
 
 El escaneo existe en dos implementaciones, y eso es intencional:
 
-* **Rust (`crates/jarvis-fs`)** es la ruta de producción de la aplicación de
+* **Rust (`crates/hana-fs`)** es la ruta de producción de la aplicación de
   escritorio. Es la frontera de seguridad, es rápida y es cancelable sin bloquear
   la interfaz.
 * **Python (`indexing/scanner.py`)** es la ruta *headless*: la CLI y la suite de
@@ -268,7 +268,7 @@ grafo.
 | # | Decisión | Razón |
 |---|---|---|
 | D1 | Rust escanea, Python persiste | Rendimiento y seguridad en Rust; el conocimiento en un solo lenguaje |
-| D2 | `jarvis-fs` sin dependencia de Tauri | Auditable y testeable donde Tauri no compila |
+| D2 | `hana-fs` sin dependencia de Tauri | Auditable y testeable donde Tauri no compila |
 | D3 | Un solo escritor de SQLite | Evita corrupción y bloqueos cruzados |
 | D4 | JSON-Lines en vez de HTTP | No abre puertos; empaquetado trivial |
 | D5 | ULID en vez de UUIDv4 | Ordenable por tiempo; los índices no se fragmentan |

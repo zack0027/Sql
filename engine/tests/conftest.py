@@ -13,15 +13,15 @@ REPO_ROOT = ENGINE_ROOT.parent
 if str(ENGINE_ROOT) not in sys.path:
     sys.path.insert(0, str(ENGINE_ROOT))
 
-from jarvis_engine.domain.analysis import AnalyzerRegistry  # noqa: E402
-from jarvis_engine.engine import KnowledgeEngine  # noqa: E402
-from jarvis_engine.persistence.database import open_knowledge_base  # noqa: E402
-from jarvis_engine.persistence.repositories import Repositories  # noqa: E402
+from hana_engine.domain.analysis import AnalyzerRegistry  # noqa: E402
+from hana_engine.engine import KnowledgeEngine  # noqa: E402
+from hana_engine.persistence.database import open_knowledge_base  # noqa: E402
+from hana_engine.persistence.repositories import Repositories  # noqa: E402
 
 
 @pytest.fixture
 def db_path(tmp_path: Path) -> Path:
-    return tmp_path / "knowledge" / "jarvis.db"
+    return tmp_path / "knowledge" / "hana.db"
 
 
 @pytest.fixture

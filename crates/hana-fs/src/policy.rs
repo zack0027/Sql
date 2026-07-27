@@ -1,6 +1,6 @@
 //! Scan limits.
 //!
-//! This mirrors `jarvis_engine.indexing.policy.ScanPolicy` field for field. The
+//! This mirrors `hana_engine.indexing.policy.ScanPolicy` field for field. The
 //! shared invariants are written down in `docs/SCAN_CONTRACT.md`; changing one
 //! side without the other is a bug.
 

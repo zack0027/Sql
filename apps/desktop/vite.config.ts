@@ -10,7 +10,7 @@ export default defineConfig({
   clearScreen: false,
   resolve: {
     alias: {
-      '@jarvis/shared-types': fileURLToPath(
+      '@hana/shared-types': fileURLToPath(
         new URL('../../packages/shared-types/src/index.ts', import.meta.url),
       ),
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from jarvis_engine.domain.analysis import (
+from hana_engine.domain.analysis import (
     AnalysisContext,
     AnalysisResult,
     Analyzer,
@@ -16,9 +16,9 @@ from jarvis_engine.domain.analysis import (
     RelationshipDraft,
     SourceSpan,
 )
-from jarvis_engine.domain.confidence import CONFIRMED, STRONG_INFERENCE
-from jarvis_engine.domain.models import FileRecord, ScannedFile
-from jarvis_engine.domain.types import (
+from hana_engine.domain.confidence import CONFIRMED, STRONG_INFERENCE
+from hana_engine.domain.models import FileRecord, ScannedFile
+from hana_engine.domain.types import (
     AnalysisRunStatus,
     ChangeKind,
     EntityType,
@@ -28,8 +28,8 @@ from jarvis_engine.domain.types import (
     SkipReason,
     VerificationStatus,
 )
-from jarvis_engine.pipeline.changes import diff
-from jarvis_engine.pipeline.orchestrator import CancellationToken
+from hana_engine.pipeline.changes import diff
+from hana_engine.pipeline.orchestrator import CancellationToken
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +225,7 @@ def sql_project(tmp_path: Path) -> Path:
 
 
 def _engine_with(db_path: Path, *analyzers: Analyzer):
-    from jarvis_engine.engine import KnowledgeEngine
+    from hana_engine.engine import KnowledgeEngine
 
     registry = AnalyzerRegistry()
     for analyzer in analyzers:
@@ -514,7 +514,7 @@ class TestPipeline:
 
     def test_an_externally_supplied_inventory_is_accepted(self, db_path, sql_project):
         """The path the Rust scanner uses: the engine never walks the disk itself."""
-        from jarvis_engine.indexing.scanner import scan_project
+        from hana_engine.indexing.scanner import scan_project
 
         inventory = scan_project(sql_project).files
         with _engine_with(db_path, TableAnalyzer()) as engine:
@@ -532,7 +532,7 @@ class TestEngineFacade:
             assert first.id == second.id
 
     def test_opening_a_missing_folder_is_a_clean_error(self, db_path, tmp_path):
-        from jarvis_engine.engine import ProjectPathError
+        from hana_engine.engine import ProjectPathError
 
         with _engine_with(db_path) as engine:
             with pytest.raises(ProjectPathError):
@@ -572,7 +572,7 @@ class TestEngineFacade:
             assert tree["a.sql"]["analysis_status"] == FileAnalysisStatus.ANALYZED.value
 
     def test_scan_policy_is_persisted_per_project(self, db_path, sql_project):
-        from jarvis_engine.indexing.policy import ScanPolicy
+        from hana_engine.indexing.policy import ScanPolicy
 
         with _engine_with(db_path) as engine:
             project = engine.open_project(sql_project)
@@ -586,7 +586,7 @@ def _all_relationships(engine, project_id):
         "SELECT * FROM relationships WHERE project_id = ? AND relation_type = ?",
         (project_id, RelationType.QUERY_READS_TABLE.value),
     ).fetchall()
-    from jarvis_engine.domain.models import Relationship
+    from hana_engine.domain.models import Relationship
 
     return [Relationship.from_row(row) for row in rows]
 

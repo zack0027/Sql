@@ -1,6 +1,6 @@
-"""Scan policy — the single definition of what JARVIS is allowed to read.
+"""Scan policy — the single definition of what HANA is allowed to read.
 
-Both scanners (the Rust one in ``crates/jarvis-fs`` and the Python one next
+Both scanners (the Rust one in ``crates/hana-fs`` and the Python one next
 door) implement this policy. It is written down once, here and in
 ``docs/SCAN_CONTRACT.md``, so the two cannot drift silently.
 """

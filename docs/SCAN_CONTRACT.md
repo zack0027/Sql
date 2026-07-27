@@ -1,8 +1,8 @@
 # Contrato de escaneo
 
 El recorrido de directorios existe dos veces: en Rust
-(`crates/jarvis-fs/src/scanner.rs`) para la aplicación de escritorio, y en Python
-(`engine/jarvis_engine/indexing/scanner.py`) para la CLI y las pruebas.
+(`crates/hana-fs/src/scanner.rs`) para la aplicación de escritorio, y en Python
+(`engine/hana_engine/indexing/scanner.py`) para la CLI y las pruebas.
 
 Este documento es la fuente de verdad de lo que ambos deben cumplir. **Cualquier
 cambio de comportamiento se escribe aquí primero.**
@@ -38,7 +38,7 @@ cambio de comportamiento se escribe aquí primero.**
 I14: **Rust no clasifica tipos de archivo.** El registro serializado no incluye
 `detected_type`; el motor lo deriva de la ruta al ingerir el inventario
 (`AnalysisPipeline._typed`). La tabla de extensiones existe una sola vez, en
-`engine/jarvis_engine/indexing/file_types.py`.
+`engine/hana_engine/indexing/file_types.py`.
 
 Prueba: `records_serialise_to_the_shape_the_engine_parses`.
 

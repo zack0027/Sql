@@ -1,4 +1,4 @@
-# Roadmap — JARVIS Knowledge Engine
+# Roadmap — HANA Knowledge Engine
 
 Estado: **Etapa 1 completa.** Base ejecutable, motor incremental, persistencia,
 seguridad del sistema de archivos y pantalla de inicio.
@@ -13,7 +13,7 @@ Fases 1 y 2 de la especificación.
 - [x] Modelo de dominio: entidades, relaciones, evidencia, confianza, ULID
 - [x] Esquema SQLite con migraciones versionadas, índices y FTS5
 - [x] Repositorios con deduplicación por `identity_key`
-- [x] Escáner seguro en Rust (`crates/jarvis-fs`) con SHA-256 y cancelación
+- [x] Escáner seguro en Rust (`crates/hana-fs`) con SHA-256 y cancelación
 - [x] Escáner headless en Python para la CLI y las pruebas
 - [x] Detección incremental: nuevo / modificado / sin cambios / eliminado
 - [x] Historial de versiones de archivo y de ejecuciones

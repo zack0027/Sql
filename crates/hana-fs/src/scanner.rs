@@ -1,6 +1,6 @@
 //! The directory walk and SHA-256 hashing.
 //!
-//! Produces exactly the record shape `jarvis_engine.domain.models.ScannedFile`
+//! Produces exactly the record shape `hana_engine.domain.models.ScannedFile`
 //! parses. Note what is *absent*: no `detected_type`. File typing belongs to the
 //! engine, which derives it from the path, so the extension table exists in one
 //! language only.
@@ -22,7 +22,7 @@ const HASH_CHUNK_BYTES: usize = 1024 * 1024;
 
 /// Why the scanner declined to hash or analyse a file.
 ///
-/// Serialised in snake_case to match `jarvis_engine.domain.types.SkipReason`.
+/// Serialised in snake_case to match `hana_engine.domain.types.SkipReason`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SkipReason {

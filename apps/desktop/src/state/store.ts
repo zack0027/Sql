@@ -15,7 +15,7 @@ import type {
   ProgressEvent,
   Project,
   ProjectStats,
-} from '@jarvis/shared-types';
+} from '@hana/shared-types';
 
 import { getClient } from '../api/client';
 

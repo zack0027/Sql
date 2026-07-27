@@ -16,7 +16,7 @@ import type {
   Project,
   ProjectStats,
   ScanPolicy,
-} from '@jarvis/shared-types';
+} from '@hana/shared-types';
 
 export interface EngineClient {
   /** True when a real engine is behind this client. */
@@ -109,7 +109,7 @@ class TauriEngineClient implements EngineClient {
 
     void (async () => {
       const { listen } = await import('@tauri-apps/api/event');
-      const unlisten = await listen<ProgressEvent>('jarvis://progress', (event) =>
+      const unlisten = await listen<ProgressEvent>('hana://progress', (event) =>
         handler(event.payload),
       );
       if (cancelled) unlisten();

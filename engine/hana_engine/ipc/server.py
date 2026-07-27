@@ -2,7 +2,7 @@
 
 The desktop app talks to the engine over stdin/stdout, one JSON object per line.
 No sockets, no ports, no HTTP server — which is both simpler to package and the
-reason JARVIS opens no network listener at all.
+reason HANA opens no network listener at all.
 
 Wire format
 -----------
@@ -125,7 +125,7 @@ class EngineServer:
 
     def serve(self, stream: Iterable[str] | None = None) -> None:
         """Read requests until the input closes."""
-        worker = threading.Thread(target=self._work, name="jarvis-engine", daemon=True)
+        worker = threading.Thread(target=self._work, name="hana-engine", daemon=True)
         worker.start()
 
         source = stream if stream is not None else sys.stdin
@@ -354,7 +354,7 @@ class EngineServer:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point used by the Tauri host: ``python -m jarvis_engine.ipc.server``."""
+    """Entry point used by the Tauri host: ``python -m hana_engine.ipc.server``."""
     args = argv if argv is not None else sys.argv[1:]
     db_path = args[0] if args else None
     EngineServer(db_path=db_path).serve()

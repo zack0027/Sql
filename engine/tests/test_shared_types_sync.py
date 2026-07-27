@@ -13,13 +13,13 @@ from pathlib import Path
 
 import pytest
 
-from jarvis_engine.domain.confidence import (
+from hana_engine.domain.confidence import (
     CONFIRMED,
     MENTION,
     PROBABLE_INFERENCE,
     STRONG_INFERENCE,
 )
-from jarvis_engine.domain.types import (
+from hana_engine.domain.types import (
     AnalysisRunStatus,
     ChangeKind,
     EntityType,

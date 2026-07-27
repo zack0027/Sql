@@ -24,7 +24,7 @@ use tauri::{AppHandle, Emitter};
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(600);
 
 /// Event name the frontend listens on for analysis progress.
-const PROGRESS_EVENT: &str = "jarvis://progress";
+const PROGRESS_EVENT: &str = "hana://progress";
 
 type Pending = Arc<Mutex<HashMap<String, Sender<Result<Value, String>>>>>;
 
@@ -73,7 +73,7 @@ impl Sidecar {
             let pending = Arc::clone(&pending);
             let app = app.clone();
             std::thread::Builder::new()
-                .name("jarvis-sidecar-reader".into())
+                .name("hana-sidecar-reader".into())
                 .spawn(move || {
                     let reader = BufReader::new(stdout);
                     for line in reader.lines() {
@@ -100,7 +100,7 @@ impl Sidecar {
         // the host log is what makes a Python traceback findable.
         if let Some(stderr) = stderr {
             std::thread::Builder::new()
-                .name("jarvis-sidecar-stderr".into())
+                .name("hana-sidecar-stderr".into())
                 .spawn(move || {
                     for line in BufReader::new(stderr).lines().map_while(Result::ok) {
                         eprintln!("[engine] {line}");
@@ -200,11 +200,11 @@ fn dispatch(app: &AppHandle, pending: &Pending, frame: Value) {
 /// Decide how to launch the engine.
 ///
 /// Three cases, in order:
-/// 1. `JARVIS_ENGINE_CMD` — an explicit override, used by integration tests.
-/// 2. A bundled `jarvis-engine` binary next to the executable — the packaged app.
-/// 3. `python -m jarvis_engine.ipc.server` — the development checkout.
+/// 1. `HANA_ENGINE_CMD` — an explicit override, used by integration tests.
+/// 2. A bundled `hana-engine` binary next to the executable — the packaged app.
+/// 3. `python -m hana_engine.ipc.server` — the development checkout.
 fn resolve_engine_command() -> (String, Vec<String>) {
-    if let Ok(custom) = std::env::var("JARVIS_ENGINE_CMD") {
+    if let Ok(custom) = std::env::var("HANA_ENGINE_CMD") {
         let mut parts = custom.split_whitespace().map(str::to_string);
         if let Some(program) = parts.next() {
             return (program, parts.collect());
@@ -215,7 +215,7 @@ fn resolve_engine_command() -> (String, Vec<String>) {
         return (bundled.to_string_lossy().to_string(), Vec::new());
     }
 
-    let python = std::env::var("JARVIS_PYTHON").unwrap_or_else(|_| {
+    let python = std::env::var("HANA_PYTHON").unwrap_or_else(|_| {
         if cfg!(windows) {
             "python".to_string()
         } else {
@@ -224,7 +224,7 @@ fn resolve_engine_command() -> (String, Vec<String>) {
     });
     (
         python,
-        vec!["-m".to_string(), "jarvis_engine.ipc.server".to_string()],
+        vec!["-m".to_string(), "hana_engine.ipc.server".to_string()],
     )
 }
 
@@ -240,9 +240,9 @@ fn bundled_engine_path() -> Option<PathBuf> {
     let directory = executable.parent()?;
 
     let plain = directory.join(if cfg!(windows) {
-        "jarvis-engine.exe"
+        "hana-engine.exe"
     } else {
-        "jarvis-engine"
+        "hana-engine"
     });
     if plain.is_file() {
         return Some(plain);
@@ -255,7 +255,7 @@ fn bundled_engine_path() -> Option<PathBuf> {
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if name.starts_with("jarvis-engine") && entry.path().is_file() {
+            if name.starts_with("hana-engine") && entry.path().is_file() {
                 return Some(entry.path());
             }
         }

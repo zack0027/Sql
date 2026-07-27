@@ -15,7 +15,7 @@ from enum import StrEnum
 
 
 class EntityType(StrEnum):
-    """Kinds of identifiable things JARVIS can find."""
+    """Kinds of identifiable things HANA can find."""
 
     PROJECT = "Project"
     FILE = "File"
@@ -84,7 +84,7 @@ class RelationType(StrEnum):
 class VerificationStatus(StrEnum):
     """How a piece of knowledge came to exist.
 
-    ``CONFIRMED`` means direct syntax proved it. ``INFERRED`` means JARVIS
+    ``CONFIRMED`` means direct syntax proved it. ``INFERRED`` means HANA
     deduced it from a convention or heuristic. ``MANUAL`` means a human asserted
     it. Nothing is ever silently promoted between these.
     """

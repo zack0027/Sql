@@ -86,9 +86,9 @@ la seguridad es la cola, no la bandera.
 
 `sidecar.rs` resuelve el ejecutable en este orden:
 
-1. `JARVIS_ENGINE_CMD` — sobrescritura explícita (pruebas de integración).
-2. Un binario `jarvis-engine` junto al ejecutable — la aplicación empaquetada.
-3. `python -m jarvis_engine.ipc.server` — el árbol de desarrollo.
+1. `HANA_ENGINE_CMD` — sobrescritura explícita (pruebas de integración).
+2. Un binario `hana-engine` junto al ejecutable — la aplicación empaquetada.
+3. `python -m hana_engine.ipc.server` — el árbol de desarrollo.
 
 Siempre con `PYTHONUNBUFFERED=1`; sin eso las respuestas se quedan en el búfer del
 hijo. En Windows se añade `CREATE_NO_WINDOW` para que no aparezca una consola.
@@ -109,5 +109,5 @@ cd engine
 printf '%s\n' \
   '{"id":"1","method":"engine.ping"}' \
   '{"id":"2","method":"project.open","params":{"path":"../fixtures"}}' \
-| python -m jarvis_engine.ipc.server /tmp/jarvis.db
+| python -m hana_engine.ipc.server /tmp/hana.db
 ```

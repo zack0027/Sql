@@ -82,9 +82,9 @@ export function HomeView(): JSX.Element {
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <div className={styles.mark}>JK</div>
+          <div className={styles.mark}>HK</div>
           <div>
-            <h1 className={styles.title}>JARVIS Knowledge Engine</h1>
+            <h1 className={styles.title}>HANA Knowledge Engine</h1>
             <p className={styles.subtitle}>
               Motor de conocimiento técnico local · análisis estático · sin conexión
             </p>
@@ -188,7 +188,7 @@ export function HomeView(): JSX.Element {
                 <span className={styles.emptyTitle}>Ningún proyecto todavía</span>
                 <span className={styles.emptyText}>
                   Selecciona una carpeta con archivos SQL, PL/SQL, JRXML, MOCA, JSON o
-                  código. JARVIS la escanea localmente, calcula el hash de cada archivo y
+                  código. HANA la escanea localmente, calcula el hash de cada archivo y
                   construye el grafo de conocimiento sin enviar nada fuera del equipo.
                 </span>
                 <button className={styles.primary} onClick={() => void openFolder()}>

@@ -2,14 +2,14 @@
 
 This is the headless scanner: it powers the CLI and the test suite so the engine
 can be exercised end to end without compiling Rust. In the packaged desktop app
-the same walk is performed by ``crates/jarvis-fs`` and the resulting inventory is
+the same walk is performed by ``crates/hana-fs`` and the resulting inventory is
 handed to the engine. Both obey :class:`~.policy.ScanPolicy` and produce
 :class:`~..domain.models.ScannedFile` records with identical semantics; the
 invariants they share are written down in ``docs/SCAN_CONTRACT.md``.
 
 Security posture: the scanner refuses to leave the project root. Every candidate
 path is resolved and checked against the root before it is opened, so a symlink,
-a junction or a crafted ``..`` component cannot make JARVIS read the user's home
+a junction or a crafted ``..`` component cannot make HANA read the user's home
 directory.
 """
 
@@ -186,7 +186,7 @@ def _walk(
 
             # A symlink is only followed when the policy allows it *and* its
             # target stays inside the project. Otherwise it is recorded as a
-            # skipped file so the user can see JARVIS chose not to read it.
+            # skipped file so the user can see HANA chose not to read it.
             if is_symlink and not policy.follow_symlinks:
                 yield _skipped(relative, entry_path, SkipReason.SYMLINK_ESCAPE)
                 continue

@@ -1,7 +1,7 @@
 """The engine facade.
 
 Everything above this module — the CLI, the IPC sidecar, and eventually the
-Tauri commands — talks to JARVIS through this class. It owns the connection, the
+Tauri commands — talks to HANA through this class. It owns the connection, the
 repositories, the analyzer registry and the pipeline, and it never imports
 anything from Tauri, React or the network.
 """
@@ -27,24 +27,24 @@ from .pipeline.orchestrator import (
 )
 
 #: Name of the knowledge base file inside the data directory.
-DATABASE_FILENAME = "jarvis.db"
+DATABASE_FILENAME = "hana.db"
 
 
 def default_data_directory() -> Path:
-    """Where JARVIS keeps its knowledge base when the caller does not say.
+    """Where HANA keeps its knowledge base when the caller does not say.
 
-    Respects ``JARVIS_DATA_DIR`` first — the packaged app sets it to Tauri's
+    Respects ``HANA_DATA_DIR`` first — the packaged app sets it to Tauri's
     per-user app-data folder so the database never lands next to the binary.
     """
-    override = os.environ.get("JARVIS_DATA_DIR")
+    override = os.environ.get("HANA_DATA_DIR")
     if override:
         return Path(override).expanduser()
     if os.name == "nt":
         base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-        return Path(base) / "JarvisKnowledgeEngine"
+        return Path(base) / "HanaKnowledgeEngine"
     xdg = os.environ.get("XDG_DATA_HOME")
     base_path = Path(xdg) if xdg else Path.home() / ".local" / "share"
-    return base_path / "jarvis-knowledge-engine"
+    return base_path / "hana-knowledge-engine"
 
 
 @dataclass
@@ -153,7 +153,7 @@ class KnowledgeEngine:
         return self.repos.projects.list_recent(limit)
 
     def delete_project(self, project_id: str) -> None:
-        """Forget a project and everything JARVIS learned from it.
+        """Forget a project and everything HANA learned from it.
 
         Only the knowledge base is touched; nothing on disk is removed.
         """

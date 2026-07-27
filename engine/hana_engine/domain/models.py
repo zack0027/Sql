@@ -48,7 +48,7 @@ def _loads(raw: str | None) -> dict[str, Any]:
 
 @dataclass
 class Project:
-    """A root folder that JARVIS has been pointed at."""
+    """A root folder that HANA has been pointed at."""
 
     id: str = field(default_factory=new_ulid)
     name: str = ""

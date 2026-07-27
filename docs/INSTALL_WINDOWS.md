@@ -1,6 +1,6 @@
 # Instalación en Windows
 
-Guía para probar JARVIS sin compilar nada. **No hace falta instalar Python**: el
+Guía para probar HANA sin compilar nada. **No hace falta instalar Python**: el
 motor viaja congelado dentro del instalador.
 
 ## 1. Descargar
@@ -8,15 +8,15 @@ motor viaja congelado dentro del instalador.
 1. Abre la pestaña **Actions** del repositorio.
 2. Entra en la ejecución más reciente de **Build Windows** que aparezca en verde.
 3. Al final de la página, en **Artifacts**, descarga
-   `jarvis-knowledge-engine-windows`.
+   `hana-knowledge-engine-windows`.
 4. Descomprime el `.zip`. Dentro encontrarás:
 
 | Archivo | Tamaño | Qué es |
 |---|---|---|
-| `JARVIS Knowledge Engine_0.1.0_x64_en-US.msi` | 10,8 MB | Instalador MSI |
-| `JARVIS Knowledge Engine_0.1.0_x64-setup.exe` | 10,3 MB | Instalador NSIS |
-| `portable/jarvis-desktop.exe` | 3,5 MB | Aplicación, sin instalar |
-| `portable/jarvis-engine.exe` | 9,1 MB | Motor congelado |
+| `HANA Knowledge Engine_0.1.0_x64_en-US.msi` | 10,8 MB | Instalador MSI |
+| `HANA Knowledge Engine_0.1.0_x64-setup.exe` | 10,3 MB | Instalador NSIS |
+| `portable/hana-desktop.exe` | 3,5 MB | Aplicación, sin instalar |
+| `portable/hana-engine.exe` | 9,1 MB | Motor congelado |
 
 Los dos archivos de `portable/` **deben quedar en la misma carpeta**: la
 aplicación busca el motor junto a su propio ejecutable y no arranca sin él.
@@ -50,7 +50,7 @@ Windows 10 actualizado. Si el instalador se queja, instala el
 
 ## 3. Probar
 
-1. Abre **JARVIS Knowledge Engine** desde el menú Inicio.
+1. Abre **HANA Knowledge Engine** desde el menú Inicio.
 2. Pulsa **Abrir proyecto** y elige una carpeta con archivos `.sql`, `.jrxml`,
    `.mcmd` o `.json`. Empieza por algo pequeño.
 3. Pulsa **Analizar proyecto**.
@@ -78,11 +78,11 @@ detección incremental y persistencia con procedencia.
 ## 4. Dónde queda el conocimiento
 
 ```
-%APPDATA%\JarvisKnowledgeEngine\jarvis.db
+%APPDATA%\HanaKnowledgeEngine\hana.db
 ```
 
 Borrar ese archivo borra todo lo aprendido. **No toca ningún archivo de tus
-proyectos**: JARVIS los abre en solo lectura y nunca ejecuta nada de lo que
+proyectos**: HANA los abre en solo lectura y nunca ejecuta nada de lo que
 encuentra.
 
 ## 5. Usar el motor desde la terminal
@@ -90,7 +90,7 @@ encuentra.
 El motor congelado funciona sin la interfaz:
 
 ```powershell
-.\portable\jarvis-engine.exe C:\ruta\jarvis.db
+.\portable\hana-engine.exe C:\ruta\hana.db
 ```
 
 Queda a la espera de líneas JSON. Para probarlo:
@@ -104,7 +104,7 @@ El protocolo completo está en [`IPC_PROTOCOL.md`](IPC_PROTOCOL.md).
 
 ## 6. Desinstalar
 
-Panel de control → *Aplicaciones* → **JARVIS Knowledge Engine** → Desinstalar.
+Panel de control → *Aplicaciones* → **HANA Knowledge Engine** → Desinstalar.
 La base de conocimiento en `%APPDATA%` no se borra automáticamente; elimínala a
 mano si quieres empezar de cero.
 

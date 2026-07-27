@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from jarvis_engine.domain.analysis import (
+from hana_engine.domain.analysis import (
     AnalysisContext,
     AnalysisResult,
     Analyzer,
@@ -12,7 +12,7 @@ from jarvis_engine.domain.analysis import (
     EntityDraft,
     SourceSpan,
 )
-from jarvis_engine.domain.confidence import (
+from hana_engine.domain.confidence import (
     CONFIRMED,
     MENTION,
     STRONG_INFERENCE,
@@ -20,15 +20,15 @@ from jarvis_engine.domain.confidence import (
     clamp,
     default_status_for,
 )
-from jarvis_engine.domain.ids import ULID_LENGTH, is_ulid, new_ulid, timestamp_of
-from jarvis_engine.domain.naming import (
+from hana_engine.domain.ids import ULID_LENGTH, is_ulid, new_ulid, timestamp_of
+from hana_engine.domain.naming import (
     entity_identity_key,
     normalize_name,
     normalize_relative_path,
     relationship_identity_key,
     split_qualified_name,
 )
-from jarvis_engine.domain.types import EntityType, RelationType, VerificationStatus
+from hana_engine.domain.types import EntityType, RelationType, VerificationStatus
 
 
 class TestUlid:

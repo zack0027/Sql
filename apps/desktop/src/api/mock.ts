@@ -16,7 +16,7 @@ import type {
   Project,
   ProjectStats,
   ScanPolicy,
-} from '@jarvis/shared-types';
+} from '@hana/shared-types';
 
 import type { EngineClient } from './client';
 

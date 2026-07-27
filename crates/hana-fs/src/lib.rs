@@ -1,4 +1,4 @@
-//! Secure filesystem access for the JARVIS Knowledge Engine.
+//! Secure filesystem access for the HANA Knowledge Engine.
 //!
 //! This crate is the security boundary between the desktop app and the user's
 //! disk. It walks a project folder, enforces the limits in [`ScanPolicy`],

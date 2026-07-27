@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from jarvis_engine.cli import main as cli_main
-from jarvis_engine.domain.analysis import AnalyzerRegistry
-from jarvis_engine.engine import KnowledgeEngine
-from jarvis_engine.ipc.server import EngineServer, LineWriter
+from hana_engine.cli import main as cli_main
+from hana_engine.domain.analysis import AnalyzerRegistry
+from hana_engine.engine import KnowledgeEngine
+from hana_engine.ipc.server import EngineServer, LineWriter
 
 
 class CapturingWriter(LineWriter):
@@ -28,7 +28,7 @@ class CapturingWriter(LineWriter):
 
     @staticmethod
     def _json_ready(payload: dict) -> dict:
-        from jarvis_engine.ipc.server import _encode
+        from hana_engine.ipc.server import _encode
 
         return _encode(payload)
 

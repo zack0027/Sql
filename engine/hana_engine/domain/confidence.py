@@ -1,6 +1,6 @@
 """Confidence bands.
 
-Every fact JARVIS records carries a number in ``[0, 1]``. The bands below are the
+Every fact HANA records carries a number in ``[0, 1]``. The bands below are the
 shared vocabulary between analyzers, the query layer and the UI. An analyzer that
 cannot justify its number should use :data:`MENTION` and say so.
 """

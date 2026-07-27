@@ -4,9 +4,9 @@ Everything the desktop app can do to a project, this CLI can do without Tauri,
 Node or a display. It is the fastest way to reproduce a bug and the reference
 implementation of the engine's public surface.
 
-    python -m jarvis_engine.cli open ./my-project
-    python -m jarvis_engine.cli analyze <project-id>
-    python -m jarvis_engine.cli status
+    python -m hana_engine.cli open ./my-project
+    python -m hana_engine.cli analyze <project-id>
+    python -m hana_engine.cli status
 """
 
 from __future__ import annotations
@@ -176,8 +176,8 @@ def command_history(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="jarvis",
-        description="JARVIS Knowledge Engine — motor de conocimiento local",
+        prog="hana",
+        description="HANA Knowledge Engine — motor de conocimiento local",
     )
     parser.add_argument("--db", help="ruta de la base de conocimiento")
     parser.add_argument("--json", action="store_true", help="salida en JSON")

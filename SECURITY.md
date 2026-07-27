@@ -1,6 +1,6 @@
-# Seguridad — JARVIS Knowledge Engine
+# Seguridad — HANA Knowledge Engine
 
-JARVIS lee código fuente ajeno: scripts de producción, exportaciones de Oracle,
+HANA lee código fuente ajeno: scripts de producción, exportaciones de Oracle,
 reportes, configuraciones. Ese material es sensible y a menudo no es de fiar. El
 modelo de seguridad parte de esa premisa.
 
@@ -9,7 +9,7 @@ modelo de seguridad parte de esa premisa.
 1. **Nada sale del equipo.** Sin API externas, sin telemetría, sin actualizaciones
    automáticas, sin sockets de red. La aplicación funciona con el adaptador de red
    desconectado.
-2. **Nada se ejecuta.** El análisis es estático. JARVIS no ejecuta SQL, PL/SQL,
+2. **Nada se ejecuta.** El análisis es estático. HANA no ejecuta SQL, PL/SQL,
    comandos MOCA, JavaScript, Python ni expresiones de JRXML.
 3. **Nada se modifica.** Los archivos analizados se abren en modo lectura. No hay
    ninguna ruta de código que escriba en el proyecto del usuario.
@@ -18,7 +18,7 @@ modelo de seguridad parte de esa premisa.
 
 ## 2. Frontera del sistema de archivos
 
-Implementada en `crates/jarvis-fs/src/security.rs` y aplicada en
+Implementada en `crates/hana-fs/src/security.rs` y aplicada en
 `apps/desktop/src-tauri/src/commands.rs`.
 
 ### Raíces permitidas
@@ -72,7 +72,7 @@ de la comprobación.
 
 Los archivos que exceden un límite **se inventarían igualmente**, con su
 `skip_reason`. El usuario debe poder ver que una exportación de 40 MB existe y
-que JARVIS decidió no leerla — un archivo omitido en silencio es peor que uno
+que HANA decidió no leerla — un archivo omitido en silencio es peor que uno
 señalado.
 
 ## 3. Aislamiento de los analizadores
@@ -139,7 +139,7 @@ ningún punto. Cuando la Etapa 4 incorpore Monaco, se configurará en solo lectu
 * **Historial append-only** en `file_versions`: se agrega, no se actualiza.
 * **Evidencia obligatoria**: `CHECK (entity_id IS NOT NULL OR relationship_id IS NOT NULL)`.
 
-## 6. Lo que JARVIS deliberadamente no hace
+## 6. Lo que HANA deliberadamente no hace
 
 | No hace | Por qué |
 |---|---|
@@ -154,7 +154,7 @@ ningún punto. Cuando la Etapa 4 incorpore Monaco, se configurará en solo lectu
 ## 7. Verificación
 
 ```bash
-cargo test --manifest-path crates/jarvis-fs/Cargo.toml   # frontera de rutas
+cargo test --manifest-path crates/hana-fs/Cargo.toml   # frontera de rutas
 python -m pytest engine/tests/test_scanner.py            # espejo en Python
 ```
 
@@ -174,7 +174,7 @@ cambiar nada.
 
 ## 8. Reporte de vulnerabilidades
 
-JARVIS es una aplicación local sin servicio asociado. Los problemas de seguridad
+HANA es una aplicación local sin servicio asociado. Los problemas de seguridad
 se reportan como *issues* en el repositorio. Si el reporte incluye una ruta que
 permite leer fuera del proyecto o ejecutar contenido analizado, márcalo como
 **crítico**: son las dos invariantes de las que depende todo lo demás.

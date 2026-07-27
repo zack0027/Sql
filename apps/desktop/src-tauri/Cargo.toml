@@ -1,23 +1,23 @@
 [package]
-name = "jarvis-desktop"
+name = "hana-desktop"
 version = "0.1.0"
-description = "JARVIS Knowledge Engine desktop shell"
+description = "HANA Knowledge Engine desktop shell"
 edition = "2021"
 rust-version = "1.77"
 
-# Its own workspace: `crates/jarvis-fs` must stay testable without Tauri's
+# Its own workspace: `crates/hana-fs` must stay testable without Tauri's
 # system dependencies (webkit2gtk on Linux), so the two do not share a lockfile.
 [workspace]
 
 [lib]
-name = "jarvis_desktop_lib"
+name = "hana_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-jarvis-fs = { path = "../../../crates/jarvis-fs" }
+hana-fs = { path = "../../../crates/hana-fs" }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }

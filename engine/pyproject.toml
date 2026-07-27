@@ -3,13 +3,13 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jarvis-engine"
+name = "hana-engine"
 version = "0.1.0"
 description = "Local technical knowledge engine for Oracle, APEX, PL/SQL, MOCA and JasperReports projects"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "JARVIS Knowledge Engine" }]
+authors = [{ name = "HANA Knowledge Engine" }]
 
 # The MVP runs on the standard library alone: sqlite3 for persistence, hashlib
 # for hashing, xml.etree for markup. No dependency reaches the network, which is
@@ -31,14 +31,14 @@ analyzers = [
 ]
 
 [project.scripts]
-jarvis = "jarvis_engine.cli:main"
-jarvis-engine-sidecar = "jarvis_engine.ipc.server:main"
+hana = "hana_engine.cli:main"
+hana-engine-sidecar = "hana_engine.ipc.server:main"
 
 [tool.setuptools.packages.find]
-include = ["jarvis_engine*"]
+include = ["hana_engine*"]
 
 [tool.setuptools.package-data]
-jarvis_engine = ["persistence/migrations/*.sql"]
+hana_engine = ["persistence/migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

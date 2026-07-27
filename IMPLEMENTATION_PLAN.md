@@ -1,4 +1,4 @@
-# JARVIS Knowledge Engine — Plan de Implementación
+# HANA Knowledge Engine — Plan de Implementación
 
 > Estado del documento: **vivo**. Se actualiza al cerrar cada etapa.
 > Última actualización: cierre de la **Etapa 1 (Fundación + Proyectos/Archivos)**.
@@ -51,14 +51,14 @@ respeta, con un matiz necesario para que el motor sea testeable por separado:
 
 | Responsabilidad | Dueño | Motivo |
 |---|---|---|
-| Validación de rutas permitidas, política de symlinks | **Rust** (`crates/jarvis-fs`) | Es la frontera de seguridad; debe estar en el proceso que tiene los permisos del SO. |
-| Recorrido de directorios, ignorados, límites, SHA-256 | **Rust** (`crates/jarvis-fs`) | Rendimiento (20.000 archivos) y cancelación sin bloquear la UI. |
+| Validación de rutas permitidas, política de symlinks | **Rust** (`crates/hana-fs`) | Es la frontera de seguridad; debe estar en el proceso que tiene los permisos del SO. |
+| Recorrido de directorios, ignorados, límites, SHA-256 | **Rust** (`crates/hana-fs`) | Rendimiento (20.000 archivos) y cancelación sin bloquear la UI. |
 | Modelo de dominio, deduplicación, confianza | **Python** (`engine/`) | Es donde vive el conocimiento. |
 | SQLite, migraciones, FTS5, repositorios | **Python** (`engine/`) | Un único escritor de la base evita corrupción y bloqueos cruzados. |
 | Detección incremental (nuevo/modificado/borrado) | **Python** (`engine/`) | Requiere consultar el estado previo, que vive en SQLite. |
 | Analizadores | **Python** (`engine/analyzers/`) | Ecosistema de parsers (tree-sitter, lxml). |
 
-**Duplicación aceptada y controlada:** `engine/jarvis_engine/indexing/scanner.py`
+**Duplicación aceptada y controlada:** `engine/hana_engine/indexing/scanner.py`
 reimplementa el recorrido en Python. No es un descuido: es el escáner de la ruta
 *headless* (CLI y suite de pruebas), para que el motor pueda ejercitarse de
 punta a punta sin compilar Rust. Ambas implementaciones responden al mismo
@@ -66,14 +66,14 @@ contrato declarado en `packages/shared-types` y a la misma política
 (`ScanPolicy`). El riesgo de divergencia se mitiga con:
 - un conjunto de invariantes escritas en `docs/SCAN_CONTRACT.md`,
 - pruebas espejo (mismos casos, mismos nombres) en `engine/tests/test_scanner.py`
-  y `crates/jarvis-fs/src/scanner.rs`,
+  y `crates/hana-fs/src/scanner.rs`,
 - la regla de que cualquier cambio de política se hace primero en el contrato.
 
-### D2 — `crates/jarvis-fs` es un crate independiente de Tauri
+### D2 — `crates/hana-fs` es un crate independiente de Tauri
 
 La lógica de escaneo y seguridad vive en un crate **sin dependencia de Tauri**,
 con su propio workspace. Consecuencias:
-- `cargo test -p jarvis-fs` corre en cualquier máquina, incluidos contenedores
+- `cargo test -p hana-fs` corre en cualquier máquina, incluidos contenedores
   Linux sin `webkit2gtk` (donde el shell Tauri no compila).
 - La frontera de seguridad se puede auditar y probar aislada.
 - `apps/desktop/src-tauri` la consume como dependencia de ruta y solo aporta
@@ -176,7 +176,7 @@ mantiene el índice sincronizado sin código de aplicación.
 | R4 | **Rendimiento con 20.000 archivos / 100.000 relaciones** | UI congelada | Análisis incremental por hash, lotes, escritura parcial, virtualización de listas, grafo con carga bajo demanda |
 | R5 | **Deduplicación agresiva** fusiona entidades homónimas de esquemas distintos | Conocimiento corrupto y difícil de revertir | `identity_key` conservadora: ante ambigüedad, **no** se fusiona (D6) |
 | R6 | **Corrupción de SQLite** por escrituras concurrentes | Pérdida de conocimiento | Un solo proceso escritor (D3), WAL, transacción por archivo |
-| R7 | El shell Tauri **no compila en Linux sin `webkit2gtk`** | El desarrollador en contenedor no puede ver la UI nativa | El frontend arranca en navegador con un adaptador simulado (`src/api/mock.ts`); el motor y `jarvis-fs` se prueban sin Tauri |
+| R7 | El shell Tauri **no compila en Linux sin `webkit2gtk`** | El desarrollador en contenedor no puede ver la UI nativa | El frontend arranca en navegador con un adaptador simulado (`src/api/mock.ts`); el motor y `hana-fs` se prueban sin Tauri |
 | R8 | Symlinks y rutas UNC en Windows permitirían escapar del proyecto | Fuga de datos, lectura fuera del alcance | Canonicalización + verificación de prefijo en cada archivo, symlinks no seguidos por defecto |
 | R9 | Un analizador que lanza excepción aborta el análisis completo | El usuario pierde todo el trabajo | Aislamiento por archivo y por analizador; los fallos se registran en `analysis_errors` y el análisis continúa |
 | R10 | Archivos binarios o gigantes consumen memoria | Caída del proceso | Límite de tamaño, detección de binarios por bytes nulos, hashing por bloques |
@@ -188,8 +188,8 @@ mantiene el índice sincronizado sin código de aplicación.
 Se considera cerrada cuando, en una máquina sin internet:
 
 1. `pytest engine/tests` pasa en verde.
-2. `cargo test -p jarvis-fs` pasa en verde.
-3. `python -m jarvis_engine.cli open-project <carpeta>` crea el proyecto, lo
+2. `cargo test -p hana-fs` pasa en verde.
+3. `python -m hana_engine.cli open-project <carpeta>` crea el proyecto, lo
    escanea, hashea y persiste el inventario.
 4. Reejecutarlo sin cambios reporta **0 nuevos, 0 modificados**.
 5. Tocar un archivo y reejecutar reporta exactamente **1 modificado**.

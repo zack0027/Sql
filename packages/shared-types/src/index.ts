@@ -1,7 +1,7 @@
 /**
  * Shared vocabulary between the engine, the Tauri host and the UI.
  *
- * These values MUST match `engine/jarvis_engine/domain/types.py`. The pytest case
+ * These values MUST match `engine/hana_engine/domain/types.py`. The pytest case
  * `engine/tests/test_shared_types_sync.py` parses this file and fails the build
  * if the two drift apart, so this is not a copy that can quietly rot.
  */
@@ -316,7 +316,7 @@ export interface ProgressEvent {
 // Confidence
 // ---------------------------------------------------------------------------
 
-/** Mirrors `engine/jarvis_engine/domain/confidence.py`. */
+/** Mirrors `engine/hana_engine/domain/confidence.py`. */
 export const Confidence = {
   CONFIRMED: 1.0,
   STRONG_INFERENCE: 0.9,

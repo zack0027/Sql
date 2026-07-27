@@ -1,4 +1,4 @@
-# JARVIS Knowledge Engine
+# HANA Knowledge Engine
 
 Aplicación de escritorio local que analiza proyectos técnicos —Oracle, APEX,
 PL/SQL, Blue Yonder/JDA MOCA, JasperReports, JSON, XML, JavaScript y Python—, los
@@ -14,7 +14,7 @@ No es un chatbot. No es un servidor web. No usa OpenAI ni ninguna API externa.
 
 ---
 
-![Pantalla de inicio de JARVIS](docs/screenshots/home.png)
+![Pantalla de inicio de HANA](docs/screenshots/home.png)
 
 ## Qué hace hoy
 
@@ -44,7 +44,7 @@ evidencia. Es poco, pero es real: todo lo que se muestra viene de la base.
 | Python | ≥ 3.11 | El motor (sin dependencias externas) |
 | Node.js | ≥ 20 | La interfaz |
 | pnpm | ≥ 9 | Gestor del monorepo |
-| Rust | ≥ 1.77 | El host nativo y `jarvis-fs` |
+| Rust | ≥ 1.77 | El host nativo y `hana-fs` |
 
 ### Windows
 
@@ -75,7 +75,7 @@ Además de lo anterior:
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev
 ```
 
-El motor y `jarvis-fs` se prueban **sin** estas bibliotecas; solo hacen falta para
+El motor y `hana-fs` se prueban **sin** estas bibliotecas; solo hacen falta para
 compilar la carcasa de escritorio.
 
 ---
@@ -84,7 +84,7 @@ compilar la carcasa de escritorio.
 
 ```bash
 git clone <repositorio>
-cd jarvis-knowledge-engine
+cd hana-knowledge-engine
 
 pnpm install                      # dependencias de la interfaz
 pip install -e "engine[dev]"      # el motor, en modo editable
@@ -116,13 +116,13 @@ El motor es un paquete Python normal y se puede conducir entero desde la termina
 ```bash
 cd engine
 
-python -m jarvis_engine.cli scan ../fixtures            # simulacro, no persiste
-python -m jarvis_engine.cli open ../fixtures            # registrar el proyecto
-python -m jarvis_engine.cli analyze <project-id>        # analizarlo
-python -m jarvis_engine.cli projects                    # proyectos recientes
-python -m jarvis_engine.cli stats <project-id>          # métricas
-python -m jarvis_engine.cli history <project-id>        # historial
-python -m jarvis_engine.cli status                      # estado del motor
+python -m hana_engine.cli scan ../fixtures            # simulacro, no persiste
+python -m hana_engine.cli open ../fixtures            # registrar el proyecto
+python -m hana_engine.cli analyze <project-id>        # analizarlo
+python -m hana_engine.cli projects                    # proyectos recientes
+python -m hana_engine.cli stats <project-id>          # métricas
+python -m hana_engine.cli history <project-id>        # historial
+python -m hana_engine.cli status                      # estado del motor
 ```
 
 Con `--json` en cualquier comando la salida es JSON. Con `--db RUTA` se elige otra
@@ -160,20 +160,20 @@ pnpm test:ui           # vitest        (22 pruebas)
 ```
 
 Cada suite corre de forma aislada: pytest no necesita Node ni Rust, `cargo test
--p jarvis-fs` no necesita Tauri ni Python, y vitest no necesita ninguno.
+-p hana-fs` no necesita Tauri ni Python, y vitest no necesita ninguno.
 
 ---
 
 ## Estructura
 
 ```
-jarvis-knowledge-engine/
+hana-knowledge-engine/
 ├── apps/desktop/            Aplicación de escritorio
 │   ├── src/                 React + TypeScript (vistas, estado, cliente)
 │   └── src-tauri/           Host Rust: comandos, sidecar, capacidades
-├── crates/jarvis-fs/        Escaneo y hashing seguros (sin dependencia de Tauri)
+├── crates/hana-fs/        Escaneo y hashing seguros (sin dependencia de Tauri)
 ├── engine/                  Motor Python
-│   └── jarvis_engine/
+│   └── hana_engine/
 │       ├── domain/          Entidades, relaciones, confianza, nombres, plugins
 │       ├── persistence/     Esquema SQLite, migraciones, repositorios
 │       ├── indexing/        Escáner headless, política, tipos de archivo
@@ -195,17 +195,18 @@ Un único archivo SQLite:
 
 | Sistema | Ruta |
 |---|---|
-| Windows | `%APPDATA%\JarvisKnowledgeEngine\jarvis.db` |
-| Linux | `~/.local/share/jarvis-knowledge-engine/jarvis.db` |
+| Windows (aplicación empaquetada) | `%APPDATA%\com.hana.knowledge-engine\hana.db` |
+| Windows (motor suelto / CLI) | `%APPDATA%\HanaKnowledgeEngine\hana.db` |
+| Linux | `~/.local/share/hana-knowledge-engine/hana.db` |
 
-Se puede cambiar con la variable de entorno `JARVIS_DATA_DIR`. Borrar ese archivo
+Se puede cambiar con la variable de entorno `HANA_DATA_DIR`. Borrar ese archivo
 borra todo el conocimiento; **no toca ningún archivo de tus proyectos**.
 
 ---
 
 ## Seguridad
 
-JARVIS lee código de producción, así que asume que ese material es sensible:
+HANA lee código de producción, así que asume que ese material es sensible:
 
 * **Nada sale del equipo.** Sin API externas, sin telemetría, sin red.
 * **Nada se ejecuta.** El análisis es estático: ni SQL, ni PL/SQL, ni MOCA, ni
@@ -222,16 +223,16 @@ Detalle completo en [`SECURITY.md`](SECURITY.md).
 
 ```bash
 cd engine
-DB=/tmp/jarvis-demo.db
+DB=/tmp/hana-demo.db
 
-PID=$(python -m jarvis_engine.cli --db $DB --json open ../fixtures \
+PID=$(python -m hana_engine.cli --db $DB --json open ../fixtures \
       | python -c "import sys,json;print(json.load(sys.stdin)['id'])")
 
-python -m jarvis_engine.cli --db $DB analyze $PID   # added: 5
-python -m jarvis_engine.cli --db $DB analyze $PID   # unchanged: 5, analyzed: 0
+python -m hana_engine.cli --db $DB analyze $PID   # added: 5
+python -m hana_engine.cli --db $DB analyze $PID   # unchanged: 5, analyzed: 0
 
 echo "-- comentario" >> ../fixtures/sql/guardar_inspeccion.sql
-python -m jarvis_engine.cli --db $DB analyze $PID   # modified: 1, analyzed: 1
+python -m hana_engine.cli --db $DB analyze $PID   # modified: 1, analyzed: 1
 ```
 
 La tercera ejecución debe reportar **exactamente un archivo modificado**. Si

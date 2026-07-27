@@ -5,7 +5,7 @@
 //! * **The allowed-roots check.** A project's folder becomes readable only when
 //!   the user opens it. Every scan re-verifies that the root is still on the
 //!   list, so a compromised webview cannot point the scanner at `C:\Users`.
-//! * **The scan itself.** Walking and hashing happen natively (`jarvis-fs`); the
+//! * **The scan itself.** Walking and hashing happen natively (`hana-fs`); the
 //!   resulting inventory is handed to the engine, which owns the database.
 
 use std::collections::HashSet;
@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use jarvis_fs::{scan_project, ScanPolicy, ScannedFile};
+use hana_fs::{scan_project, ScanPolicy, ScannedFile};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, State};
 
@@ -77,7 +77,7 @@ pub async fn list_projects(state: State<'_, AppState>, limit: Option<u32>) -> Co
 
 /// Register a folder as a project and add it to the allowed roots.
 ///
-/// This is the only command that widens what JARVIS may read, and it does so
+/// This is the only command that widens what HANA may read, and it does so
 /// only for the folder the user chose in the OS dialog.
 #[tauri::command]
 pub async fn open_project(
@@ -85,7 +85,7 @@ pub async fn open_project(
     path: String,
     name: Option<String>,
 ) -> CommandResult<Value> {
-    let root = jarvis_fs::resolve_project_root(&path).map_err(|error| error.to_string())?;
+    let root = hana_fs::resolve_project_root(&path).map_err(|error| error.to_string())?;
 
     let project = call(
         Arc::clone(&state.sidecar),
@@ -187,7 +187,7 @@ pub async fn analyze_project(
         .ok_or("el proyecto no tiene ruta")?
         .to_string();
 
-    let root = jarvis_fs::resolve_project_root(&root_path).map_err(|error| error.to_string())?;
+    let root = hana_fs::resolve_project_root(&root_path).map_err(|error| error.to_string())?;
     if !state.is_allowed(&root) {
         // Reopening the project is what re-grants access, and it goes through the
         // OS dialog. A stale project id alone is not authorisation.
@@ -221,7 +221,7 @@ pub async fn analyze_project(
                 // Mirrors the engine's ProgressEvent shape so the UI has one
                 // listener for both native and engine-side phases.
                 let _ = scan_app.emit(
-                    "jarvis://progress",
+                    "hana://progress",
                     json!({
                         "project_id": scan_project_id,
                         "run_id": Value::Null,

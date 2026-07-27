@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the application icons.
 
-Written with the standard library alone (zlib + struct) so building JARVIS never
+Written with the standard library alone (zlib + struct) so building HANA never
 requires an image toolchain. Run it after changing the mark:
 
     python scripts/generate_icons.py

@@ -13,7 +13,7 @@ echo "==> Iconos"
 python3 scripts/generate_icons.py >/dev/null
 
 echo "==> Compilando la aplicación"
-pnpm --filter @jarvis/desktop tauri:build
+pnpm --filter @hana/desktop tauri:build
 
 echo
 echo "Artefactos en apps/desktop/src-tauri/target/release/bundle/"

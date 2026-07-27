@@ -1,4 +1,4 @@
-"""JARVIS Knowledge Engine — local technical knowledge engine.
+"""HANA Knowledge Engine — local technical knowledge engine.
 
 The engine is a plain Python package: no Tauri, no web server, no network. It can
 be imported, tested and driven from a script without any part of the desktop

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "JARVIS Knowledge Engine",
+  "productName": "HANA Knowledge Engine",
   "version": "0.1.0",
-  "identifier": "com.jarvis.knowledge-engine",
+  "identifier": "com.hana.knowledge-engine",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:5183",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "JARVIS Knowledge Engine",
+        "title": "HANA Knowledge Engine",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,
@@ -39,8 +39,8 @@
       "icons/icon.ico"
     ],
     "resources": [],
-    "externalBin": ["binaries/jarvis-engine"],
-    "copyright": "JARVIS Knowledge Engine",
+    "externalBin": ["binaries/hana-engine"],
+    "copyright": "HANA Knowledge Engine",
     "category": "DeveloperTool",
     "shortDescription": "Motor de conocimiento técnico local",
     "longDescription": "Analiza proyectos Oracle, APEX, PL/SQL, MOCA y JasperReports de forma local, construye un grafo de conocimiento con procedencia verificable y funciona sin conexión a internet.",

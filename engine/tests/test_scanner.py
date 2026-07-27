@@ -1,6 +1,6 @@
 """Secure scanning, hashing and file typing.
 
-These cases mirror ``crates/jarvis-fs/src/scanner.rs``; the shared invariants are
+These cases mirror ``crates/hana-fs/src/scanner.rs``; the shared invariants are
 listed in ``docs/SCAN_CONTRACT.md``. When one side changes, the other must too.
 """
 
@@ -11,16 +11,16 @@ import os
 
 import pytest
 
-from jarvis_engine.domain.types import SkipReason
-from jarvis_engine.indexing.file_types import (
+from hana_engine.domain.types import SkipReason
+from hana_engine.indexing.file_types import (
     detect_type,
     extension_of,
     guess_project_type,
     is_analyzable,
     is_binary_type,
 )
-from jarvis_engine.indexing.policy import ScanPolicy
-from jarvis_engine.indexing.scanner import (
+from hana_engine.indexing.policy import ScanPolicy
+from hana_engine.indexing.scanner import (
     ScanSecurityError,
     hash_file,
     is_within,
@@ -249,7 +249,7 @@ class TestHashingAndReading:
 
     def test_large_files_hash_in_chunks_without_loading_everything(self, tmp_path):
         target = tmp_path / "big.bin"
-        payload = b"jarvis" * 400_000  # ~2.4 MB, larger than one chunk
+        payload = b"hana" * 400_000  # ~2.4 MB, larger than one chunk
         target.write_bytes(payload)
         digest, size = hash_file(target)
         assert digest == hashlib.sha256(payload).hexdigest()

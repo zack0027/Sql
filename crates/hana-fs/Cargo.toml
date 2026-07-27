@@ -1,12 +1,12 @@
 [package]
-name = "jarvis-fs"
+name = "hana-fs"
 version = "0.1.0"
 edition = "2021"
-description = "Secure filesystem scanning and hashing for the JARVIS Knowledge Engine"
+description = "Secure filesystem scanning and hashing for the HANA Knowledge Engine"
 license = "MIT"
 
 # Its own workspace on purpose: this crate must build and test without pulling in
-# Tauri, so `cargo test -p jarvis-fs` works on machines that lack webkit2gtk.
+# Tauri, so `cargo test -p hana-fs` works on machines that lack webkit2gtk.
 [workspace]
 
 [dependencies]

@@ -1,4 +1,4 @@
-"""Mapping from file extensions to the types JARVIS knows how to analyse.
+"""Mapping from file extensions to the types HANA knows how to analyse.
 
 The detected type is what the analyzer registry and the UI filter on. It is
 deliberately coarser than the extension: ``.sql``, ``.pks`` and ``.pkb`` are all

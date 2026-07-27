@@ -1,11 +1,11 @@
--- JARVIS Knowledge Engine — initial schema
+-- HANA Knowledge Engine — initial schema
 --
 -- Conventions used throughout:
 --   * Primary keys are ULIDs stored as TEXT (26 chars, time-sortable).
 --   * Timestamps are ISO-8601 UTC strings ending in 'Z'; they sort lexically.
 --   * Booleans are INTEGER 0/1.
 --   * `identity_key` columns carry the deduplication policy from
---     jarvis_engine.domain.naming; the database only enforces uniqueness.
+--     hana_engine.domain.naming; the database only enforces uniqueness.
 --   * Every fact-bearing row keeps its provenance: file, lines, snippet,
 --     analyzer, confidence and verification status.
 

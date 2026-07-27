@@ -4,11 +4,11 @@
 This is what lets the packaged application run on a machine with no Python
 installed. The result is placed where Tauri expects an ``externalBin``:
 
-    apps/desktop/src-tauri/binaries/jarvis-engine-<target-triple>[.exe]
+    apps/desktop/src-tauri/binaries/hana-engine-<target-triple>[.exe]
 
 Tauri requires the target triple suffix so that a bundle built for one platform
 cannot accidentally ship another platform's binary. At install time Tauri copies
-it next to the application executable, stripped back to ``jarvis-engine[.exe]``,
+it next to the application executable, stripped back to ``hana-engine[.exe]``,
 which is exactly where ``sidecar.rs`` looks for it.
 
 Usage:
@@ -37,8 +37,8 @@ ENTRY_POINT = ENGINE_ROOT / "sidecar_entry.py"
 #: travel inside the bundle rather than being left behind on disk.
 DATA_FILES = [
     (
-        ENGINE_ROOT / "jarvis_engine" / "persistence" / "migrations",
-        "jarvis_engine/persistence/migrations",
+        ENGINE_ROOT / "hana_engine" / "persistence" / "migrations",
+        "hana_engine/persistence/migrations",
     )
 ]
 
@@ -93,7 +93,7 @@ def build(triple: str, *, clean: bool) -> Path:
         "PyInstaller",
         "--onefile",
         "--name",
-        "jarvis-engine",
+        "hana-engine",
         "--distpath",
         str(BUILD_DIR / "dist"),
         "--workpath",
@@ -111,7 +111,7 @@ def build(triple: str, *, clean: bool) -> Path:
         # The registry resolves analyzers at runtime, so PyInstaller's static
         # analysis cannot see them; pull the whole package in explicitly.
         "--collect-submodules",
-        "jarvis_engine",
+        "hana_engine",
         "--paths",
         str(ENGINE_ROOT),
     ]
@@ -125,11 +125,11 @@ def build(triple: str, *, clean: bool) -> Path:
     subprocess.run(command, check=True, cwd=ENGINE_ROOT)
 
     suffix = ".exe" if os.name == "nt" else ""
-    produced = BUILD_DIR / "dist" / f"jarvis-engine{suffix}"
+    produced = BUILD_DIR / "dist" / f"hana-engine{suffix}"
     if not produced.exists():
         raise SystemExit(f"PyInstaller no produjo {produced}")
 
-    target = OUTPUT_DIR / f"jarvis-engine-{triple}{suffix}"
+    target = OUTPUT_DIR / f"hana-engine-{triple}{suffix}"
     shutil.copy2(produced, target)
     target.chmod(0o755)
     return target

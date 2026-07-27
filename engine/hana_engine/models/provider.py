@@ -1,6 +1,6 @@
 """Local language-model providers.
 
-JARVIS works without a model. This module exists so that when one is added it
+HANA works without a model. This module exists so that when one is added it
 plugs into a seam that already exists, instead of being threaded through the
 codebase after the fact.
 
@@ -57,7 +57,7 @@ class LocalModelProvider(ABC):
     """Contract every local backend implements.
 
     Implementations must run entirely on the user's machine. A provider that
-    reaches a remote API does not belong in JARVIS.
+    reaches a remote API does not belong in HANA.
     """
 
     #: Stable identifier shown in settings.
@@ -101,7 +101,7 @@ class DisabledModelProvider(LocalModelProvider):
             finish_reason="unavailable",
             available=False,
             error=(
-                "No hay un modelo local configurado. JARVIS responde consultas "
+                "No hay un modelo local configurado. HANA responde consultas "
                 "deterministas contra el grafo sin necesidad de un modelo."
             ),
         )

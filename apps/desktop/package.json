@@ -1,5 +1,5 @@
 {
-  "name": "@jarvis/desktop",
+  "name": "@hana/desktop",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@jarvis/shared-types": "workspace:*",
+    "@hana/shared-types": "workspace:*",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "react": "^18.3.1",

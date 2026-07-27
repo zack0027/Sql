@@ -6,16 +6,16 @@ import sqlite3
 
 import pytest
 
-from jarvis_engine.domain.confidence import CONFIRMED, MENTION, STRONG_INFERENCE
-from jarvis_engine.domain.models import (
+from hana_engine.domain.confidence import CONFIRMED, MENTION, STRONG_INFERENCE
+from hana_engine.domain.models import (
     Entity,
     Evidence,
     FileRecord,
     Project,
     Relationship,
 )
-from jarvis_engine.domain.naming import entity_identity_key, relationship_identity_key
-from jarvis_engine.domain.types import (
+from hana_engine.domain.naming import entity_identity_key, relationship_identity_key
+from hana_engine.domain.types import (
     AnalysisRunStatus,
     ChangeKind,
     EntityType,
@@ -23,7 +23,7 @@ from jarvis_engine.domain.types import (
     RelationType,
     VerificationStatus,
 )
-from jarvis_engine.persistence.database import (
+from hana_engine.persistence.database import (
     applied_versions,
     has_fts5,
     migrate,

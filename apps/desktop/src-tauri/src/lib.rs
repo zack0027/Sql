@@ -1,4 +1,4 @@
-//! JARVIS desktop shell.
+//! HANA desktop shell.
 //!
 //! The host's job is narrow on purpose: start the engine, expose a small set of
 //! commands, own the filesystem boundary, and get out of the way. All knowledge
@@ -16,7 +16,7 @@ use commands::AppState;
 use sidecar::Sidecar;
 
 /// Filename of the knowledge base inside the app-data directory.
-const DATABASE_FILENAME: &str = "jarvis.db";
+const DATABASE_FILENAME: &str = "hana.db";
 
 pub fn run() {
     tauri::Builder::default()
@@ -56,16 +56,16 @@ pub fn run() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error al iniciar JARVIS Knowledge Engine");
+        .expect("error al iniciar HANA Knowledge Engine");
 }
 
 /// Where the knowledge base lives.
 ///
-/// `JARVIS_DATA_DIR` wins when set (development and tests); otherwise the OS
+/// `HANA_DATA_DIR` wins when set (development and tests); otherwise the OS
 /// per-user app-data folder, so the database never sits next to the executable
 /// in Program Files.
 fn database_path(app: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    if let Ok(custom) = std::env::var("JARVIS_DATA_DIR") {
+    if let Ok(custom) = std::env::var("HANA_DATA_DIR") {
         return Ok(PathBuf::from(custom).join(DATABASE_FILENAME));
     }
     let directory = app.path().app_data_dir()?;

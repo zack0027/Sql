@@ -38,6 +38,14 @@ _EXPRESSION_REFERENCE = re.compile(r"\$([FPV])\{([^}]*)\}")
 #: A quoted string inside an expression — how image and subreport paths appear.
 _STRING_LITERAL = re.compile(r'"([^"]*)"')
 
+#: Parameter name prefixes owned by the platform, not by the report author.
+_PLATFORM_PREFIXES = ("MOCA_", "REPORT_", "JASPER_", "IS_IGNORE_")
+
+#: Individual platform-supplied parameter names.
+_PLATFORM_PARAMETERS = frozenset(
+    {"SUBREPORT_DIR", "SUBREPORT_directory", "FILTER", "SORT_FIELDS"}
+)
+
 #: Elements whose text may reference fields, parameters or variables.
 #:
 #: ``queryString`` belongs here even though it is not an "expression": a
@@ -106,7 +114,11 @@ class JrxmlAnalyzer(Analyzer):
 
         used = self._collect_expression_usage(root)
         self._report_inconsistencies(
-            declared_fields, declared_parameters, used, result
+            declared_fields,
+            declared_parameters,
+            used,
+            self._platform_parameters(root),
+            result,
         )
 
         self._collect_query(context, root, report, line_of, result)
@@ -153,6 +165,27 @@ class JrxmlAnalyzer(Analyzer):
             if name:
                 declared.setdefault(name, line_of.get(f"{tag}:{name}", 1))
         return declared
+
+    def _platform_parameters(self, root: ElementTree.Element) -> set[str]:
+        """Parameters supplied by the platform rather than by the report author.
+
+        Blue Yonder injects ``MOCA_REPORT_*`` at run time and marks them with a
+        ``<property name="MOCA"/>``; JasperReports owns ``REPORT_*`` and
+        ``SUBREPORT_DIR``. None of them is "declared but unused" in any sense the
+        author can act on, and reporting them buries the one real finding under
+        a dozen false ones.
+        """
+        injected: set[str] = set()
+        for element in _iter_tag(root, "parameter"):
+            name = element.attrib.get("name")
+            if not name:
+                continue
+            if name.startswith(_PLATFORM_PREFIXES) or name in _PLATFORM_PARAMETERS:
+                injected.add(name)
+                continue
+            if any(_local(child.tag) == "property" for child in element):
+                injected.add(name)
+        return injected
 
     def _emit_declarations(
         self,
@@ -204,6 +237,7 @@ class JrxmlAnalyzer(Analyzer):
         fields: dict[str, int],
         parameters: dict[str, int],
         used: dict[str, set[str]],
+        platform: set[str],
         result: AnalysisResult,
     ) -> None:
         for name in sorted(used["F"] - set(fields)):
@@ -215,7 +249,7 @@ class JrxmlAnalyzer(Analyzer):
                     detail={"field": name},
                 )
             )
-        for name in sorted(set(parameters) - used["P"]):
+        for name in sorted(set(parameters) - used["P"] - platform):
             result.warnings.append(
                 AnalyzerMessage(
                     code="unused_parameter",
@@ -274,7 +308,11 @@ class JrxmlAnalyzer(Analyzer):
         result: AnalysisResult,
     ) -> None:
         for element in _iter_tag(root, "imageExpression"):
-            for path in _string_literals(element.text):
+            # An image expression is Java, and a real one is routinely a
+            # conditional: `$F{tipo}=="Entrada" ? "on.png" : "off.png"`. Taking
+            # every quoted literal turned "Entrada" into a file; only literals
+            # that actually look like an image path are paths.
+            for path in _image_literals(element.text):
                 line = line_of.get(f"image:{path}", 1)
                 span = SourceSpan(line, line)
                 image = EntityDraft(
@@ -359,6 +397,19 @@ def _string_literals(text: str | None) -> list[str]:
     if not text:
         return []
     return [value for value in _STRING_LITERAL.findall(text) if value.strip()]
+
+
+#: Extensions Jasper can actually render as an image.
+_IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".ico", ".tif", ".tiff")
+
+
+def _image_literals(text: str | None) -> list[str]:
+    """String literals that name an image file, not arbitrary compared values."""
+    return [
+        value
+        for value in _string_literals(text)
+        if value.lower().endswith(_IMAGE_SUFFIXES)
+    ]
 
 
 def _is_absolute(path: str) -> bool:

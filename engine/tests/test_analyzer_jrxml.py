@@ -115,6 +115,37 @@ class TestInconsistencies:
     def test_a_consistent_report_produces_no_warnings(self):
         assert analyze(MINIMAL).warnings == []
 
+    def test_platform_parameters_are_not_reported_as_dead(self):
+        """Blue Yonder injects MOCA_REPORT_* at run time; the author cannot act.
+
+        A real report declares a dozen of them. Flagging every one buries the
+        single genuine finding under noise, which is how a warning list stops
+        being read at all.
+        """
+        xml = (
+            '<jasperReport name="R">'
+            '<parameter name="MOCA_REPORT_CONNECTION" class="java.lang.Object">'
+            '<property name="MOCA" value="true"/></parameter>'
+            '<parameter name="SUBREPORT_DIR" class="java.lang.String"/>'
+            '<parameter name="P_OLVIDADO" class="java.lang.String"/>'
+            "</jasperReport>"
+        )
+        unused = {
+            w.detail["parameter"]
+            for w in analyze(xml).warnings
+            if w.code == "unused_parameter"
+        }
+        assert unused == {"P_OLVIDADO"}
+
+    def test_a_parameter_carrying_a_property_is_platform_managed(self):
+        xml = (
+            '<jasperReport name="R">'
+            '<parameter name="CUALQUIERA" class="java.lang.String">'
+            '<property name="MOCA" value="true"/></parameter>'
+            "</jasperReport>"
+        )
+        assert "unused_parameter" not in codes(analyze(xml).warnings)
+
     def test_warnings_are_warnings_not_errors(self):
         result = analyze(FIXTURE.read_text(encoding="utf-8"))
         assert all(w.severity is Severity.WARNING for w in result.warnings)
@@ -170,6 +201,24 @@ class TestImagesAndSubreports:
             if draft.entity_type is EntityType.FILE
         )
         assert image.metadata["relative"] is False
+
+    def test_a_conditional_expression_yields_only_the_image_paths(self):
+        """Taken from a real report: the compared value is not a file.
+
+        `$F{insptyp}=="Entrada"? "./on.png": "./off.png"` used to register
+        "Entrada" as an image, polluting the graph with things that do not exist.
+        """
+        xml = (
+            '<jasperReport name="R"><image><imageExpression><![CDATA['
+            '$F{insptyp}=="Entrada"? "./checkboxOn.png": "./checkboxOff.png"'
+            "]]></imageExpression></image></jasperReport>"
+        )
+        images = {
+            draft.name
+            for draft in analyze(xml).entities
+            if draft.entity_type is EntityType.FILE
+        }
+        assert images == {"./checkboxOn.png", "./checkboxOff.png"}
 
     def test_subreports_are_recorded(self):
         result = analyze(FIXTURE.read_text(encoding="utf-8"))

@@ -30,8 +30,15 @@ ENGINE_ROOT = REPO_ROOT / "engine"
 OUTPUT_DIR = REPO_ROOT / "apps" / "desktop" / "src-tauri" / "binaries"
 BUILD_DIR = REPO_ROOT / "build" / "sidecar"
 
-#: Launcher that imports the package properly (see engine/sidecar_entry.py).
-ENTRY_POINT = ENGINE_ROOT / "sidecar_entry.py"
+#: Launchers that import the package properly (see engine/sidecar_entry.py).
+#:
+#: Two products come out of the same code: the sidecar the desktop app drives
+#: over stdio, and a command line a person can run directly. The CLI is what
+#: makes the engine usable before the interface catches up.
+ENTRY_POINTS = {
+    "sidecar": (ENGINE_ROOT / "sidecar_entry.py", "hana-engine"),
+    "cli": (ENGINE_ROOT / "cli_entry.py", "hana"),
+}
 
 #: Migrations are read at runtime from the package directory, so they have to
 #: travel inside the bundle rather than being left behind on disk.
@@ -71,9 +78,10 @@ def _fallback_triple() -> str:
     return f"{arch}-unknown-linux-gnu"
 
 
-def build(triple: str, *, clean: bool) -> Path:
-    if not ENTRY_POINT.exists():
-        raise SystemExit(f"no se encontró el punto de entrada: {ENTRY_POINT}")
+def build(triple: str, *, clean: bool, product: str = "sidecar") -> Path:
+    entry_point, binary_name = ENTRY_POINTS[product]
+    if not entry_point.exists():
+        raise SystemExit(f"no se encontró el punto de entrada: {entry_point}")
 
     try:
         import PyInstaller  # noqa: F401
@@ -93,7 +101,7 @@ def build(triple: str, *, clean: bool) -> Path:
         "PyInstaller",
         "--onefile",
         "--name",
-        "hana-engine",
+        binary_name,
         "--distpath",
         str(BUILD_DIR / "dist"),
         "--workpath",
@@ -119,15 +127,23 @@ def build(triple: str, *, clean: bool) -> Path:
     for source, destination in DATA_FILES:
         command += ["--add-data", f"{source}{separator}{destination}"]
 
-    command.append(str(ENTRY_POINT))
+    command.append(str(entry_point))
 
-    print("==> Congelando el motor con PyInstaller")
+    print(f"==> Congelando '{binary_name}' con PyInstaller")
     subprocess.run(command, check=True, cwd=ENGINE_ROOT)
 
     suffix = ".exe" if os.name == "nt" else ""
-    produced = BUILD_DIR / "dist" / f"hana-engine{suffix}"
+    produced = BUILD_DIR / "dist" / f"{binary_name}{suffix}"
     if not produced.exists():
         raise SystemExit(f"PyInstaller no produjo {produced}")
+
+    # Only the sidecar needs Tauri's target-triple naming; the CLI is a plain
+    # tool a person runs, so it keeps its simple name.
+    if product == "cli":
+        target = OUTPUT_DIR / f"{binary_name}{suffix}"
+        shutil.copy2(produced, target)
+        target.chmod(0o755)
+        return target
 
     target = OUTPUT_DIR / f"hana-engine-{triple}{suffix}"
     shutil.copy2(produced, target)
@@ -135,28 +151,44 @@ def build(triple: str, *, clean: bool) -> Path:
     return target
 
 
-def verify(binary: Path) -> None:
-    """Prove the frozen engine actually answers before it is shipped."""
+def verify(binary: Path, product: str) -> None:
+    """Prove the frozen binary actually works before it is shipped."""
     print("==> Verificando el binario")
-    probe = '{"id":"1","method":"engine.ping"}\n'
-    result = subprocess.run(
-        [str(binary), str(BUILD_DIR / "verify.db")],
-        input=probe,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    if '"pong":true' not in result.stdout.replace(" ", ""):
-        raise SystemExit(
-            "el binario no respondió al ping:\n"
-            f"stdout: {result.stdout[:500]}\nstderr: {result.stderr[:500]}"
+    if product == "cli":
+        result = subprocess.run(
+            [str(binary), "status"], capture_output=True, text=True, timeout=180
         )
+        if "version" not in result.stdout:
+            raise SystemExit(
+                "la CLI no respondió a 'status':\n"
+                f"stdout: {result.stdout[:500]}\nstderr: {result.stderr[:500]}"
+            )
+    else:
+        probe = '{"id":"1","method":"engine.ping"}\n'
+        result = subprocess.run(
+            [str(binary), str(BUILD_DIR / "verify.db")],
+            input=probe,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if '"pong":true' not in result.stdout.replace(" ", ""):
+            raise SystemExit(
+                "el binario no respondió al ping:\n"
+                f"stdout: {result.stdout[:500]}\nstderr: {result.stderr[:500]}"
+            )
     print("    responde correctamente")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--triple", default=None, help="target triple de Rust")
+    parser.add_argument(
+        "--product",
+        choices=sorted(ENTRY_POINTS),
+        default="sidecar",
+        help="'sidecar' para la aplicación, 'cli' para la herramienta de terminal",
+    )
     parser.add_argument("--no-clean", action="store_true")
     parser.add_argument("--skip-verify", action="store_true")
     args = parser.parse_args()
@@ -164,9 +196,9 @@ def main() -> int:
     triple = args.triple or host_triple()
     print(f"==> Target triple: {triple}")
 
-    binary = build(triple, clean=not args.no_clean)
+    binary = build(triple, clean=not args.no_clean, product=args.product)
     if not args.skip_verify:
-        verify(binary)
+        verify(binary, args.product)
 
     size_mb = binary.stat().st_size / (1024 * 1024)
     print(f"\nListo: {binary}  ({size_mb:.1f} MB)")

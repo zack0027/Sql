@@ -39,6 +39,13 @@ from ..pipeline.orchestrator import CancellationToken, ProgressEvent
 
 PROTOCOL_VERSION = 1
 
+#: U+FEFF, the byte-order mark. Built with ``chr`` so this source file contains
+#: no non-ASCII character of its own: an earlier version embedded the literal
+#: BOM, the file was saved mojibake as three Latin-1 characters, and the strip
+#: silently removed nothing. A constant that cannot be corrupted by an encoding
+#: is worth the extra line.
+_BOM = chr(0xFEFF)
+
 
 def _encode(value: Any) -> Any:
     """Make a domain object JSON-serialisable.
@@ -60,14 +67,32 @@ def _encode(value: Any) -> Any:
 
 
 class LineWriter:
-    """Serialises writes so the worker and the reader cannot interleave lines."""
+    """Serialises writes so the worker and the reader cannot interleave lines.
+
+    Frames are emitted as **pure ASCII**: ``ensure_ascii=True`` escapes every
+    non-ASCII character as ``\\uXXXX``. That is not a stylistic choice, it is what
+    makes the protocol independent of whatever encoding the process happens to
+    get. Emitting raw characters made a progress message like "Comparando con el
+    análisis anterior" leave as a lone ``0xE1`` byte whenever stdout defaulted to
+    a legacy codepage; the host then failed to decode the line, gave up on the
+    stream, and every pending request died with "the engine stopped" while the
+    analysis appeared to hang forever.
+    """
 
     def __init__(self, stream: TextIO) -> None:
+        # Belt and braces: ask for UTF-8 as well, so anything that bypasses the
+        # ASCII escaping (a traceback, a third-party write) is still decodable.
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="backslashreplace")
+            except (ValueError, OSError):
+                pass
         self._stream = stream
         self._lock = threading.Lock()
 
     def send(self, payload: dict[str, Any]) -> None:
-        line = json.dumps(_encode(payload), ensure_ascii=False, separators=(",", ":"))
+        line = json.dumps(_encode(payload), ensure_ascii=True, separators=(",", ":"))
         with self._lock:
             self._stream.write(line + "\n")
             self._stream.flush()
@@ -148,7 +173,7 @@ class EngineServer:
         # Those three bytes are not JSON, so without this the *first* request of
         # every such client failed while the rest went through — a baffling
         # symptom for whoever hits it.
-        text = text.lstrip("﻿")
+        text = text.lstrip(_BOM)
         try:
             request = json.loads(text)
         except json.JSONDecodeError as exc:

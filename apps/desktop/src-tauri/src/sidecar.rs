@@ -75,9 +75,22 @@ impl Sidecar {
             std::thread::Builder::new()
                 .name("hana-sidecar-reader".into())
                 .spawn(move || {
-                    let reader = BufReader::new(stdout);
-                    for line in reader.lines() {
-                        let Ok(line) = line else { break };
+                    // Read raw bytes and decode lossily rather than using
+                    // `lines()`, whose UTF-8 error would end the loop. One
+                    // undecodable byte used to tear down the whole connection:
+                    // every pending request failed with "the engine stopped"
+                    // and the analysis hung forever. A bad line is skipped; only
+                    // a closed pipe ends the stream.
+                    let mut reader = BufReader::new(stdout);
+                    let mut buffer: Vec<u8> = Vec::new();
+                    loop {
+                        buffer.clear();
+                        match reader.read_until(b'\n', &mut buffer) {
+                            Ok(0) => break, // the child closed its output
+                            Ok(_) => {}
+                            Err(_) => break,
+                        }
+                        let line = String::from_utf8_lossy(&buffer).to_string();
                         if line.trim().is_empty() {
                             continue;
                         }

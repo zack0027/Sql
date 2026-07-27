@@ -206,6 +206,10 @@ class TestScanning:
         report = scan_project(root, ScanPolicy(follow_symlinks=True))
         assert not any("secret" in item.relative_path for item in report.files)
 
+    @pytest.mark.skipif(
+        os.name == "nt",
+        reason="Windows ignores POSIX directory modes, so the folder stays readable",
+    )
     def test_unreadable_directory_is_reported_without_aborting(self, tmp_path):
         root = tmp_path / "p"
         blocked = root / "locked"
@@ -220,6 +224,7 @@ class TestScanning:
             blocked.chmod(0o755)
 
         assert "ok.sql" in {item.relative_path for item in report.files}
+        # geteuid only exists on POSIX, which the skipif above guarantees.
         if os.geteuid() != 0:  # root can read anything, so nothing would fail
             assert report.errors
 

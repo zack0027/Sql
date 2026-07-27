@@ -46,9 +46,14 @@ def _run(server: EngineServer, requests: list[dict]) -> CapturingWriter:
 
 
 @pytest.fixture
-def server(db_path: Path) -> EngineServer:
+def server(db_path: Path):
+    # Closed explicitly: on Windows an open SQLite handle blocks pytest from
+    # cleaning up tmp_path.
     engine = KnowledgeEngine(db_path, registry=AnalyzerRegistry())
-    return EngineServer(engine=engine, writer=CapturingWriter())
+    try:
+        yield EngineServer(engine=engine, writer=CapturingWriter())
+    finally:
+        engine.close()
 
 
 class TestSidecar:

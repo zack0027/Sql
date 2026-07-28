@@ -1,0 +1,130 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.tool {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tool:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.loading {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(59, 163, 255, 0.05), transparent 60%),
+    var(--surface-sunken);
+  cursor: grab;
+  touch-action: none;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+.node {
+  cursor: pointer;
+}
+
+/* A dot means "there is more here" — the graph loads on demand, so the user
+   needs to see which nodes still have unexplored neighbours. */
+.expandDot {
+  fill: var(--accent);
+  stroke: var(--surface-sunken);
+  stroke-width: 1.5;
+}
+
+.nodeLabel {
+  fill: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.nodeType {
+  fill: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  pointer-events: none;
+}
+
+.nodeConfidence {
+  fill: var(--inferred);
+  font-size: 9.5px;
+  pointer-events: none;
+}
+
+.edgeLabel {
+  fill: var(--text-muted);
+  font-size: 9px;
+  pointer-events: none;
+}
+
+.hint {
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.emptyText {
+  margin: 0;
+  max-width: 420px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}

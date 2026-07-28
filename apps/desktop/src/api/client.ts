@@ -9,13 +9,19 @@
  */
 
 import type {
+  AnalysisIssue,
   AnalysisRun,
+  ChangesResult,
   EngineStatus,
+  EntityHit,
+  EntityType,
   FileTreeItem,
+  Neighborhood,
   ProgressEvent,
   Project,
   ProjectStats,
   ScanPolicy,
+  UsageHit,
 } from '@hana/shared-types';
 
 export interface EngineClient {
@@ -34,6 +40,31 @@ export interface EngineClient {
   analyze(projectId: string): Promise<AnalysisRun>;
   cancelAnalysis(projectId: string): Promise<void>;
   analysisHistory(projectId: string, limit?: number): Promise<AnalysisRun[]>;
+
+  // -- the answering layer -------------------------------------------------
+  // Every one of these is read-only and returns evidence alongside the answer.
+
+  search(projectId: string, text: string, limit?: number): Promise<EntityHit[]>;
+  entity(entityId: string): Promise<EntityHit | null>;
+  uses(entityId: string, includeStructural?: boolean): Promise<UsageHit[]>;
+  dependents(entityId: string): Promise<UsageHit[]>;
+  dependencies(entityId: string): Promise<UsageHit[]>;
+  tablesOfFile(
+    projectId: string,
+    relativePath: string,
+    written?: boolean | null,
+  ): Promise<UsageHit[]>;
+  entitiesInFile(
+    projectId: string,
+    relativePath: string,
+    entityType?: EntityType,
+  ): Promise<EntityHit[]>;
+  reportsUsingTable(entityId: string): Promise<UsageHit[]>;
+  imagesOfReport(entityId: string): Promise<UsageHit[]>;
+  changes(projectId: string, runId?: string): Promise<ChangesResult>;
+  issues(projectId: string, severity?: string): Promise<AnalysisIssue[]>;
+  lowConfidence(projectId: string, threshold?: number): Promise<EntityHit[]>;
+  neighborhood(entityId: string, depth?: number): Promise<Neighborhood>;
 
   /** Ask the OS for a folder. Resolves to null when the user cancels. */
   pickFolder(): Promise<string | null>;
@@ -93,6 +124,91 @@ class TauriEngineClient implements EngineClient {
 
   analysisHistory(projectId: string, limit = 25): Promise<AnalysisRun[]> {
     return this.call('analysis_history', { projectId, limit });
+  }
+
+  /** Every query goes through one allowlisted host command. */
+  private query<T>(method: string, params: Record<string, unknown>): Promise<T> {
+    return this.call<T>('run_query', { method, params });
+  }
+
+  search(projectId: string, text: string, limit = 50): Promise<EntityHit[]> {
+    return this.query('query.search', { project_id: projectId, text, limit });
+  }
+
+  entity(entityId: string): Promise<EntityHit | null> {
+    return this.query('query.entity', { entity_id: entityId });
+  }
+
+  uses(entityId: string, includeStructural = false): Promise<UsageHit[]> {
+    return this.query('query.uses', {
+      entity_id: entityId,
+      include_structural: includeStructural,
+    });
+  }
+
+  dependents(entityId: string): Promise<UsageHit[]> {
+    return this.query('query.dependents', { entity_id: entityId });
+  }
+
+  dependencies(entityId: string): Promise<UsageHit[]> {
+    return this.query('query.dependencies', { entity_id: entityId });
+  }
+
+  tablesOfFile(
+    projectId: string,
+    relativePath: string,
+    written: boolean | null = null,
+  ): Promise<UsageHit[]> {
+    return this.query('query.tables_of_file', {
+      project_id: projectId,
+      relative_path: relativePath,
+      written,
+    });
+  }
+
+  entitiesInFile(
+    projectId: string,
+    relativePath: string,
+    entityType?: EntityType,
+  ): Promise<EntityHit[]> {
+    return this.query('query.entities_in_file', {
+      project_id: projectId,
+      relative_path: relativePath,
+      entity_type: entityType ?? null,
+    });
+  }
+
+  reportsUsingTable(entityId: string): Promise<UsageHit[]> {
+    return this.query('query.reports_using_table', { entity_id: entityId });
+  }
+
+  imagesOfReport(entityId: string): Promise<UsageHit[]> {
+    return this.query('query.images_of_report', { entity_id: entityId });
+  }
+
+  changes(projectId: string, runId?: string): Promise<ChangesResult> {
+    return this.query('query.changes', {
+      project_id: projectId,
+      run_id: runId ?? null,
+    });
+  }
+
+  issues(projectId: string, severity?: string): Promise<AnalysisIssue[]> {
+    return this.query('query.errors', {
+      project_id: projectId,
+      severity: severity ?? null,
+    });
+  }
+
+  lowConfidence(projectId: string, threshold = 0.8): Promise<EntityHit[]> {
+    return this.query('query.low_confidence', {
+      project_id: projectId,
+      threshold,
+    });
+  }
+
+  neighborhood(entityId: string, depth = 1): Promise<Neighborhood> {
+    return this.query('query.neighborhood', { entity_id: entityId, depth });
   }
 
   async pickFolder(): Promise<string | null> {

@@ -9,13 +9,20 @@
  */
 
 import type {
+  AnalysisIssue,
   AnalysisRun,
+  ChangesResult,
   EngineStatus,
+  EntityHit,
+  EntityType,
   FileTreeItem,
+  GraphEdgeHit,
+  Neighborhood,
   ProgressEvent,
   Project,
   ProjectStats,
   ScanPolicy,
+  UsageHit,
 } from '@hana/shared-types';
 
 import type { EngineClient } from './client';
@@ -27,6 +34,97 @@ const DEMO_FILES: Array<[string, string, number]> = [
   ['reports/images/checkboxOn.png', 'image', 72],
   ['moca/confirmar_inspeccion.mcmd', 'moca', 604],
   ['config/apex_inspeccion.json', 'json', 918],
+];
+
+function entity(
+  entityId: string,
+  type: EntityType,
+  name: string,
+  file: string | null,
+  line: number | null,
+  confidence = 1,
+  qualified: string | null = null,
+): EntityHit {
+  return {
+    id: entityId,
+    entity_type: type,
+    name,
+    normalized_name: name.toUpperCase(),
+    qualified_name: qualified,
+    confidence,
+    verification_status: confidence >= 1 ? 'confirmed' : 'inferred',
+    file_path: file,
+    start_line: line,
+  };
+}
+
+/** The fixture graph in miniature: item → column, script → table → report. */
+const DEMO_ENTITIES: EntityHit[] = [
+  entity('E_TABLE', 'OracleTable', 'UC_INSP_ENT', 'sql/guardar_inspeccion.sql', 11),
+  entity(
+    'E_COLUMN',
+    'OracleColumn',
+    'MUESTRA_SIZE_VER',
+    'sql/guardar_inspeccion.sql',
+    18,
+    1,
+    'UC_INSP_ENT.MUESTRA_SIZE_VER',
+  ),
+  entity('E_ITEM', 'ApexItem', 'P117_MUESTRA_SIZE_VER', 'sql/guardar_inspeccion.sql', 21),
+  // Inferred at 0.90: the page follows from a naming convention, not syntax.
+  entity('E_PAGE', 'ApexPage', '117', 'sql/guardar_inspeccion.sql', 21, 0.9),
+  entity('E_QUERY', 'SqlQuery', 'insert#2', 'sql/guardar_inspeccion.sql', 11),
+  entity(
+    'E_REPORT',
+    'JasperReport',
+    'Usr-RptInspeccion',
+    'reports/Usr-RptInspeccion.jrxml',
+    3,
+  ),
+  entity('E_IMAGE', 'File', 'images/checkboxOn.png', 'reports/Usr-RptInspeccion.jrxml', 41),
+];
+
+function edge(
+  source: string,
+  relation: GraphEdgeHit['relation_type'],
+  target: string,
+  file: string,
+  line: number,
+  snippet: string,
+  confidence = 1,
+): GraphEdgeHit {
+  return {
+    source_id: source,
+    target_id: target,
+    relation_type: relation,
+    confidence,
+    status: confidence >= 1 ? 'confirmed' : 'inferred',
+    evidence: {
+      file_path: file,
+      absolute_path: `/demo/${file}`,
+      start_line: line,
+      end_line: line,
+      snippet,
+      analyzer: relation.startsWith('REPORT') ? 'jrxml' : 'sql',
+      confidence,
+      status: confidence >= 1 ? 'confirmed' : 'inferred',
+    },
+  };
+}
+
+const DEMO_EDGES: GraphEdgeHit[] = [
+  edge('E_QUERY', 'QUERY_WRITES_TABLE', 'E_TABLE', 'sql/guardar_inspeccion.sql', 11,
+    'insert into uc_insp_ent ('),
+  edge('E_QUERY', 'QUERY_USES_COLUMN', 'E_COLUMN', 'sql/guardar_inspeccion.sql', 18,
+    'muestra_size_ver'),
+  edge('E_ITEM', 'APEX_ITEM_MAPS_TO_COLUMN', 'E_COLUMN', 'sql/guardar_inspeccion.sql', 18,
+    'insert into uc_insp_ent (... muestra_size_ver) values (... :P117_MUESTRA_SIZE_VER)'),
+  edge('E_PAGE', 'APEX_PAGE_CONTAINS_ITEM', 'E_ITEM', 'sql/guardar_inspeccion.sql', 21,
+    ':P117_MUESTRA_SIZE_VER', 0.9),
+  edge('E_REPORT', 'REPORT_QUERIES_TABLE', 'E_TABLE', 'reports/Usr-RptInspeccion.jrxml', 22,
+    'from uc_insp_ent e'),
+  edge('E_REPORT', 'REPORT_REFERENCES_IMAGE', 'E_IMAGE', 'reports/Usr-RptInspeccion.jrxml', 41,
+    'images/checkboxOn.png'),
 ];
 
 function nowIso(): string {
@@ -221,6 +319,182 @@ export class MockEngineClient implements EngineClient {
 
   async analysisHistory(projectId: string, limit = 25): Promise<AnalysisRun[]> {
     return (this.runs.get(projectId) ?? []).slice(0, limit);
+  }
+
+  // -- the answering layer -------------------------------------------------
+  //
+  // A small graph modelled on the fixtures: an APEX item feeding an Oracle
+  // column, a table written by a script and read by a report. Small on purpose,
+  // but shaped like the real thing so the views can be built and tested against
+  // it — including the inferred APEX page, which must render differently from a
+  // confirmed fact.
+
+  async search(_projectId: string, text: string, limit = 50): Promise<EntityHit[]> {
+    const needle = text.trim().toUpperCase();
+    if (!needle) return [];
+    return DEMO_ENTITIES.filter(
+      (entity) =>
+        entity.normalized_name.toUpperCase().includes(needle) ||
+        (entity.qualified_name ?? '').toUpperCase().includes(needle),
+    ).slice(0, limit);
+  }
+
+  async entity(entityId: string): Promise<EntityHit | null> {
+    return DEMO_ENTITIES.find((item) => item.id === entityId) ?? null;
+  }
+
+  async uses(entityId: string, includeStructural = false): Promise<UsageHit[]> {
+    return DEMO_EDGES.filter(
+      (edge) => edge.source_id === entityId || edge.target_id === entityId,
+    )
+      .filter(
+        (edge) =>
+          includeStructural || edge.relation_type !== 'FILE_CONTAINS_ENTITY',
+      )
+      .map((edge) => this.usageOf(edge, entityId));
+  }
+
+  async dependents(entityId: string): Promise<UsageHit[]> {
+    return DEMO_EDGES.filter((edge) => edge.target_id === entityId).map((edge) =>
+      this.usageOf(edge, entityId),
+    );
+  }
+
+  async dependencies(entityId: string): Promise<UsageHit[]> {
+    return DEMO_EDGES.filter((edge) => edge.source_id === entityId).map((edge) =>
+      this.usageOf(edge, entityId),
+    );
+  }
+
+  async tablesOfFile(
+    _projectId: string,
+    relativePath: string,
+    written: boolean | null = null,
+  ): Promise<UsageHit[]> {
+    return DEMO_EDGES.filter((edge) => {
+      if (edge.evidence.file_path !== relativePath) return false;
+      const isWrite = edge.relation_type === 'QUERY_WRITES_TABLE';
+      const isRead =
+        edge.relation_type === 'QUERY_READS_TABLE' ||
+        edge.relation_type === 'REPORT_QUERIES_TABLE';
+      if (written === true) return isWrite;
+      if (written === false) return isRead;
+      return isWrite || isRead;
+    }).map((edge) => this.usageOf(edge, edge.source_id));
+  }
+
+  async entitiesInFile(
+    _projectId: string,
+    relativePath: string,
+    entityType?: EntityType,
+  ): Promise<EntityHit[]> {
+    return DEMO_ENTITIES.filter(
+      (entity) =>
+        entity.file_path === relativePath &&
+        (!entityType || entity.entity_type === entityType),
+    );
+  }
+
+  async reportsUsingTable(entityId: string): Promise<UsageHit[]> {
+    return DEMO_EDGES.filter(
+      (edge) =>
+        edge.target_id === entityId &&
+        edge.relation_type === 'REPORT_QUERIES_TABLE',
+    ).map((edge) => this.usageOf(edge, entityId));
+  }
+
+  async imagesOfReport(entityId: string): Promise<UsageHit[]> {
+    return DEMO_EDGES.filter(
+      (edge) =>
+        edge.source_id === entityId &&
+        edge.relation_type === 'REPORT_REFERENCES_IMAGE',
+    ).map((edge) => this.usageOf(edge, entityId));
+  }
+
+  async changes(projectId: string): Promise<ChangesResult> {
+    const analysed = this.analysed.has(projectId);
+    return {
+      run_id: analysed ? 'RUN_DEMO' : null,
+      changes: analysed
+        ? DEMO_FILES.map(([path, type]) => ({
+            change_kind: 'added' as const,
+            relative_path: path,
+            absolute_path: `/demo/${path}`,
+            detected_type: type,
+            content_hash: 'a'.repeat(64),
+            observed_at: nowIso(),
+          }))
+        : [],
+    };
+  }
+
+  async issues(projectId: string): Promise<AnalysisIssue[]> {
+    if (!this.analysed.has(projectId)) return [];
+    return [
+      {
+        relative_path: 'reports/Usr-RptInspeccion.jrxml',
+        absolute_path: '/demo/reports/Usr-RptInspeccion.jrxml',
+        severity: 'warning',
+        code: 'undeclared_field',
+        message: 'el campo $F{campo_no_declarado} se usa pero no está declarado',
+        analyzer: 'jrxml',
+        observed_at: nowIso(),
+      },
+    ];
+  }
+
+  async lowConfidence(projectId: string, threshold = 0.8): Promise<EntityHit[]> {
+    if (!this.analysed.has(projectId)) return [];
+    return DEMO_ENTITIES.filter((entity) => entity.confidence < threshold);
+  }
+
+  async neighborhood(entityId: string, depth = 1): Promise<Neighborhood> {
+    const seen = new Map<string, number>([[entityId, 0]]);
+    let frontier = [entityId];
+
+    for (let level = 1; level <= Math.max(1, depth); level += 1) {
+      const next: string[] = [];
+      for (const edge of DEMO_EDGES) {
+        for (const [near, far] of [
+          [edge.source_id, edge.target_id],
+          [edge.target_id, edge.source_id],
+        ]) {
+          if (frontier.includes(near) && !seen.has(far)) {
+            seen.set(far, level);
+            next.push(far);
+          }
+        }
+      }
+      frontier = next;
+    }
+
+    const nodes = [...seen.entries()]
+      .map(([id, nodeDepth]) => {
+        const entity = DEMO_ENTITIES.find((item) => item.id === id);
+        return entity ? { entity, depth: nodeDepth } : null;
+      })
+      .filter((node): node is { entity: EntityHit; depth: number } => node !== null);
+
+    const known = new Set(nodes.map((node) => node.entity.id));
+    return {
+      nodes,
+      edges: DEMO_EDGES.filter(
+        (edge) => known.has(edge.source_id) && known.has(edge.target_id),
+      ),
+      truncated: false,
+    };
+  }
+
+  private usageOf(edge: GraphEdgeHit, from: string): UsageHit {
+    const otherId = edge.source_id === from ? edge.target_id : edge.source_id;
+    const entity =
+      DEMO_ENTITIES.find((item) => item.id === otherId) ?? DEMO_ENTITIES[0];
+    return {
+      entity,
+      relation_type: edge.relation_type,
+      direction: edge.source_id === from ? 'outgoing' : 'incoming',
+      evidence: edge.evidence,
+    };
   }
 
   async pickFolder(): Promise<string | null> {

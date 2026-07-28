@@ -60,6 +60,51 @@ async fn call(sidecar: Arc<Sidecar>, method: &'static str, params: Value) -> Com
         .map_err(|error| format!("fallo interno del host: {error}"))?
 }
 
+/// Query methods the webview may invoke.
+///
+/// A single passthrough command keeps fourteen near-identical wrappers out of
+/// this file, but it must not become a way to reach *any* engine method: that
+/// would let a compromised webview call `project.delete` through a command
+/// meant for reading. The allowlist is the whole point — every name here is
+/// read-only.
+const QUERY_METHODS: &[&str] = &[
+    "query.search",
+    "query.resolve",
+    "query.entity",
+    "query.uses",
+    "query.dependents",
+    "query.dependencies",
+    "query.tables_of_file",
+    "query.entities_in_file",
+    "query.reports_using_table",
+    "query.images_of_report",
+    "query.changes",
+    "query.errors",
+    "query.low_confidence",
+    "query.neighborhood",
+];
+
+/// Run one read-only query against the knowledge graph.
+#[tauri::command]
+pub async fn run_query(
+    state: State<'_, AppState>,
+    method: String,
+    params: Value,
+) -> CommandResult<Value> {
+    let allowed = QUERY_METHODS
+        .iter()
+        .find(|candidate| **candidate == method)
+        .ok_or_else(|| format!("consulta no permitida: {method}"))?;
+
+    let sidecar = Arc::clone(&state.sidecar);
+    // `allowed` is a &'static str from the table, which is what `call` needs and
+    // also guarantees the string sent to the engine is one we compiled in.
+    let name: &'static str = allowed;
+    tauri::async_runtime::spawn_blocking(move || sidecar.request(name, params))
+        .await
+        .map_err(|error| format!("fallo interno del host: {error}"))?
+}
+
 #[tauri::command]
 pub async fn engine_status(state: State<'_, AppState>) -> CommandResult<Value> {
     call(Arc::clone(&state.sidecar), "engine.status", json!({})).await

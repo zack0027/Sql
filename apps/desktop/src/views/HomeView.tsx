@@ -25,7 +25,7 @@ const PHASE_LABELS: Record<string, string> = {
   finalizing: 'Finalizando',
 };
 
-export function HomeView(): JSX.Element {
+export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element {
   const {
     ready,
     native,
@@ -281,12 +281,28 @@ export function HomeView(): JSX.Element {
                   </div>
                 )}
 
-                <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
                   <button
                     className={styles.danger}
                     onClick={() => void removeProject(activeProject.id)}
                   >
                     Quitar del motor
+                  </button>
+                  {/* Only offered once there is knowledge to explore: an empty
+                      graph would be a dead end, not a feature. */}
+                  <button
+                    className={styles.primary}
+                    disabled={!onExplore || (activeStats?.entities ?? 0) === 0}
+                    onClick={() => onExplore?.()}
+                  >
+                    Explorar el grafo →
                   </button>
                 </div>
               </>

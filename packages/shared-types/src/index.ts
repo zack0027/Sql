@@ -313,6 +313,88 @@ export interface ProgressEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Query results — the answering layer
+//
+// Mirrors `engine/hana_engine/query/engine.py`. Every answer carries the file
+// and the lines that prove it, so the UI can always open the evidence.
+// ---------------------------------------------------------------------------
+
+export interface QueryEvidence {
+  file_path: string | null;
+  absolute_path: string | null;
+  start_line: number | null;
+  end_line: number | null;
+  snippet: string | null;
+  analyzer: string;
+  confidence: number;
+  status: VerificationStatus;
+}
+
+export interface EntityHit {
+  id: string;
+  entity_type: EntityType;
+  name: string;
+  normalized_name: string;
+  qualified_name: string | null;
+  confidence: number;
+  verification_status: VerificationStatus;
+  file_path: string | null;
+  start_line: number | null;
+}
+
+export interface UsageHit {
+  entity: EntityHit;
+  relation_type: RelationType;
+  direction: 'incoming' | 'outgoing';
+  evidence: QueryEvidence;
+}
+
+export interface GraphNodeHit {
+  entity: EntityHit;
+  depth: number;
+}
+
+export interface GraphEdgeHit {
+  source_id: string;
+  target_id: string;
+  relation_type: RelationType;
+  confidence: number;
+  status: VerificationStatus;
+  evidence: QueryEvidence;
+}
+
+/** A bounded slice of the graph, for progressive display. */
+export interface Neighborhood {
+  nodes: GraphNodeHit[];
+  edges: GraphEdgeHit[];
+  truncated: boolean;
+}
+
+export interface FileChangeEntry {
+  change_kind: ChangeKind;
+  relative_path: string;
+  absolute_path: string;
+  detected_type: string;
+  content_hash: string | null;
+  observed_at: string;
+}
+
+export interface ChangesResult {
+  run_id: string | null;
+  changes: FileChangeEntry[];
+}
+
+export interface AnalysisIssue {
+  relative_path: string | null;
+  absolute_path: string | null;
+  severity: Severity;
+  code: string;
+  message: string;
+  analyzer: string;
+  observed_at: string;
+}
+
+// ---------------------------------------------------------------------------
 // Confidence
 // ---------------------------------------------------------------------------
 

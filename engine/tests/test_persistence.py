@@ -105,8 +105,15 @@ class TestMigrations:
             assert expected in names
 
     def test_is_idempotent(self, connection):
+        """Re-running applies nothing and leaves the record untouched.
+
+        Deliberately not asserting a fixed set of versions: that would fail every
+        time a migration is added, which is noise rather than a finding.
+        """
+        before = applied_versions(connection)
         assert migrate(connection) == []
-        assert applied_versions(connection) == {1}
+        assert applied_versions(connection) == before
+        assert 1 in before  # the initial schema is always there
 
     def test_fts5_is_available(self, connection):
         assert has_fts5(connection)

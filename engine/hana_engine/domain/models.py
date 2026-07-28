@@ -90,6 +90,10 @@ class FileRecord:
     modified_at: str | None = None
     analysis_status: FileAnalysisStatus = FileAnalysisStatus.PENDING
     analyzed_hash: str | None = None
+    #: Version of the analyzer suite that produced this file's knowledge. When it
+    #: stops matching the running suite the file is re-read, even though not one
+    #: of its bytes has moved.
+    analyzed_by: str | None = None
     last_analyzed_at: str | None = None
     is_deleted: bool = False
     skip_reason: SkipReason | None = None
@@ -110,6 +114,7 @@ class FileRecord:
             modified_at=row["modified_at"],
             analysis_status=FileAnalysisStatus(row["analysis_status"]),
             analyzed_hash=row["analyzed_hash"],
+            analyzed_by=row["analyzed_by"] if "analyzed_by" in row.keys() else None,
             last_analyzed_at=row["last_analyzed_at"],
             is_deleted=bool(row["is_deleted"]),
             skip_reason=SkipReason(row["skip_reason"]) if row["skip_reason"] else None,
@@ -303,6 +308,10 @@ class AnalysisRun:
     files_unchanged: int = 0
     files_analyzed: int = 0
     files_skipped: int = 0
+    #: Files re-read because a newer analyzer can learn more from them, even
+    #: though their content never changed. Not persisted: it describes this run's
+    #: reason for working, not a property of the project.
+    files_reanalyzed: int = 0
     entities_created: int = 0
     relationships_created: int = 0
     error_count: int = 0

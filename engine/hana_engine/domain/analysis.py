@@ -199,6 +199,10 @@ class Analyzer(ABC):
     #: Higher runs first; lets a specific analyzer see a file before a generic one.
     priority: int = 0
 
+    #: Bump when this analyzer learns to extract something new. Files analysed by
+    #: an older version are re-read even though their content has not changed.
+    version: int = 1
+
     def can_analyze(self, file_path: str, content: str) -> bool:
         """Return True when this analyzer should read the file.
 
@@ -238,6 +242,21 @@ class AnalyzerRegistry:
 
     def all(self) -> Sequence[Analyzer]:
         return tuple(self._analyzers)
+
+    def fingerprint(self) -> str:
+        """Identify this set of analyzers together with their capabilities.
+
+        Stored with every file's knowledge so the pipeline can recognise that a
+        file was analysed by an *older* suite. It includes each analyzer's
+        ``version``, which is what an author bumps after teaching one something
+        new — without it, a capability added today would never reach the files
+        analysed yesterday, and the gap would appear as an unexplained blank.
+        """
+        parts = [
+            f"{analyzer.name}@{getattr(analyzer, 'version', 1)}"
+            for analyzer in self._analyzers
+        ]
+        return ";".join(sorted(parts)) or "empty"
 
     def for_file(self, file_path: str, content: str) -> Iterable[Analyzer]:
         """Yield the analyzers that accept this file, highest priority first."""

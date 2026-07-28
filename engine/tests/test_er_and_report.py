@@ -186,6 +186,30 @@ class TestErModel:
         assert model == {"tables": [], "links": [], "derived_from": "join_conditions"}
 
 
+class TestJoinsFromReportQueries:
+    """A folder of JRXML and no .sql at all is a common shape in this domain."""
+
+    def test_a_report_query_relates_its_tables(self, analyzed):
+        engine, project_id = analyzed
+        model = engine.queries.er_model(project_id)
+        from_reports = [
+            link
+            for link in model["links"]
+            if link["evidence"]["analyzer"] == "jrxml"
+        ]
+        assert from_reports, "el JOIN de la consulta del reporte no produjo enlace"
+
+    def test_the_link_cites_the_line_inside_the_query(self, analyzed):
+        engine, project_id = analyzed
+        model = engine.queries.er_model(project_id)
+        link = next(
+            link for link in model["links"] if link["evidence"]["analyzer"] == "jrxml"
+        )
+        source = Path(link["evidence"]["absolute_path"]).read_text(encoding="utf-8")
+        line = source.splitlines()[link["evidence"]["start_line"] - 1]
+        assert "join" in line.lower() or "=" in line
+
+
 class TestReportStructure:
     def report(self, engine, project_id):
         hits = engine.queries.resolve(

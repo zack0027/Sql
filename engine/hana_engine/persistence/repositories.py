@@ -231,6 +231,7 @@ class FileRepository(_Repository):
         status: FileAnalysisStatus,
         *,
         analyzed_hash: str | None = None,
+        analyzed_by: str | None = None,
     ) -> None:
         now = utc_now()
         if analyzed_hash is None:
@@ -242,12 +243,33 @@ class FileRepository(_Repository):
             self._execute(
                 """
                 UPDATE files
-                SET analysis_status = ?, analyzed_hash = ?, last_analyzed_at = ?,
-                    updated_at = ?
+                SET analysis_status = ?, analyzed_hash = ?, analyzed_by = ?,
+                    last_analyzed_at = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (status.value, analyzed_hash, now, now, file_id),
+                (status.value, analyzed_hash, analyzed_by, now, now, file_id),
             )
+
+    def stale_for_analyzer(self, project_id: str, suite: str) -> list[FileRecord]:
+        """Analysable files whose knowledge came from a different analyzer suite.
+
+        Content-hash comparison cannot see this: the bytes have not moved, but
+        what HANA is able to learn from them has. Without this, adding a new
+        capability would leave every already-analysed file behind it, and the
+        user would see a gap with no explanation.
+        """
+        rows = self._execute(
+            """
+            SELECT * FROM files
+            WHERE project_id = ? AND is_deleted = 0 AND skip_reason IS NULL
+              AND content_hash IS NOT NULL
+              AND analyzed_hash = content_hash
+              AND (analyzed_by IS NULL OR analyzed_by <> ?)
+            ORDER BY relative_path
+            """,
+            (project_id, suite),
+        ).fetchall()
+        return [FileRecord.from_row(row) for row in rows]
 
     def mark_deleted(self, file_id: str) -> None:
         """Soft-delete: the row and its history stay, the content is gone."""

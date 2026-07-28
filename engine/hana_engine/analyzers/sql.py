@@ -82,6 +82,9 @@ class SqlAnalyzer(Analyzer):
         ".trg", ".spc", ".bdy", ".vw",
     )
     priority = 50
+    #: 2 — learned join conditions (table-to-table links) and comma-separated
+    #: FROM lists, the old-style join.
+    version = 2
 
     def analyze(self, context: AnalysisContext) -> AnalysisResult:
         result = AnalysisResult()

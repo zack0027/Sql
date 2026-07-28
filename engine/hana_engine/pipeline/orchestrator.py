@@ -383,6 +383,22 @@ class AnalysisPipeline:
         candidates = [
             persisted.get(change.relative_path) for change in change_set.to_analyze()
         ]
+
+        # Files whose bytes never moved but whose knowledge came from an older
+        # analyzer. Content hashing cannot see this. Without it, teaching an
+        # analyzer something new leaves every already-analysed file behind, and
+        # the user meets an unexplained blank — which is exactly what happened
+        # when the JRXML analyzer learned to read a report's bands.
+        stale = self.repos.files.stale_for_analyzer(
+            project.id, self.registry.fingerprint()
+        )
+        if stale:
+            known = {record.relative_path for record in candidates if record}
+            candidates.extend(
+                record for record in stale if record.relative_path not in known
+            )
+            run.files_reanalyzed = len(stale)
+
         targets = [
             record
             for record in candidates
@@ -505,6 +521,7 @@ class AnalysisPipeline:
                     record.id,
                     FileAnalysisStatus.ANALYZED,
                     analyzed_hash=record.content_hash,
+                    analyzed_by=self.registry.fingerprint(),
                 )
         except Exception as exc:  # noqa: BLE001 - persistence must not kill the run
             self._record_error(

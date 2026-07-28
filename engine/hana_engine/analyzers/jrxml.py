@@ -30,7 +30,13 @@ from ..domain.analysis import (
 )
 from ..domain.confidence import CONFIRMED
 from ..domain.types import EntityType, RelationType, Severity
-from .sqltext import blank_noise, cte_names, find_statements, table_references
+from .sqltext import (
+    blank_noise,
+    cte_names,
+    find_statements,
+    join_conditions,
+    table_references,
+)
 
 #: `$F{campo}`, `$P{parametro}`, `$V{variable}`.
 _EXPRESSION_REFERENCE = re.compile(r"\$([FPV])\{([^}]*)\}")
@@ -69,6 +75,9 @@ class JrxmlAnalyzer(Analyzer):
     name = "jrxml"
     supported_extensions = (".jrxml",)
     priority = 60
+    #: 2 — learned to record the report's bands and their elements.
+    #: 3 — learned the join conditions inside a report's own query.
+    version = 3
 
     def analyze(self, context: AnalysisContext) -> AnalysisResult:
         result = AnalysisResult()
@@ -361,6 +370,10 @@ class JrxmlAnalyzer(Analyzer):
             cleaned = blank_noise(sql)
             excluded = cte_names(cleaned)
             for statement in find_statements(cleaned):
+                # alias (and bare name) -> the table draft it stands for, so the
+                # joins below can be resolved.
+                by_qualifier: dict[str, EntityDraft] = {}
+
                 for reference in table_references(statement, excluded):
                     line = base_line + sql[: reference.offset].count("\n")
                     span = SourceSpan(line, line)
@@ -383,6 +396,61 @@ class JrxmlAnalyzer(Analyzer):
                             confidence=CONFIRMED,
                         )
                     )
+                    by_qualifier[reference.name.upper()] = table
+                    if reference.alias:
+                        by_qualifier[reference.alias.upper()] = table
+
+                self._collect_query_joins(
+                    context, statement, sql, base_line, by_qualifier, result
+                )
+
+    def _collect_query_joins(
+        self,
+        context: AnalysisContext,
+        statement,
+        sql: str,
+        base_line: int,
+        by_qualifier: dict[str, EntityDraft],
+        result: AnalysisResult,
+    ) -> None:
+        """Relate the tables a report's own query joins.
+
+        Report-heavy projects are common — a folder of JRXML files and not one
+        ``.sql`` — and their queries carry the joins. Without reading them, the
+        entity-relationship view of such a project would be a page of unconnected
+        boxes, which is worse than useless: it would suggest the tables have no
+        relationships at all.
+        """
+        seen: set[str] = set()
+
+        for condition in join_conditions(statement):
+            left = by_qualifier.get(condition.left_qualifier.upper())
+            right = by_qualifier.get(condition.right_qualifier.upper())
+            if left is None or right is None or left.ref == right.ref:
+                continue
+
+            pair = "|".join(sorted([left.ref, right.ref]))
+            if pair in seen:
+                continue
+            seen.add(pair)
+
+            line = base_line + sql[: condition.offset].count("\n")
+            span = SourceSpan(line, line)
+            result.relationships.append(
+                RelationshipDraft(
+                    source_ref=left.ref,
+                    relation_type=RelationType.TABLE_JOINS_TABLE,
+                    target_ref=right.ref,
+                    span=span,
+                    evidence_snippet=_line_text(context.content, line) or _trim(sql),
+                    confidence=CONFIRMED,
+                    metadata={
+                        "left_column": condition.left_column.upper(),
+                        "right_column": condition.right_column.upper(),
+                        "source": "report_query",
+                    },
+                )
+            )
 
     def _collect_images(
         self,

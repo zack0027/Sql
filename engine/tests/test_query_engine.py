@@ -116,7 +116,12 @@ class TestWhereUsed:
             window = " ".join(
                 lines[max(0, hit.evidence.start_line - 1) : hit.evidence.end_line or hit.evidence.start_line]
             ).upper()
-            assert "UC_INSP_ENT" in window or "INSP" in window
+            if hit.relation_type == RelationType.TABLE_JOINS_TABLE.value:
+                # A join's proof is the condition itself, which names its tables
+                # through their aliases rather than in full.
+                assert "=" in window, window
+            else:
+                assert "UC_INSP_ENT" in window or "INSP" in window, window
             checked += 1
         assert checked > 0
 

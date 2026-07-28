@@ -32,6 +32,7 @@ from collections.abc import Callable, Iterable
 from typing import Any, TextIO
 
 from ..domain.models import ScannedFile
+from ..domain.types import EntityType
 from ..engine import KnowledgeEngine, ProjectPathError
 from ..indexing.policy import ScanPolicy
 from ..models.provider import get_provider
@@ -138,6 +139,22 @@ class EngineServer:
             "analysis.history": self._analysis_history,
             "analysis.latest": self._analysis_latest,
             "model.status": self._model_status,
+            # The answering layer. Deterministic: every result is computed from
+            # stored facts, and carries the file and lines that prove it.
+            "query.search": self._query_search,
+            "query.resolve": self._query_resolve,
+            "query.entity": self._query_entity,
+            "query.uses": self._query_uses,
+            "query.dependents": self._query_dependents,
+            "query.dependencies": self._query_dependencies,
+            "query.tables_of_file": self._query_tables_of_file,
+            "query.entities_in_file": self._query_entities_in_file,
+            "query.reports_using_table": self._query_reports_using_table,
+            "query.images_of_report": self._query_images_of_report,
+            "query.changes": self._query_changes,
+            "query.errors": self._query_errors,
+            "query.low_confidence": self._query_low_confidence,
+            "query.neighborhood": self._query_neighborhood,
         }
 
     # -- lifecycle ----------------------------------------------------------
@@ -375,6 +392,97 @@ class EngineServer:
             "available": provider.is_available(),
             "models": [_encode(model) for model in provider.list_models()],
         }
+
+    # -- the answering layer ------------------------------------------------
+
+    def _query_search(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        hits = self.engine.queries.search(
+            self._require(params, "project_id"),
+            str(params.get("text", "")),
+            limit=int(params.get("limit", 50)),
+        )
+        return [hit.to_dict() for hit in hits]
+
+    def _query_resolve(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        entity_type = params.get("entity_type")
+        hits = self.engine.queries.resolve(
+            self._require(params, "project_id"),
+            self._require(params, "name"),
+            entity_type=EntityType(entity_type) if entity_type else None,
+        )
+        return [hit.to_dict() for hit in hits]
+
+    def _query_entity(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        hit = self.engine.queries.get(self._require(params, "entity_id"))
+        return hit.to_dict() if hit else None
+
+    def _query_uses(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        hits = self.engine.queries.where_used(
+            self._require(params, "entity_id"),
+            include_structural=bool(params.get("include_structural", False)),
+            limit=int(params.get("limit", 200)),
+        )
+        return [hit.to_dict() for hit in hits]
+
+    def _query_dependents(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        hits = self.engine.queries.dependents(self._require(params, "entity_id"))
+        return [hit.to_dict() for hit in hits]
+
+    def _query_dependencies(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        hits = self.engine.queries.dependencies(self._require(params, "entity_id"))
+        return [hit.to_dict() for hit in hits]
+
+    def _query_tables_of_file(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        written = params.get("written")
+        hits = self.engine.queries.tables_of_file(
+            self._require(params, "project_id"),
+            self._require(params, "relative_path"),
+            written=None if written is None else bool(written),
+        )
+        return [hit.to_dict() for hit in hits]
+
+    def _query_entities_in_file(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        entity_type = params.get("entity_type")
+        hits = self.engine.queries.entities_in_file(
+            self._require(params, "project_id"),
+            self._require(params, "relative_path"),
+            entity_type=EntityType(entity_type) if entity_type else None,
+        )
+        return [hit.to_dict() for hit in hits]
+
+    def _query_reports_using_table(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        hits = self.engine.queries.reports_using_table(
+            self._require(params, "entity_id")
+        )
+        return [hit.to_dict() for hit in hits]
+
+    def _query_images_of_report(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        hits = self.engine.queries.images_of_report(self._require(params, "entity_id"))
+        return [hit.to_dict() for hit in hits]
+
+    def _query_changes(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self.engine.queries.changes_since(
+            self._require(params, "project_id"), run_id=params.get("run_id")
+        )
+
+    def _query_errors(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        return self.engine.queries.files_with_errors(
+            self._require(params, "project_id"), severity=params.get("severity")
+        )
+
+    def _query_low_confidence(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        hits = self.engine.queries.low_confidence(
+            self._require(params, "project_id"),
+            threshold=float(params.get("threshold", 0.8)),
+        )
+        return [hit.to_dict() for hit in hits]
+
+    def _query_neighborhood(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self.engine.queries.neighborhood(
+            self._require(params, "entity_id"),
+            depth=int(params.get("depth", 1)),
+            max_nodes=int(params.get("max_nodes", 150)),
+        ).to_dict()
 
     @staticmethod
     def _require(params: dict[str, Any], key: str) -> str:

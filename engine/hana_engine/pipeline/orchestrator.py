@@ -16,6 +16,7 @@ Three properties this module is responsible for, and which the tests pin down:
 
 from __future__ import annotations
 
+import sqlite3
 import threading
 import traceback
 from collections.abc import Callable, Sequence
@@ -781,6 +782,26 @@ class AnalysisPipeline:
             )
         self.repos.projects.mark_analyzed(project.id)
         _ = extensions  # counted for the UI; the value itself is read on demand
+        self._consolidate()
+
+    def _consolidate(self) -> None:
+        """Fold the write-ahead log back into the database file.
+
+        SQLite's automatic checkpoint is *passive*: it reuses the WAL rather than
+        shrinking it, so the file keeps the high-water mark of the largest
+        analysis. A real project left a 199 MB WAL beside a 208 MB database —
+        almost double the disk footprint for the same knowledge — and it never
+        came back on its own, because the application holds its connection open
+        for the whole session.
+
+        The end of a run is the right moment: the writing is done and nobody is
+        waiting on the result. A checkpoint that cannot complete (a reader is
+        active) is not an error; the log simply waits for the next run.
+        """
+        try:
+            self.repos.connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except sqlite3.Error:
+            pass
 
     def _cancel(self, run: AnalysisRun, project: Project) -> AnalysisRun:
         self.repos.runs.finish(

@@ -155,6 +155,8 @@ class EngineServer:
             "query.errors": self._query_errors,
             "query.low_confidence": self._query_low_confidence,
             "query.neighborhood": self._query_neighborhood,
+            "query.er_model": self._query_er_model,
+            "query.report_structure": self._query_report_structure,
         }
 
     # -- lifecycle ----------------------------------------------------------
@@ -483,6 +485,16 @@ class EngineServer:
             depth=int(params.get("depth", 1)),
             max_nodes=int(params.get("max_nodes", 150)),
         ).to_dict()
+
+    def _query_er_model(self, params: dict[str, Any]) -> dict[str, Any]:
+        table_ids = params.get("table_ids")
+        return self.engine.queries.er_model(
+            self._require(params, "project_id"),
+            table_ids=list(table_ids) if table_ids else None,
+        )
+
+    def _query_report_structure(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        return self.engine.queries.report_structure(self._require(params, "entity_id"))
 
     @staticmethod
     def _require(params: dict[str, Any], key: str) -> str:

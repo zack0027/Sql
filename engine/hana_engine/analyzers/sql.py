@@ -35,6 +35,7 @@ from .sqltext import (
     blank_noise,
     cte_names,
     find_statements,
+    join_conditions,
     qualified_columns,
     split_schema,
     table_references,
@@ -165,6 +166,57 @@ class SqlAnalyzer(Analyzer):
         self._collect_columns(
             context, statement, query, by_qualifier, written_table, result
         )
+        self._collect_joins(context, statement, by_qualifier, result)
+
+    def _collect_joins(
+        self,
+        context: AnalysisContext,
+        statement: Statement,
+        by_qualifier: dict[str, EntityDraft],
+        result: AnalysisResult,
+    ) -> None:
+        """Record which tables a statement relates, and on which columns.
+
+        This is what makes an entity-relationship view possible without ever
+        touching the database. It is recorded as confirmed, because a join
+        condition is direct syntax — but its metadata says plainly that it came
+        from a query and not from a declared constraint, so nobody mistakes the
+        drawing for the schema.
+        """
+        seen: set[str] = set()
+
+        for condition in join_conditions(statement):
+            left = by_qualifier.get(condition.left_qualifier.upper())
+            right = by_qualifier.get(condition.right_qualifier.upper())
+            # A qualifier that matches no table in this statement is not a join;
+            # guessing which table it meant would fabricate an edge.
+            if left is None or right is None or left.ref == right.ref:
+                continue
+
+            # One edge per pair regardless of direction: A joined to B is the
+            # same fact as B joined to A, and drawing both would double every
+            # line in the diagram.
+            pair = "|".join(sorted([left.ref, right.ref]))
+            if pair in seen:
+                continue
+            seen.add(pair)
+
+            span = context.span_of_offsets(condition.offset, condition.offset)
+            result.relationships.append(
+                RelationshipDraft(
+                    source_ref=left.ref,
+                    relation_type=RelationType.TABLE_JOINS_TABLE,
+                    target_ref=right.ref,
+                    span=span,
+                    evidence_snippet=context.snippet(span),
+                    confidence=CONFIRMED,
+                    metadata={
+                        "left_column": condition.left_column.upper(),
+                        "right_column": condition.right_column.upper(),
+                        "source": "join_condition",
+                    },
+                )
+            )
 
     def _collect_columns(
         self,

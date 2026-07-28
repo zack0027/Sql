@@ -18,14 +18,23 @@ import type {
   AnalysisIssue,
   ChangesResult,
   EntityHit,
+  ErModel,
   FileTreeItem,
   Neighborhood,
+  ReportStructure,
   UsageHit,
 } from '@hana/shared-types';
 
 import { getClient } from '../api/client';
 
-export type CenterTab = 'graph' | 'code' | 'file' | 'issues' | 'changes';
+export type CenterTab =
+  | 'graph'
+  | 'er'
+  | 'report'
+  | 'code'
+  | 'file'
+  | 'issues'
+  | 'changes';
 
 interface ExplorerState {
   projectId: string | null;
@@ -55,12 +64,20 @@ interface ExplorerState {
 
   issues: AnalysisIssue[];
   changes: ChangesResult | null;
+
+  er: ErModel | null;
+  loadingEr: boolean;
+  report: ReportStructure | null;
+  loadingReport: boolean;
+
   tab: CenterTab;
   error: string | null;
 
   open: (projectId: string) => Promise<void>;
   reset: () => void;
   setTab: (tab: CenterTab) => void;
+  loadEr: () => Promise<void>;
+  loadReport: (entityId: string) => Promise<void>;
   search: (text: string) => Promise<void>;
   selectEntity: (entity: EntityHit) => Promise<void>;
   expandNode: (entityId: string) => Promise<void>;
@@ -138,6 +155,10 @@ const EMPTY = {
   highlight: null,
   issues: [] as AnalysisIssue[],
   changes: null,
+  er: null,
+  loadingEr: false,
+  report: null,
+  loadingReport: false,
   tab: 'graph' as CenterTab,
   error: null,
 };
@@ -167,6 +188,35 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
 
   setTab(tab: CenterTab) {
     set({ tab });
+    // Both views are expensive enough to be worth fetching only when opened,
+    // and cheap enough to keep once fetched.
+    if (tab === 'er' && !get().er && !get().loadingEr) void get().loadEr();
+  },
+
+  async loadEr() {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    set({ loadingEr: true });
+    try {
+      const client = await getClient();
+      set({ er: await client.erModel(projectId) });
+    } catch (error) {
+      set({ error: describe(error) });
+    } finally {
+      set({ loadingEr: false });
+    }
+  },
+
+  async loadReport(entityId: string) {
+    set({ loadingReport: true, tab: 'report' });
+    try {
+      const client = await getClient();
+      set({ report: await client.reportStructure(entityId) });
+    } catch (error) {
+      set({ error: describe(error), report: null });
+    } finally {
+      set({ loadingReport: false });
+    }
   },
 
   async search(text: string) {
@@ -208,6 +258,13 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         client.neighborhood(entity.id, 1),
       ]);
       set({ incoming, outgoing, graph });
+
+      // Selecting a report loads its bands too, so the preview is ready the
+      // moment the tab is opened rather than after a second wait.
+      if (entity.entity_type === 'JasperReport') {
+        const structure = await client.reportStructure(entity.id);
+        set({ report: structure });
+      }
     } catch (error) {
       set({ error: describe(error) });
     } finally {

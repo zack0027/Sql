@@ -13,7 +13,9 @@ import { useEffect, useMemo, useState } from 'react';
 import type { EntityHit, UsageHit } from '@hana/shared-types';
 
 import { CodeViewer } from '../components/CodeViewer';
+import { ErDiagram } from '../components/ErDiagram';
 import { GraphCanvas } from '../components/GraphCanvas';
+import { ReportPreview } from '../components/ReportPreview';
 import { buildFileTree, colorOf, relationLabel, type TreeNode } from '../lib/graph';
 import { formatBytes } from '../lib/format';
 import { useResizable } from '../lib/useResizable';
@@ -109,6 +111,8 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
             {(
               [
                 ['graph', 'Grafo'],
+                ['er', 'Diagrama ER'],
+                ['report', 'Reporte'],
                 ['code', 'Código'],
                 ['file', 'Archivo'],
                 ['issues', `Avisos (${explorer.issues.length})`],
@@ -137,6 +141,18 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
               }}
               onExpand={(id) => void explorer.expandNode(id)}
             />
+          )}
+
+          {explorer.tab === 'er' && (
+            <ErDiagram
+              model={explorer.er}
+              loading={explorer.loadingEr}
+              onOpenEvidence={(path, line) => void explorer.openEvidence(path, line)}
+            />
+          )}
+
+          {explorer.tab === 'report' && (
+            <ReportPreview report={explorer.report} loading={explorer.loadingReport} />
           )}
 
           {explorer.tab === 'code' && <CodePanel />}

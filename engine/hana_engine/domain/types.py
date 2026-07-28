@@ -79,6 +79,11 @@ class RelationType(StrEnum):
     SOLUTION_RESOLVES_ERROR = "SOLUTION_RESOLVES_ERROR"
     ENTITY_DEPENDS_ON_ENTITY = "ENTITY_DEPENDS_ON_ENTITY"
     ENTITY_MENTIONS_ENTITY = "ENTITY_MENTIONS_ENTITY"
+    #: Two tables joined in a query. This is not a declared foreign key — HANA
+    #: never connects to Oracle — but a join condition is direct syntax stating
+    #: that these tables relate on these columns, which is exactly what an
+    #: entity-relationship view needs in order to be honest.
+    TABLE_JOINS_TABLE = "TABLE_JOINS_TABLE"
 
 
 class VerificationStatus(StrEnum):

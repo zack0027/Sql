@@ -125,15 +125,93 @@ class JrxmlAnalyzer(Analyzer):
         self._collect_images(context, root, report, line_of, result)
         self._collect_subreports(context, root, report, line_of, result)
 
+        # The report's structure, piece by piece. Stored on the report entity so
+        # the interface can preview the layout without re-parsing the XML — and
+        # so the preview reflects what the analyzer actually understood, not a
+        # second and possibly divergent reading of the same file.
+        report.metadata["bands"] = self._collect_bands(root)
+
         result.metadata.update(
             {
                 "report_name": report.name,
                 "fields": len(declared_fields),
                 "parameters": len(declared_parameters),
                 "variables": len(declared_variables),
+                "bands": len(report.metadata["bands"]),
             }
         )
         return result
+
+    # -- bands: the pieces a report is made of ------------------------------
+
+    def _collect_bands(self, root: ElementTree.Element) -> list[dict[str, object]]:
+        """Describe each section of the report and what it draws.
+
+        Jasper lays a report out as bands — title, page header, detail, summary
+        — and that is how a person reads one. Group sections carry their group's
+        name so a grouped report keeps its shape.
+        """
+        bands: list[dict[str, object]] = []
+
+        for element in root.iter():
+            section = _local(element.tag)
+            if section not in _BAND_SECTIONS:
+                continue
+            group = _group_name_of(root, element)
+            for band in _iter_tag(element, "band"):
+                bands.append(
+                    {
+                        "section": section,
+                        "group": group,
+                        "height": _as_int(band.attrib.get("height")),
+                        "elements": self._describe_elements(band),
+                    }
+                )
+
+        return bands
+
+    def _describe_elements(self, band: ElementTree.Element) -> list[dict[str, object]]:
+        """One entry per drawable element, with its geometry and what it shows."""
+        described: list[dict[str, object]] = []
+
+        for child in band.iter():
+            kind = _local(child.tag)
+            if kind not in _DRAWABLE_TAGS:
+                continue
+
+            geometry = next(
+                (item for item in child if _local(item.tag) == "reportElement"),
+                None,
+            )
+            expression = next(
+                (
+                    (item.text or "").strip()
+                    for item in child.iter()
+                    if _local(item.tag) in _EXPRESSION_TAGS and (item.text or "").strip()
+                ),
+                "",
+            )
+
+            described.append(
+                {
+                    "kind": kind,
+                    "x": _attr_int(geometry, "x"),
+                    "y": _attr_int(geometry, "y"),
+                    "width": _attr_int(geometry, "width"),
+                    "height": _attr_int(geometry, "height"),
+                    "text": _trim(_static_text(child) or expression, 160),
+                    # Which fields and parameters this element consumes, so the
+                    # preview can show where the data comes from.
+                    "references": sorted(
+                        {
+                            f"${match.group(1)}{{{match.group(2).strip()}}}"
+                            for match in _EXPRESSION_REFERENCE.finditer(expression)
+                        }
+                    ),
+                }
+            )
+
+        return described
 
     # -- structure ----------------------------------------------------------
 
@@ -389,9 +467,68 @@ class JrxmlAnalyzer(Analyzer):
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+#: The sections a Jasper report is laid out in, in the order they print.
+_BAND_SECTIONS: tuple[str, ...] = (
+    "background",
+    "title",
+    "pageHeader",
+    "columnHeader",
+    "groupHeader",
+    "detail",
+    "groupFooter",
+    "columnFooter",
+    "pageFooter",
+    "lastPageFooter",
+    "summary",
+    "noData",
+)
+
+#: Elements that actually draw something.
+_DRAWABLE_TAGS = frozenset(
+    {
+        "textField", "staticText", "image", "subreport", "line", "rectangle",
+        "ellipse", "chart", "crosstab", "barcode", "componentElement", "frame",
+    }
+)
+
+
 def _local(tag: str) -> str:
     """Strip the XML namespace: ``{ns}field`` -> ``field``."""
     return tag.rsplit("}", 1)[-1]
+
+
+def _as_int(value: str | None) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except ValueError:
+        return None
+
+
+def _attr_int(element: ElementTree.Element | None, name: str) -> int | None:
+    return _as_int(element.attrib.get(name)) if element is not None else None
+
+
+def _static_text(element: ElementTree.Element) -> str:
+    """The literal text of a ``<staticText>``, if that is what this is."""
+    for child in element.iter():
+        if _local(child.tag) == "text":
+            return (child.text or "").strip()
+    return ""
+
+
+def _group_name_of(
+    root: ElementTree.Element, section: ElementTree.Element
+) -> str | None:
+    """Name of the ``<group>`` a header/footer belongs to, if any.
+
+    ``ElementTree`` gives no parent pointers, so the tree is walked once to find
+    which group encloses this section.
+    """
+    for group in _iter_tag(root, "group"):
+        for descendant in group.iter():
+            if descendant is section:
+                return group.attrib.get("name")
+    return None
 
 
 def _iter_tag(root: ElementTree.Element, tag: str):

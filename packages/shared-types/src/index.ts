@@ -72,6 +72,8 @@ export const RelationType = {
   SOLUTION_RESOLVES_ERROR: 'SOLUTION_RESOLVES_ERROR',
   ENTITY_DEPENDS_ON_ENTITY: 'ENTITY_DEPENDS_ON_ENTITY',
   ENTITY_MENTIONS_ENTITY: 'ENTITY_MENTIONS_ENTITY',
+  /** Two tables joined in a query — not a declared foreign key. */
+  TABLE_JOINS_TABLE: 'TABLE_JOINS_TABLE',
 } as const;
 export type RelationType = (typeof RelationType)[keyof typeof RelationType];
 
@@ -382,6 +384,67 @@ export interface FileChangeEntry {
 export interface ChangesResult {
   run_id: string | null;
   changes: FileChangeEntry[];
+}
+
+// -- entity-relationship model ----------------------------------------------
+
+export interface ErColumn {
+  id: string;
+  name: string;
+  normalized_name: string;
+  confidence: number;
+}
+
+export interface ErTable extends EntityHit {
+  columns: ErColumn[];
+}
+
+export interface ErLink {
+  source_id: string;
+  target_id: string;
+  left_column: string | null;
+  right_column: string | null;
+  confidence: number;
+  status: VerificationStatus;
+  evidence: QueryEvidence;
+}
+
+/**
+ * The schema as the code uses it, not as the database declares it.
+ * `derived_from` says so explicitly — these links come from join conditions,
+ * never from foreign keys, because HANA does not connect to Oracle.
+ */
+export interface ErModel {
+  tables: ErTable[];
+  links: ErLink[];
+  derived_from: string;
+}
+
+// -- report structure -------------------------------------------------------
+
+export interface ReportElement {
+  kind: string;
+  x: number | null;
+  y: number | null;
+  width: number | null;
+  height: number | null;
+  text: string;
+  references: string[];
+}
+
+export interface ReportBand {
+  section: string;
+  group: string | null;
+  height: number | null;
+  elements: ReportElement[];
+}
+
+export interface ReportStructure {
+  id: string;
+  name: string;
+  file_path: string | null;
+  absolute_path: string | null;
+  bands: ReportBand[];
 }
 
 export interface AnalysisIssue {

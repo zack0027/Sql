@@ -26,6 +26,7 @@ The ten questions the product promises to answer without a language model:
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from collections.abc import Sequence
@@ -493,6 +494,162 @@ class QueryEngine:
             (project_id, threshold, limit),
         ).fetchall()
         return [EntityHit.of(row) for row in rows]
+
+    # -- entity-relationship model ------------------------------------------
+
+    def er_model(
+        self, project_id: str, *, table_ids: Sequence[str] | None = None
+    ) -> dict[str, Any]:
+        """Tables, their columns, and the joins that relate them.
+
+        Assembled entirely from what the SQL said. The links come from join
+        conditions, not from declared foreign keys — HANA never connects to
+        Oracle — so the result says so and must not be presented as the
+        database's schema. It is the schema *as the code uses it*, which is
+        often the more useful picture and occasionally a different one.
+        """
+        params: list[Any] = [project_id, EntityType.ORACLE_TABLE.value]
+        sql = f"""
+            SELECT {_ENTITY_COLUMNS}
+            FROM entities e
+            LEFT JOIN files f ON f.id = e.source_file_id
+            WHERE e.project_id = ? AND e.entity_type = ?
+        """
+        if table_ids:
+            placeholders = ",".join("?" for _ in table_ids)
+            sql += f" AND e.id IN ({placeholders})"
+            params.extend(table_ids)
+        sql += " ORDER BY e.normalized_name"
+
+        tables = [EntityHit.of(row) for row in self.connection.execute(sql, params)]
+        if not tables:
+            return {"tables": [], "links": [], "derived_from": "join_conditions"}
+
+        by_name = {table.normalized_name.upper(): table for table in tables}
+        identifiers = [table.id for table in tables]
+        wanted = ",".join("?" for _ in identifiers)
+
+        column_rows = self.connection.execute(
+            """
+            SELECT id, name, normalized_name, qualified_name, confidence
+            FROM entities
+            WHERE project_id = ? AND entity_type = ?
+            ORDER BY normalized_name
+            """,
+            (project_id, EntityType.ORACLE_COLUMN.value),
+        ).fetchall()
+
+        # A column's owner survives into the row only through its qualified
+        # name, so that is what scopes it back to a table.
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for row in column_rows:
+            owner, _, _ = (row["qualified_name"] or "").partition(".")
+            if owner and owner.upper() in by_name:
+                grouped.setdefault(owner.upper(), []).append(
+                    {
+                        "id": row["id"],
+                        "name": row["name"],
+                        "normalized_name": row["normalized_name"],
+                        "confidence": row["confidence"],
+                    }
+                )
+
+        link_rows = self.connection.execute(
+            f"""
+            SELECT r.source_entity_id, r.target_entity_id, r.metadata_json,
+                   r.confidence, r.status, r.analyzer, r.start_line, r.end_line,
+                   r.evidence_snippet,
+                   sf.relative_path AS evidence_path,
+                   sf.absolute_path AS evidence_abs
+            FROM relationships r
+            LEFT JOIN files sf ON sf.id = r.source_file_id
+            WHERE r.project_id = ? AND r.relation_type = ?
+              AND r.source_entity_id IN ({wanted})
+              AND r.target_entity_id IN ({wanted})
+            """,
+            (
+                project_id,
+                RelationType.TABLE_JOINS_TABLE.value,
+                *identifiers,
+                *identifiers,
+            ),
+        ).fetchall()
+
+        links: list[dict[str, Any]] = []
+        for row in link_rows:
+            try:
+                metadata = json.loads(row["metadata_json"] or "{}")
+            except json.JSONDecodeError:
+                metadata = {}
+            links.append(
+                {
+                    "source_id": row["source_entity_id"],
+                    "target_id": row["target_entity_id"],
+                    "left_column": metadata.get("left_column"),
+                    "right_column": metadata.get("right_column"),
+                    "confidence": row["confidence"],
+                    "status": row["status"],
+                    "evidence": Evidence(
+                        file_path=row["evidence_path"],
+                        absolute_path=row["evidence_abs"],
+                        start_line=row["start_line"],
+                        end_line=row["end_line"],
+                        snippet=row["evidence_snippet"],
+                        analyzer=row["analyzer"],
+                        confidence=row["confidence"],
+                        status=row["status"],
+                    ).to_dict(),
+                }
+            )
+
+        return {
+            "tables": [
+                {**table.to_dict(), "columns": grouped.get(table.normalized_name.upper(), [])}
+                for table in tables
+            ],
+            "links": links,
+            # Stated in the payload so no caller can mistake this for the schema.
+            "derived_from": "join_conditions",
+        }
+
+    # -- report structure ---------------------------------------------------
+
+    def report_structure(self, entity_id: str) -> dict[str, Any] | None:
+        """The bands of a Jasper report and what each one draws.
+
+        Read from what the analyzer recorded, not by parsing the file again: a
+        preview built from a second reading could disagree with the graph, and
+        then neither could be trusted.
+        """
+        row = self.connection.execute(
+            "SELECT id, name, entity_type, metadata_json, source_file_id"
+            " FROM entities WHERE id = ?",
+            (entity_id,),
+        ).fetchone()
+        if row is None or row["entity_type"] != EntityType.JASPER_REPORT.value:
+            return None
+
+        try:
+            metadata = json.loads(row["metadata_json"] or "{}")
+        except json.JSONDecodeError:
+            metadata = {}
+
+        file_row = (
+            self.connection.execute(
+                "SELECT relative_path, absolute_path FROM files WHERE id = ?",
+                (row["source_file_id"],),
+            ).fetchone()
+            if row["source_file_id"]
+            else None
+        )
+
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "file_path": file_row["relative_path"] if file_row else None,
+            "absolute_path": file_row["absolute_path"] if file_row else None,
+            "bands": metadata.get("bands", []),
+        }
 
     # -- graph navigation ---------------------------------------------------
 

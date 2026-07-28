@@ -82,6 +82,8 @@ const QUERY_METHODS: &[&str] = &[
     "query.errors",
     "query.low_confidence",
     "query.neighborhood",
+    "query.er_model",
+    "query.report_structure",
 ];
 
 /// Run one read-only query against the knowledge graph.

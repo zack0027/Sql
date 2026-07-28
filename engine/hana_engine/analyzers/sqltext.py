@@ -293,7 +293,55 @@ def table_references(statement: Statement, excluded: set[str]) -> list[TableRef]
     for match in _READ_SOURCES.finditer(text):
         add(match.group(1), match.group(2), base + match.start(1), False)
 
+    # Comma-separated FROM lists — `from a x, b y` — are the old-style join and
+    # are everywhere in long-lived Oracle code. Without this only the first
+    # table of such a query would be seen, and none of its relationships.
+    for clause in _FROM_CLAUSE.finditer(text):
+        for name, alias, offset in _split_from_list(clause.group(1), clause.start(1)):
+            add(name, alias, base + offset, False)
+
     return found
+
+
+#: Everything between FROM and whatever ends the clause.
+_FROM_CLAUSE = re.compile(
+    r"\bfrom\s+(.*?)(?=\b(?:where|group|order|having|connect|start|union|minus"
+    r"|intersect|join|inner|left|right|full|cross|on|set|returning|into)\b|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_FROM_ITEM = re.compile(rf"^\s*({QUALIFIED})(?:\s+({IDENTIFIER}))?\s*$")
+
+
+def _split_from_list(clause: str, base: int) -> list[tuple[str, str | None, int]]:
+    """Split `a x, b y` into its entries, keeping each one's offset.
+
+    Commas inside parentheses belong to a function call or a subquery, not to
+    the table list, so nesting is tracked rather than splitting blindly.
+    """
+    entries: list[tuple[str, str | None, int]] = []
+    depth = 0
+    start = 0
+
+    pieces: list[tuple[str, int]] = []
+    for index, char in enumerate(clause):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth = max(0, depth - 1)
+        elif char == "," and depth == 0:
+            pieces.append((clause[start:index], start))
+            start = index + 1
+    pieces.append((clause[start:], start))
+
+    for piece, offset in pieces:
+        match = _FROM_ITEM.match(piece)
+        if match is None:
+            continue
+        leading = len(piece) - len(piece.lstrip())
+        entries.append((match.group(1), match.group(2), base + offset + leading))
+
+    return entries
 
 
 _QUALIFIED_COLUMN = re.compile(
@@ -308,6 +356,56 @@ class ColumnRef:
     qualifier: str
     column: str
     offset: int
+
+
+@dataclass(frozen=True)
+class JoinCondition:
+    """Two qualified columns compared with ``=``.
+
+    The building block of an entity-relationship view. A join condition does not
+    prove a foreign key exists in the database — HANA never connects to Oracle —
+    but it does prove that somebody's SQL relates these two tables on these two
+    columns, which is a fact worth drawing.
+    """
+
+    left_qualifier: str
+    left_column: str
+    right_qualifier: str
+    right_column: str
+    offset: int
+
+
+#: `a.col = b.col`. Only equality between two *qualified* columns counts: a
+#: comparison against a literal or a bind variable is a filter, not a link.
+_JOIN_CONDITION = re.compile(
+    rf"\b({IDENTIFIER})\s*\.\s*({IDENTIFIER})\s*=\s*({IDENTIFIER})\s*\.\s*({IDENTIFIER})\b"
+)
+
+
+def join_conditions(statement: Statement) -> list[JoinCondition]:
+    """Find ``alias.column = alias.column`` comparisons anywhere in a statement.
+
+    Deliberately not restricted to the ``ON`` clause: plenty of production SQL
+    joins in the ``WHERE`` clause instead, and that relates the tables just as
+    firmly.
+    """
+    found: list[JoinCondition] = []
+    for match in _JOIN_CONDITION.finditer(statement.text):
+        left_qualifier = unquote(match.group(1))
+        right_qualifier = unquote(match.group(3))
+        # `e.numctl = e.numctl` links nothing.
+        if left_qualifier.upper() == right_qualifier.upper():
+            continue
+        found.append(
+            JoinCondition(
+                left_qualifier,
+                unquote(match.group(2)),
+                right_qualifier,
+                unquote(match.group(4)),
+                statement.start + match.start(),
+            )
+        )
+    return found
 
 
 def qualified_columns(statement: Statement) -> list[ColumnRef]:

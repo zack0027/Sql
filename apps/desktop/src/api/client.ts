@@ -15,8 +15,10 @@ import type {
   EngineStatus,
   EntityHit,
   EntityType,
+  ErModel,
   FileTreeItem,
   Neighborhood,
+  ReportStructure,
   ProgressEvent,
   Project,
   ProjectStats,
@@ -65,6 +67,10 @@ export interface EngineClient {
   issues(projectId: string, severity?: string): Promise<AnalysisIssue[]>;
   lowConfidence(projectId: string, threshold?: number): Promise<EntityHit[]>;
   neighborhood(entityId: string, depth?: number): Promise<Neighborhood>;
+  /** Tables, columns and the joins that relate them. */
+  erModel(projectId: string, tableIds?: string[]): Promise<ErModel>;
+  /** A Jasper report broken down into its bands. */
+  reportStructure(entityId: string): Promise<ReportStructure | null>;
 
   /**
    * Read one file of an open project, for the viewer.
@@ -224,6 +230,17 @@ class TauriEngineClient implements EngineClient {
 
   neighborhood(entityId: string, depth = 1): Promise<Neighborhood> {
     return this.query('query.neighborhood', { entity_id: entityId, depth });
+  }
+
+  erModel(projectId: string, tableIds?: string[]): Promise<ErModel> {
+    return this.query('query.er_model', {
+      project_id: projectId,
+      table_ids: tableIds ?? null,
+    });
+  }
+
+  reportStructure(entityId: string): Promise<ReportStructure | null> {
+    return this.query('query.report_structure', { entity_id: entityId });
   }
 
   readFile(projectId: string, relativePath: string): Promise<FileContent> {

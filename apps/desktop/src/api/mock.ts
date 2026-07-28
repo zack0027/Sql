@@ -15,9 +15,11 @@ import type {
   EngineStatus,
   EntityHit,
   EntityType,
+  ErModel,
   FileTreeItem,
   GraphEdgeHit,
   Neighborhood,
+  ReportStructure,
   ProgressEvent,
   Project,
   ProjectStats,
@@ -529,6 +531,92 @@ export class MockEngineClient implements EngineClient {
         (edge) => known.has(edge.source_id) && known.has(edge.target_id),
       ),
       truncated: false,
+    };
+  }
+
+  async erModel(): Promise<ErModel> {
+    const table = (id: string, name: string, columns: string[]) => ({
+      ...(DEMO_ENTITIES.find((item) => item.id === id) ??
+        entity(id, 'OracleTable', name, null, null)),
+      columns: columns.map((column, index) => ({
+        id: `${id}_C${index}`,
+        name: column,
+        normalized_name: column.toUpperCase(),
+        confidence: 1,
+      })),
+    });
+
+    return {
+      tables: [
+        table('E_TABLE', 'UC_INSP_ENT', ['NUMCTL', 'PRTNUM', 'MUESTRA_SIZE_VER', 'NETWGT']),
+        table('E_PRTMST', 'PRTMST', ['PRTNUM', 'PRTDSC']),
+      ],
+      links: [
+        {
+          source_id: 'E_TABLE',
+          target_id: 'E_PRTMST',
+          left_column: 'PRTNUM',
+          right_column: 'PRTNUM',
+          confidence: 1,
+          status: 'confirmed',
+          evidence: {
+            file_path: 'sql/consulta_inspecciones.sql',
+            absolute_path: '/demo/sql/consulta_inspecciones.sql',
+            start_line: 17,
+            end_line: 17,
+            snippet: 'join prtmst p on p.prtnum = r.prtnum',
+            analyzer: 'sql',
+            confidence: 1,
+            status: 'confirmed',
+          },
+        },
+      ],
+      derived_from: 'join_conditions',
+    };
+  }
+
+  async reportStructure(entityId: string): Promise<ReportStructure | null> {
+    if (entityId !== 'E_REPORT') return null;
+    return {
+      id: 'E_REPORT',
+      name: 'Usr-RptInspeccion',
+      file_path: 'reports/Usr-RptInspeccion.jrxml',
+      absolute_path: '/demo/reports/Usr-RptInspeccion.jrxml',
+      bands: [
+        {
+          section: 'title',
+          group: null,
+          height: 60,
+          elements: [
+            { kind: 'image', x: 0, y: 0, width: 24, height: 24,
+              text: '"images/checkboxOn.png"', references: [] },
+            { kind: 'textField', x: 30, y: 0, width: 300, height: 20,
+              text: '$P{P_PRTNUM}', references: ['$P{P_PRTNUM}'] },
+          ],
+        },
+        {
+          section: 'detail',
+          group: null,
+          height: 40,
+          elements: [
+            { kind: 'textField', x: 0, y: 0, width: 120, height: 20,
+              text: '$F{numctl}', references: ['$F{numctl}'] },
+            { kind: 'textField', x: 130, y: 0, width: 120, height: 20,
+              text: '$F{muestra_size_ver}', references: ['$F{muestra_size_ver}'] },
+            { kind: 'subreport', x: 0, y: 22, width: 555, height: 18,
+              text: '"Usr-RptInspeccionDetalle.jasper"', references: [] },
+          ],
+        },
+        {
+          section: 'summary',
+          group: null,
+          height: 30,
+          elements: [
+            { kind: 'textField', x: 0, y: 0, width: 200, height: 20,
+              text: '$V{V_TOTAL_NETWGT}', references: ['$V{V_TOTAL_NETWGT}'] },
+          ],
+        },
+      ],
     };
   }
 

@@ -46,6 +46,7 @@ pub fn run() {
             commands::analyze_project,
             commands::cancel_analysis,
             commands::run_query,
+            commands::read_project_file,
         ])
         .on_window_event(|window, event| {
             // The engine is a child process; letting it outlive the window would

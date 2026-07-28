@@ -66,11 +66,26 @@ export interface EngineClient {
   lowConfidence(projectId: string, threshold?: number): Promise<EntityHit[]>;
   neighborhood(entityId: string, depth?: number): Promise<Neighborhood>;
 
+  /**
+   * Read one file of an open project, for the viewer.
+   *
+   * Goes through the host's boundary check, not straight to disk: a path the
+   * webview knows is not permission to read it.
+   */
+  readFile(projectId: string, relativePath: string): Promise<FileContent>;
+
   /** Ask the OS for a folder. Resolves to null when the user cancels. */
   pickFolder(): Promise<string | null>;
 
   /** Subscribe to analysis progress. Returns an unsubscribe function. */
   onProgress(handler: (event: ProgressEvent) => void): () => void;
+}
+
+export interface FileContent {
+  relative_path: string;
+  absolute_path: string;
+  size_bytes: number;
+  content: string;
 }
 
 /** True when running inside the Tauri shell rather than a browser tab. */
@@ -209,6 +224,13 @@ class TauriEngineClient implements EngineClient {
 
   neighborhood(entityId: string, depth = 1): Promise<Neighborhood> {
     return this.query('query.neighborhood', { entity_id: entityId, depth });
+  }
+
+  readFile(projectId: string, relativePath: string): Promise<FileContent> {
+    return this.call('read_project_file', {
+      projectId,
+      relativePath,
+    });
   }
 
   async pickFolder(): Promise<string | null> {

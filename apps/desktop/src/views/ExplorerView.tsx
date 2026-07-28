@@ -12,9 +12,11 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { EntityHit, UsageHit } from '@hana/shared-types';
 
+import { CodeViewer } from '../components/CodeViewer';
 import { GraphCanvas } from '../components/GraphCanvas';
 import { buildFileTree, colorOf, relationLabel, type TreeNode } from '../lib/graph';
 import { formatBytes } from '../lib/format';
+import { useResizable } from '../lib/useResizable';
 import { useExplorerStore } from '../state/explorer';
 import { useAppStore } from '../state/store';
 import styles from './ExplorerView.module.css';
@@ -25,6 +27,8 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
   );
   const explorer = useExplorerStore();
   const [filter, setFilter] = useState('');
+  const left = useResizable('hana.panel.left', 280, { min: 200, max: 520, side: 'left' });
+  const right = useResizable('hana.panel.right', 380, { min: 280, max: 680, side: 'right' });
 
   useEffect(() => {
     if (project && explorer.projectId !== project.id) {
@@ -63,7 +67,12 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
         </div>
       )}
 
-      <div className={styles.body}>
+      <div
+        className={styles.body}
+        style={{
+          gridTemplateColumns: `${left.width}px 4px minmax(0, 1fr) 4px ${right.width}px`,
+        }}
+      >
         {/* ---- left: files ------------------------------------------------ */}
         <aside className={styles.left}>
           <div className={styles.panelHead}>
@@ -87,14 +96,23 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
           </div>
         </aside>
 
-        {/* ---- centre: graph / file / issues ------------------------------ */}
+        <div
+          className={`${styles.handle} ${left.dragging ? styles.handleActive : ''}`}
+          onPointerDown={left.onPointerDown}
+          onDoubleClick={left.reset}
+          title="Arrastra para redimensionar · doble clic para restablecer"
+        />
+
+        {/* ---- centre: graph / code / file / issues ----------------------- */}
         <main className={styles.centre}>
           <div className={styles.tabs}>
             {(
               [
                 ['graph', 'Grafo'],
+                ['code', 'Código'],
                 ['file', 'Archivo'],
                 ['issues', `Avisos (${explorer.issues.length})`],
+                ['changes', `Cambios (${explorer.changes?.changes.length ?? 0})`],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -121,9 +139,18 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
             />
           )}
 
+          {explorer.tab === 'code' && <CodePanel />}
           {explorer.tab === 'file' && <FilePanel />}
           {explorer.tab === 'issues' && <IssuesPanel />}
+          {explorer.tab === 'changes' && <ChangesPanel />}
         </main>
+
+        <div
+          className={`${styles.handle} ${right.dragging ? styles.handleActive : ''}`}
+          onPointerDown={right.onPointerDown}
+          onDoubleClick={right.reset}
+          title="Arrastra para redimensionar · doble clic para restablecer"
+        />
 
         {/* ---- right: details -------------------------------------------- */}
         <aside className={styles.right}>
@@ -229,6 +256,48 @@ function TreeBranch({ node, depth }: { node: TreeNode; depth: number }): JSX.Ele
   );
 }
 
+function CodePanel(): JSX.Element {
+  const { source, loadingSource, highlight, fileEntities } = useExplorerStore();
+
+  if (loadingSource) {
+    return <p className={styles.placeholder}>Abriendo el archivo…</p>;
+  }
+  if (!source) {
+    return (
+      <p className={styles.placeholder}>
+        Pulsa la evidencia de cualquier relación para abrir el archivo en la línea
+        que la prueba.
+      </p>
+    );
+  }
+
+  const markers = fileEntities
+    .filter((item) => item.file_path === source.path && item.start_line)
+    .map((item) => ({ line: item.start_line as number, label: `${item.entity_type} ${item.name}` }));
+
+  return (
+    <div className={styles.codeWrap}>
+      <div className={styles.codeHead}>
+        <span className={styles.codePath}>{source.path}</span>
+        {highlight && (
+          <span className={styles.codeLine}>
+            línea {highlight.start}
+            {highlight.end !== highlight.start ? `–${highlight.end}` : ''}
+          </span>
+        )}
+        <span className={styles.readonly}>solo lectura</span>
+      </div>
+      <CodeViewer
+        path={source.path}
+        content={source.content}
+        highlightStart={highlight?.start ?? null}
+        highlightEnd={highlight?.end ?? null}
+        markers={markers}
+      />
+    </div>
+  );
+}
+
 function FilePanel(): JSX.Element {
   const { selectedFile, fileEntities, fileTables } = useExplorerStore();
 
@@ -294,6 +363,51 @@ function IssuesPanel(): JSX.Element {
   );
 }
 
+/** What the last analysis changed — the "qué cambió" question, answered. */
+function ChangesPanel(): JSX.Element {
+  const { changes, openEvidence } = useExplorerStore();
+
+  if (!changes || changes.changes.length === 0) {
+    return (
+      <p className={styles.placeholder}>
+        {changes?.run_id
+          ? 'La última ejecución no encontró cambios.'
+          : 'Este proyecto todavía no se ha analizado.'}
+      </p>
+    );
+  }
+
+  const order: Record<string, number> = { added: 0, modified: 1, deleted: 2, unchanged: 3 };
+  const sorted = [...changes.changes].sort(
+    (a, b) =>
+      (order[a.change_kind] ?? 9) - (order[b.change_kind] ?? 9) ||
+      a.relative_path.localeCompare(b.relative_path),
+  );
+
+  return (
+    <div className={styles.scroll}>
+      <p className={styles.muted}>
+        Ejecución {changes.run_id?.slice(0, 12)} · {sorted.length} archivos
+      </p>
+      {sorted.map((change) => (
+        <button
+          key={change.relative_path}
+          className={styles.changeRow}
+          // A deleted file has nothing left to open.
+          disabled={change.change_kind === 'deleted'}
+          onClick={() => void openEvidence(change.relative_path, 1)}
+        >
+          <span className={styles[`kind_${change.change_kind}`] ?? styles.kind_unchanged}>
+            {change.change_kind}
+          </span>
+          <span className={styles.changePath}>{change.relative_path}</span>
+          <span className={styles.changeType}>{change.detected_type}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function DetailsPanel(): JSX.Element {
   const { selected, incoming, outgoing, loadingDetails } = useExplorerStore();
 
@@ -353,8 +467,9 @@ function DetailsPanel(): JSX.Element {
 
 /** One relation, with the evidence that proves it. */
 function UsageRow({ hit }: { hit: UsageHit }): JSX.Element {
-  const { selectEntity } = useExplorerStore();
+  const { selectEntity, openEvidence } = useExplorerStore();
   const inferred = hit.evidence.status !== 'confirmed';
+  const where = hit.evidence.file_path;
 
   return (
     <div className={styles.usage}>
@@ -365,10 +480,19 @@ function UsageRow({ hit }: { hit: UsageHit }): JSX.Element {
         </button>
       </div>
       <div className={styles.evidence}>
-        <span className={styles.evidenceWhere}>
-          {hit.evidence.file_path ?? '(sin archivo)'}
+        {/* The whole promise of the product in one click: land on the line. */}
+        <button
+          className={styles.evidenceWhere}
+          disabled={!where}
+          onClick={() =>
+            where &&
+            void openEvidence(where, hit.evidence.start_line, hit.evidence.end_line)
+          }
+          title={where ? 'Abrir en el visor' : undefined}
+        >
+          {where ?? '(sin archivo)'}
           {hit.evidence.start_line ? `:${hit.evidence.start_line}` : ''}
-        </span>
+        </button>
         <span className={inferred ? styles.inferred : styles.confirmed}>
           {inferred
             ? `inferido ${hit.evidence.confidence.toFixed(2)}`

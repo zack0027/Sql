@@ -36,3 +36,7 @@ Thumbs.db
 # Frozen sidecar (built by scripts/build_sidecar.py, never committed)
 apps/desktop/src-tauri/binaries/
 build/
+
+# Tarballs traidos a mano porque el registro npm no es alcanzable
+# (ver docs/OFFLINE_DEPENDENCIES.md)
+vendor/

@@ -105,6 +105,78 @@ pub async fn run_query(
         .map_err(|error| format!("fallo interno del host: {error}"))?
 }
 
+/// Largest file the viewer will load. Beyond this the editor is useless anyway
+/// and the webview would stall trying to render it.
+const MAX_VIEWABLE_BYTES: u64 = 4 * 1024 * 1024;
+
+/// Read one file of an open project, for the code viewer.
+///
+/// This is the only command that returns file *contents*, so it repeats the
+/// whole boundary rather than trusting the caller: the path must resolve inside
+/// a root the user opened this session. A project id is not authorisation, and
+/// neither is a path the webview happens to know.
+#[tauri::command]
+pub async fn read_project_file(
+    state: State<'_, AppState>,
+    project_id: String,
+    relative_path: String,
+) -> CommandResult<Value> {
+    let project = call(
+        Arc::clone(&state.sidecar),
+        "project.get",
+        json!({ "project_id": project_id }),
+    )
+    .await?;
+
+    let root_path = project
+        .get("root_path")
+        .and_then(Value::as_str)
+        .ok_or("el proyecto no tiene ruta")?;
+    let root = jarvis_root(root_path)?;
+
+    if !state.is_allowed(&root) {
+        return Err(format!(
+            "la carpeta {} no está autorizada en esta sesión; ábrela de nuevo",
+            root.display()
+        ));
+    }
+
+    let candidate = root.join(relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
+    if !hana_fs::is_within(&root, &candidate) {
+        // A crafted `../` or a symlink would otherwise read outside the project.
+        return Err("la ruta queda fuera del proyecto".to_string());
+    }
+
+    let metadata =
+        std::fs::metadata(&candidate).map_err(|error| format!("no se pudo leer: {error}"))?;
+    if metadata.len() > MAX_VIEWABLE_BYTES {
+        return Err(format!(
+            "el archivo mide {:.1} MB; el visor admite hasta {} MB",
+            metadata.len() as f64 / (1024.0 * 1024.0),
+            MAX_VIEWABLE_BYTES / (1024 * 1024)
+        ));
+    }
+
+    let bytes = std::fs::read(&candidate).map_err(|error| format!("no se pudo leer: {error}"))?;
+    // Oracle and MOCA exports are routinely cp1252; decoding lossily shows the
+    // file instead of refusing it over one bad byte.
+    let text = match String::from_utf8(bytes.clone()) {
+        Ok(value) => value,
+        Err(_) => bytes.iter().map(|byte| *byte as char).collect(),
+    };
+
+    Ok(json!({
+        "relative_path": relative_path,
+        "absolute_path": candidate.to_string_lossy(),
+        "size_bytes": metadata.len(),
+        "content": text,
+    }))
+}
+
+fn jarvis_root(path: &str) -> CommandResult<PathBuf> {
+    hana_fs::resolve_project_root(path).map_err(|error| error.to_string())
+}
+
 #[tauri::command]
 pub async fn engine_status(state: State<'_, AppState>) -> CommandResult<Value> {
     call(Arc::clone(&state.sidecar), "engine.status", json!({})).await

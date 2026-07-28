@@ -25,7 +25,7 @@ import type {
   UsageHit,
 } from '@hana/shared-types';
 
-import type { EngineClient } from './client';
+import type { EngineClient, FileContent } from './client';
 
 const DEMO_FILES: Array<[string, string, number]> = [
   ['sql/guardar_inspeccion.sql', 'sql', 1284],
@@ -126,6 +126,53 @@ const DEMO_EDGES: GraphEdgeHit[] = [
   edge('E_REPORT', 'REPORT_REFERENCES_IMAGE', 'E_IMAGE', 'reports/Usr-RptInspeccion.jrxml', 41,
     'images/checkboxOn.png'),
 ];
+
+/** Enough real source for the viewer to have something to highlight. */
+const DEMO_SOURCES: Record<string, string> = {
+  'sql/guardar_inspeccion.sql': [
+    'declare',
+    '    l_numctl  uc_insp_ent.numctl%type;',
+    "    l_usuario varchar2(30) := :APP_USER;",
+    'begin',
+    '    select seq_uc_insp_ent.nextval',
+    '      into l_numctl',
+    '      from dual;',
+    '',
+    '',
+    '',
+    '    insert into uc_insp_ent (',
+    '        numctl,',
+    '        prtnum,',
+    '        muestra_size_ver,',
+    '        netwgt,',
+    '        usuario,',
+    '        fecha_registro',
+    '    ) values (',
+    '        l_numctl,',
+    '        :P117_PRTNUM,',
+    '        :P117_MUESTRA_SIZE_VER,',
+    '        :P117_NETWGT,',
+    '        l_usuario,',
+    '        sysdate',
+    '    );',
+    'end;',
+    '/',
+  ].join('\n'),
+  'reports/Usr-RptInspeccion.jrxml': [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<jasperReport name="Usr-RptInspeccion">',
+    '    <parameter name="P_NUMCTL" class="java.lang.String"/>',
+    '    <queryString>',
+    '        <![CDATA[',
+    '            select e.numctl,',
+    '                   e.netwgt',
+    '              from uc_insp_ent e',
+    '        ]]>',
+    '    </queryString>',
+    '    <field name="numctl" class="java.lang.String"/>',
+    '</jasperReport>',
+  ].join('\n'),
+};
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -494,6 +541,16 @@ export class MockEngineClient implements EngineClient {
       relation_type: edge.relation_type,
       direction: edge.source_id === from ? 'outgoing' : 'incoming',
       evidence: edge.evidence,
+    };
+  }
+
+  async readFile(_projectId: string, relativePath: string): Promise<FileContent> {
+    const content = DEMO_SOURCES[relativePath] ?? `-- ${relativePath}\n-- (sin contenido de ejemplo)\n`;
+    return {
+      relative_path: relativePath,
+      absolute_path: `/demo/${relativePath}`,
+      size_bytes: content.length,
+      content,
     };
   }
 

@@ -415,9 +415,74 @@
 }
 
 .evidenceWhere {
+  padding: 0;
   color: var(--text-secondary);
   font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-align: left;
   word-break: break-all;
+}
+
+.evidenceWhere:not(:disabled):hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------- code tab */
+
+.codeWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.codeHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.codePath {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codeLine {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.readonly {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- resizing */
+
+.handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.handle:hover,
+.handleActive {
+  background: var(--accent);
 }
 
 .confirmed {
@@ -511,6 +576,67 @@
 .issueText {
   margin: 5px 0 0;
   font-size: 12.5px;
+}
+
+/* ----------------------------------------------------------------- changes */
+
+.changeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  font-size: 12px;
+}
+
+.changeRow:not(:disabled):hover {
+  background: var(--surface-hover);
+}
+
+.changeRow:disabled {
+  opacity: 0.55;
+}
+
+.kind_added,
+.kind_modified,
+.kind_deleted,
+.kind_unchanged {
+  width: 72px;
+  flex-shrink: 0;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.kind_added {
+  color: var(--confirmed);
+}
+
+.kind_modified {
+  color: var(--inferred);
+}
+
+.kind_deleted {
+  color: var(--danger);
+}
+
+.kind_unchanged {
+  color: var(--text-muted);
+}
+
+.changePath {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changeType {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 10.5px;
 }
 
 /* ------------------------------------------------------------------ banner */

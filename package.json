@@ -1,29 +1,34 @@
 {
-  "name": "hana-knowledge-engine",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Local technical knowledge engine for Oracle, APEX, PL/SQL, MOCA and JasperReports projects",
-  "license": "MIT",
-  "scripts": {
-    "dev": "pnpm --filter @hana/desktop dev",
-    "build": "pnpm --filter @hana/desktop build",
-    "tauri:dev": "pnpm --filter @hana/desktop tauri:dev",
-    "tauri:build": "pnpm --filter @hana/desktop tauri:build",
-    "build:sidecar": "python scripts/build_sidecar.py",
-    "build:desktop": "python scripts/build_sidecar.py && pnpm --filter @hana/desktop tauri:build",
-    "typecheck": "pnpm -r typecheck",
-    "test:ui": "pnpm --filter @hana/desktop test",
-    "test:engine": "python -m pytest engine/tests",
-    "test:native": "cargo test --manifest-path crates/hana-fs/Cargo.toml",
-    "test": "pnpm run test:engine && pnpm run test:native && pnpm run test:ui"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "packageManager": "pnpm@10.33.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  }
+    "name":  "hana-knowledge-engine",
+    "version":  "0.1.0",
+    "private":  true,
+    "description":  "Local technical knowledge engine for Oracle, APEX, PL/SQL, MOCA and JasperReports projects",
+    "license":  "MIT",
+    "scripts":  {
+                    "dev":  "pnpm --filter @hana/desktop dev",
+                    "build":  "pnpm --filter @hana/desktop build",
+                    "tauri:dev":  "pnpm --filter @hana/desktop tauri:dev",
+                    "tauri:build":  "pnpm --filter @hana/desktop tauri:build",
+                    "build:sidecar":  "python scripts/build_sidecar.py",
+                    "build:desktop":  "python scripts/build_sidecar.py \u0026\u0026 pnpm --filter @hana/desktop tauri:build",
+                    "typecheck":  "pnpm -r typecheck",
+                    "test:ui":  "pnpm --filter @hana/desktop test",
+                    "test:engine":  "python -m pytest engine/tests",
+                    "test:native":  "cargo test --manifest-path crates/hana-fs/Cargo.toml",
+                    "test":  "pnpm run test:engine \u0026\u0026 pnpm run test:native \u0026\u0026 pnpm run test:ui"
+                },
+    "engines":  {
+                    "node":  "\u003e=20"
+                },
+    "packageManager":  "pnpm@10.33.0",
+    "pnpm":  {
+                 "onlyBuiltDependencies":  [
+                                               "esbuild"
+                                           ],
+                 "overrides":  {
+                                   "marked":  "file:./vendor/marked-18.0.7.tgz",
+                                   "dompurify":  "file:./vendor/dompurify-3.4.12.tgz",
+                                   "@types/trusted-types":  "file:./vendor/types-trusted-types-2.0.7.tgz"
+                               }
+             }
 }

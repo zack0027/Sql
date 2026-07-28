@@ -108,6 +108,27 @@ pre,
   outline-offset: 2px;
 }
 
+/* Evidence highlighting inside the code viewer.
+   Global because Monaco applies decoration classes to its own DOM, which CSS
+   Modules cannot reach. */
+.hanaEvidence {
+  background: rgba(59, 163, 255, 0.18);
+}
+
+.hanaEvidenceGutter {
+  width: 3px !important;
+  margin-left: 3px;
+  background: var(--accent);
+}
+
+/* Fainter marks where an entity was detected: present, but not competing with
+   the evidence the user actually clicked. */
+.hanaMarkerGutter {
+  width: 3px !important;
+  margin-left: 3px;
+  background: var(--border-strong);
+}
+
 /* Animations stay short and purposeful; nothing decorative. */
 @media (prefers-reduced-motion: reduce) {
   *,

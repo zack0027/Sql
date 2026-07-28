@@ -18,6 +18,7 @@
     "@hana/shared-types": "workspace:*",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-dialog": "^2.0.1",
+    "monaco-editor": "file:../../vendor/monaco-editor-0.56.0.tgz",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^5.0.1"

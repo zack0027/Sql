@@ -16,6 +16,7 @@ import { create } from 'zustand';
 
 import type {
   AnalysisIssue,
+  ChangesResult,
   EntityHit,
   FileTreeItem,
   Neighborhood,
@@ -24,7 +25,7 @@ import type {
 
 import { getClient } from '../api/client';
 
-export type CenterTab = 'graph' | 'file' | 'issues';
+export type CenterTab = 'graph' | 'code' | 'file' | 'issues' | 'changes';
 
 interface ExplorerState {
   projectId: string | null;
@@ -47,7 +48,13 @@ interface ExplorerState {
   fileEntities: EntityHit[];
   fileTables: UsageHit[];
 
+  /** Loaded source for the viewer, plus the range to reveal. */
+  source: { path: string; content: string } | null;
+  loadingSource: boolean;
+  highlight: { start: number; end: number } | null;
+
   issues: AnalysisIssue[];
+  changes: ChangesResult | null;
   tab: CenterTab;
   error: string | null;
 
@@ -58,6 +65,12 @@ interface ExplorerState {
   selectEntity: (entity: EntityHit) => Promise<void>;
   expandNode: (entityId: string) => Promise<void>;
   selectFile: (file: FileTreeItem) => Promise<void>;
+  /** Open a file at a line — the click target behind every piece of evidence. */
+  openEvidence: (
+    relativePath: string,
+    startLine?: number | null,
+    endLine?: number | null,
+  ) => Promise<void>;
   dismissError: () => void;
 }
 
@@ -120,7 +133,11 @@ const EMPTY = {
   selectedFile: null,
   fileEntities: [] as EntityHit[],
   fileTables: [] as UsageHit[],
+  source: null,
+  loadingSource: false,
+  highlight: null,
   issues: [] as AnalysisIssue[],
+  changes: null,
   tab: 'graph' as CenterTab,
   error: null,
 };
@@ -133,11 +150,12 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     set({ projectId, ...EMPTY, expanded: new Set<string>() });
     try {
       const client = await getClient();
-      const [files, issues] = await Promise.all([
+      const [files, issues, changes] = await Promise.all([
         client.projectFiles(projectId),
         client.issues(projectId),
+        client.changes(projectId),
       ]);
-      set({ files, issues });
+      set({ files, issues, changes });
     } catch (error) {
       set({ error: describe(error) });
     }
@@ -227,6 +245,32 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       set({ fileEntities: entities, fileTables: tables });
     } catch (error) {
       set({ error: describe(error) });
+    }
+  },
+
+  async openEvidence(relativePath, startLine, endLine) {
+    const projectId = get().projectId;
+    if (!projectId || !relativePath) return;
+
+    const start = startLine && startLine >= 1 ? startLine : null;
+    set({
+      tab: 'code',
+      highlight: start ? { start, end: Math.max(start, endLine ?? start) } : null,
+    });
+
+    // Already loaded: only the highlight moves. Re-reading the file to jump
+    // three lines would be wasteful and would flicker the viewer.
+    if (get().source?.path === relativePath) return;
+
+    set({ loadingSource: true });
+    try {
+      const client = await getClient();
+      const file = await client.readFile(projectId, relativePath);
+      set({ source: { path: relativePath, content: file.content } });
+    } catch (error) {
+      set({ error: describe(error), source: null });
+    } finally {
+      set({ loadingSource: false });
     }
   },
 

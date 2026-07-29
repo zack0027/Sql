@@ -17,6 +17,7 @@ import type {
   EntityType,
   ErModel,
   FileTreeItem,
+  Freshness,
   Neighborhood,
   ReportStructure,
   ProgressEvent,
@@ -71,6 +72,8 @@ export interface EngineClient {
   erModel(projectId: string, tableIds?: string[]): Promise<ErModel>;
   /** A Jasper report broken down into its bands. */
   reportStructure(entityId: string): Promise<ReportStructure | null>;
+  /** How much of the project was read by an analyzer older than the installed one. */
+  freshness(projectId: string): Promise<Freshness>;
 
   /**
    * Read one file of an open project, for the viewer.
@@ -241,6 +244,10 @@ class TauriEngineClient implements EngineClient {
 
   reportStructure(entityId: string): Promise<ReportStructure | null> {
     return this.query('query.report_structure', { entity_id: entityId });
+  }
+
+  freshness(projectId: string): Promise<Freshness> {
+    return this.query('query.freshness', { project_id: projectId });
   }
 
   readFile(projectId: string, relativePath: string): Promise<FileContent> {

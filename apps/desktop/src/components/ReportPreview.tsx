@@ -84,7 +84,16 @@ export function ReportPreview({ report, loading }: Props): JSX.Element {
     );
   }
   if (report.bands.length === 0) {
-    return (
+    // An empty preview has two very different causes, and saying the wrong one
+    // sends the user to look for a bug in their report. Knowledge produced by an
+    // older analyzer is not evidence about the file.
+    return report.stale ? (
+      <p className={styles.placeholder}>
+        {report.name} lo leyó una versión anterior de HANA, que todavía no
+        extraía las bandas. Vuelve a analizar el proyecto y aparecerán; el
+        archivo no tiene nada malo.
+      </p>
+    ) : (
       <p className={styles.placeholder}>
         {report.name}: el analizador no encontró bandas en este reporte.
       </p>

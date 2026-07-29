@@ -157,6 +157,7 @@ class EngineServer:
             "query.neighborhood": self._query_neighborhood,
             "query.er_model": self._query_er_model,
             "query.report_structure": self._query_report_structure,
+            "query.freshness": self._query_freshness,
         }
 
     # -- lifecycle ----------------------------------------------------------
@@ -495,6 +496,9 @@ class EngineServer:
 
     def _query_report_structure(self, params: dict[str, Any]) -> dict[str, Any] | None:
         return self.engine.queries.report_structure(self._require(params, "entity_id"))
+
+    def _query_freshness(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self.engine.queries.freshness(self._require(params, "project_id"))
 
     @staticmethod
     def _require(params: dict[str, Any], key: str) -> str:

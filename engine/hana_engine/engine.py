@@ -107,7 +107,9 @@ class KnowledgeEngine:
         self.registry = registry if registry is not None else build_default_registry()
         self.pipeline = AnalysisPipeline(self.repos, self.registry)
         #: Answers questions about the graph. Deterministic: no model involved.
-        self.queries = QueryEngine(self.connection)
+        self.queries = QueryEngine(
+            self.connection, suite=self.registry.fingerprint()
+        )
 
     def close(self) -> None:
         self.connection.close()

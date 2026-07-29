@@ -160,3 +160,61 @@ class TestReanalysisOnUpgrade:
                 project.id, engine.registry.fingerprint()
             )
             assert len(stale) == 1
+
+    def test_the_count_survives_the_process(self, db_path: Path, project_dir: Path):
+        """A counter that only lived in memory could never reach the user."""
+        with engine_with(db_path, BasicAnalyzer()) as engine:
+            project = engine.open_project(project_dir)
+            engine.analyze_project(project.id)
+            project_id = project.id
+
+        with engine_with(db_path, ImprovedAnalyzer()) as engine:
+            engine.analyze_project(project_id)
+
+        with engine_with(db_path, ImprovedAnalyzer()) as engine:
+            assert engine.latest_run(project_id).files_reanalyzed == 1
+
+
+class TestFreshness:
+    """What the interface asks before showing an empty view."""
+
+    def test_a_freshly_analysed_project_has_nothing_stale(
+        self, db_path: Path, project_dir: Path
+    ):
+        with engine_with(db_path, ImprovedAnalyzer()) as engine:
+            project = engine.open_project(project_dir)
+            engine.analyze_project(project.id)
+
+            report = engine.queries.freshness(project.id)
+            assert report["stale"] == 0
+            assert report["analyzed"] == 1
+            assert report["suite"] == "demo@2"
+
+    def test_an_upgrade_makes_the_existing_knowledge_stale(
+        self, db_path: Path, project_dir: Path
+    ):
+        with engine_with(db_path, BasicAnalyzer()) as engine:
+            project = engine.open_project(project_dir)
+            engine.analyze_project(project.id)
+            project_id = project.id
+
+        with engine_with(db_path, ImprovedAnalyzer()) as engine:
+            report = engine.queries.freshness(project_id)
+            assert report["stale"] == 1
+            assert report["by_suite"] == {"demo@1": 1}
+
+    def test_it_clears_once_the_project_is_re_analysed(
+        self, db_path: Path, project_dir: Path
+    ):
+        with engine_with(db_path, BasicAnalyzer()) as engine:
+            project = engine.open_project(project_dir)
+            engine.analyze_project(project.id)
+            project_id = project.id
+
+        with engine_with(db_path, ImprovedAnalyzer()) as engine:
+            engine.analyze_project(project_id)
+            assert engine.queries.freshness(project_id)["stale"] == 0
+
+    def test_an_unknown_project_answers_cleanly(self, db_path: Path):
+        with engine_with(db_path, BasicAnalyzer()) as engine:
+            assert engine.queries.freshness("NO_EXISTE")["analyzed"] == 0

@@ -17,6 +17,7 @@ import type {
   EntityType,
   ErModel,
   FileTreeItem,
+  Freshness,
   GraphEdgeHit,
   Neighborhood,
   ReportStructure,
@@ -28,6 +29,9 @@ import type {
 } from '@hana/shared-types';
 
 import type { EngineClient, FileContent } from './client';
+
+/** Stands in for the analyzer suite fingerprint; the demo is never stale. */
+const DEMO_SUITE = 'apex@1;code@1;jrxml@3;json@1;moca@1;sql@2';
 
 const DEMO_FILES: Array<[string, string, number]> = [
   ['sql/guardar_inspeccion.sql', 'sql', 1284],
@@ -617,6 +621,17 @@ export class MockEngineClient implements EngineClient {
           ],
         },
       ],
+      analyzed_by: DEMO_SUITE,
+      stale: false,
+    };
+  }
+
+  async freshness(): Promise<Freshness> {
+    return {
+      suite: DEMO_SUITE,
+      analyzed: 4,
+      stale: 0,
+      by_suite: { [DEMO_SUITE]: 4 },
     };
   }
 

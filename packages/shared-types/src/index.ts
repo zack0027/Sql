@@ -445,6 +445,18 @@ export interface ReportStructure {
   file_path: string | null;
   absolute_path: string | null;
   bands: ReportBand[];
+  /** Analyzer suite that produced this reading; null if from before it was recorded. */
+  analyzed_by: string | null;
+  /** True when a newer analyzer would read more out of the same file. */
+  stale: boolean;
+}
+
+/** How much of a project's knowledge predates the installed analyzers. */
+export interface Freshness {
+  suite: string | null;
+  analyzed: number;
+  stale: number;
+  by_suite: Record<string, number>;
 }
 
 export interface AnalysisIssue {

@@ -268,3 +268,16 @@ class TestReportStructure:
     def test_an_unknown_id_returns_nothing(self, analyzed):
         engine, _ = analyzed
         assert engine.queries.report_structure("NO_EXISTE") is None
+
+    def test_it_says_which_analyzer_read_the_report(self, analyzed):
+        """So an empty preview can distinguish "no bands" from "old reading"."""
+        engine, project_id = analyzed
+        structure = self.report(engine, project_id)
+        assert structure["analyzed_by"] == engine.registry.fingerprint()
+        assert structure["stale"] is False
+
+    def test_a_report_read_by_an_older_suite_is_flagged(self, analyzed):
+        engine, project_id = analyzed
+        engine.connection.execute("UPDATE files SET analyzed_by = 'jrxml@1'")
+        engine.connection.commit()
+        assert self.report(engine, project_id)["stale"] is True

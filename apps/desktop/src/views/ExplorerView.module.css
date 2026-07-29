@@ -658,3 +658,37 @@
   font-size: 16px;
   line-height: 1;
 }
+
+/* Amber, not red: nothing is broken and nothing was lost — HANA simply reads
+   more than it did when these files were last analysed. */
+.staleBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 18px;
+  background: rgba(210, 153, 34, 0.12);
+  border-bottom: 1px solid rgba(210, 153, 34, 0.35);
+  color: #e3b341;
+  font-size: 12.5px;
+}
+
+.staleAction {
+  flex: none;
+  padding: 4px 12px;
+  border: 1px solid rgba(210, 153, 34, 0.5);
+  border-radius: 6px;
+  background: rgba(210, 153, 34, 0.16);
+  color: #f0cc6b;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.staleAction:hover:not(:disabled) {
+  background: rgba(210, 153, 34, 0.28);
+}
+
+.staleAction:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

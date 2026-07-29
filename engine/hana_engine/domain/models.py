@@ -309,8 +309,9 @@ class AnalysisRun:
     files_analyzed: int = 0
     files_skipped: int = 0
     #: Files re-read because a newer analyzer can learn more from them, even
-    #: though their content never changed. Not persisted: it describes this run's
-    #: reason for working, not a property of the project.
+    #: though their content never changed. Kept apart from ``files_analyzed``
+    #: because it answers a question the user will actually ask: why did HANA
+    #: work through eighty-six files I never touched?
     files_reanalyzed: int = 0
     entities_created: int = 0
     relationships_created: int = 0
@@ -332,6 +333,9 @@ class AnalysisRun:
             files_deleted=row["files_deleted"],
             files_unchanged=row["files_unchanged"],
             files_analyzed=row["files_analyzed"],
+            files_reanalyzed=(
+                row["files_reanalyzed"] if "files_reanalyzed" in row.keys() else 0
+            ),
             files_skipped=row["files_skipped"],
             entities_created=row["entities_created"],
             relationships_created=row["relationships_created"],

@@ -180,8 +180,14 @@ _FTS_SPECIAL = re.compile(r'["*():^\-]')
 class QueryEngine:
     """Answers questions about a project's knowledge graph."""
 
-    def __init__(self, connection: sqlite3.Connection) -> None:
+    def __init__(
+        self, connection: sqlite3.Connection, *, suite: str | None = None
+    ) -> None:
         self.connection = connection
+        #: Fingerprint of the analyzer suite currently installed. Given here so
+        #: answers can say "this was produced by an older version" instead of
+        #: reporting an absence the caller would read as a fact about the code.
+        self.suite = suite
 
     # -- lookup -------------------------------------------------------------
 
@@ -636,12 +642,14 @@ class QueryEngine:
 
         file_row = (
             self.connection.execute(
-                "SELECT relative_path, absolute_path FROM files WHERE id = ?",
+                "SELECT relative_path, absolute_path, analyzed_by FROM files"
+                " WHERE id = ?",
                 (row["source_file_id"],),
             ).fetchone()
             if row["source_file_id"]
             else None
         )
+        analyzed_by = file_row["analyzed_by"] if file_row else None
 
         return {
             "id": row["id"],
@@ -649,6 +657,41 @@ class QueryEngine:
             "file_path": file_row["relative_path"] if file_row else None,
             "absolute_path": file_row["absolute_path"] if file_row else None,
             "bands": metadata.get("bands", []),
+            "analyzed_by": analyzed_by,
+            # Without this an empty preview is indistinguishable from a report
+            # that genuinely has no bands, and the interface would blame the
+            # file for what is really an out-of-date reading of it.
+            "stale": self.suite is not None and analyzed_by != self.suite,
+        }
+
+    # -- freshness ----------------------------------------------------------
+
+    def freshness(self, project_id: str) -> dict[str, Any]:
+        """How much of this project's knowledge predates the running analyzers.
+
+        The pipeline already re-reads these files on the next run; this exists so
+        the interface can say so *before* the user goes looking for something
+        that was never extracted.
+        """
+        rows = self.connection.execute(
+            "SELECT analyzed_by, COUNT(*) AS n FROM files"
+            " WHERE project_id = ? AND analysis_status = 'analyzed'"
+            "   AND is_deleted = 0"
+            " GROUP BY analyzed_by",
+            (project_id,),
+        ).fetchall()
+
+        analyzed = sum(row["n"] for row in rows)
+        stale = sum(row["n"] for row in rows if row["analyzed_by"] != self.suite)
+        return {
+            "suite": self.suite,
+            "analyzed": analyzed,
+            # NULL counts as stale: knowledge from before the column existed was
+            # produced by an analyzer whose version nobody recorded.
+            "stale": stale if self.suite is not None else 0,
+            "by_suite": {
+                (row["analyzed_by"] or "desconocida"): row["n"] for row in rows
+            },
         }
 
     # -- graph navigation ---------------------------------------------------

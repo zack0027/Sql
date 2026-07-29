@@ -20,6 +20,7 @@ import type {
   EntityHit,
   ErModel,
   FileTreeItem,
+  Freshness,
   Neighborhood,
   ReportStructure,
   UsageHit,
@@ -69,6 +70,9 @@ interface ExplorerState {
   loadingEr: boolean;
   report: ReportStructure | null;
   loadingReport: boolean;
+
+  /** Whether this project's knowledge predates the installed analyzers. */
+  freshness: Freshness | null;
 
   tab: CenterTab;
   error: string | null;
@@ -159,6 +163,7 @@ const EMPTY = {
   loadingEr: false,
   report: null,
   loadingReport: false,
+  freshness: null,
   tab: 'graph' as CenterTab,
   error: null,
 };
@@ -171,12 +176,13 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     set({ projectId, ...EMPTY, expanded: new Set<string>() });
     try {
       const client = await getClient();
-      const [files, issues, changes] = await Promise.all([
+      const [files, issues, changes, freshness] = await Promise.all([
         client.projectFiles(projectId),
         client.issues(projectId),
         client.changes(projectId),
+        client.freshness(projectId),
       ]);
-      set({ files, issues, changes });
+      set({ files, issues, changes, freshness });
     } catch (error) {
       set({ error: describe(error) });
     }

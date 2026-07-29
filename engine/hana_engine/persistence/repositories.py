@@ -794,7 +794,8 @@ class AnalysisRunRepository(_Repository):
             UPDATE analysis_runs
             SET status = ?, finished_at = ?, files_scanned = ?, files_added = ?,
                 files_modified = ?, files_deleted = ?, files_unchanged = ?,
-                files_analyzed = ?, files_skipped = ?, entities_created = ?,
+                files_analyzed = ?, files_reanalyzed = ?, files_skipped = ?,
+                entities_created = ?,
                 relationships_created = ?, error_count = ?, message = ?
             WHERE id = ?
             """,
@@ -807,6 +808,7 @@ class AnalysisRunRepository(_Repository):
                 run.files_deleted,
                 run.files_unchanged,
                 run.files_analyzed,
+                run.files_reanalyzed,
                 run.files_skipped,
                 run.entities_created,
                 run.relationships_created,

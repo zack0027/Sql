@@ -84,6 +84,7 @@ const QUERY_METHODS: &[&str] = &[
     "query.neighborhood",
     "query.er_model",
     "query.report_structure",
+    "query.freshness",
 ];
 
 /// Run one read-only query against the knowledge graph.

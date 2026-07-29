@@ -69,6 +69,9 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
         </div>
       )}
 
+      <StaleBanner />
+
+
       <div
         className={styles.body}
         style={{
@@ -178,6 +181,46 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Says when the graph on screen was built by an older analyzer.
+ *
+ * The pipeline already re-reads these files on the next run, so this changes no
+ * behaviour — it removes a silence. Without it the user meets a missing band or
+ * an empty diagram and has no way to tell an absence in their code from an
+ * absence in HANA's reading of it, which is the difference between "my report is
+ * fine" and hunting a bug that is not there.
+ */
+function StaleBanner(): JSX.Element | null {
+  const freshness = useExplorerStore((state) => state.freshness);
+  const projectId = useExplorerStore((state) => state.projectId);
+  const openExplorer = useExplorerStore((state) => state.open);
+  const analyze = useAppStore((state) => state.analyze);
+  const analyzing = useAppStore((state) => state.analyzing);
+
+  if (!freshness || freshness.stale === 0 || !projectId) return null;
+
+  return (
+    <div className={styles.staleBanner}>
+      <span>
+        <strong>{freshness.stale}</strong>{' '}
+        {freshness.stale === 1 ? 'archivo se analizó' : 'archivos se analizaron'}{' '}
+        con una versión anterior de los analizadores. Vuelve a analizar para que
+        HANA lea lo que antes no sabía extraer.
+      </span>
+      <button
+        className={styles.staleAction}
+        disabled={analyzing}
+        onClick={async () => {
+          await analyze(projectId);
+          await openExplorer(projectId);
+        }}
+      >
+        {analyzing ? 'Analizando…' : 'Volver a analizar'}
+      </button>
+    </div>
+  );
+}
 
 function SearchBox(): JSX.Element {
   const { searchText, searchResults, searching, search, selectEntity } =

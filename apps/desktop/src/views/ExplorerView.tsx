@@ -8,7 +8,7 @@
  * convention. Nothing is shown that HANA cannot justify.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EntityHit, UsageHit } from '@hana/shared-types';
 
@@ -16,9 +16,17 @@ import { CodeViewer } from '../components/CodeViewer';
 import { ErDiagram } from '../components/ErDiagram';
 import { GraphCanvas } from '../components/GraphCanvas';
 import { ReportPreview } from '../components/ReportPreview';
-import { buildFileTree, colorOf, relationLabel, type TreeNode } from '../lib/graph';
+import {
+  buildFileTree,
+  colorOf,
+  flattenTree,
+  relationLabel,
+  type TreeNode,
+  type TreeRow,
+} from '../lib/graph';
 import { formatBytes } from '../lib/format';
 import { useResizable } from '../lib/useResizable';
+import { useVirtualRows } from '../lib/useVirtualRows';
 import { useExplorerStore } from '../state/explorer';
 import { useAppStore } from '../state/store';
 import styles from './ExplorerView.module.css';
@@ -38,14 +46,51 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
     }
   }, [project, explorer]);
 
+  const filtering = filter.trim() !== '';
   const tree = useMemo(() => {
-    const files = filter
+    const files = filtering
       ? explorer.files.filter((file) =>
           file.relative_path.toLowerCase().includes(filter.toLowerCase()),
         )
       : explorer.files;
     return buildFileTree(files);
-  }, [explorer.files, filter]);
+  }, [explorer.files, filter, filtering]);
+
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const initialisedFor = useRef<string | null>(null);
+
+  // Top-level folders open, deeper ones closed: enough to see the shape of the
+  // project without arriving as a wall of rows. Done once per project, so a
+  // re-analysis does not collapse what the user opened. The first path segment
+  // is the top level, which is cheaper than rebuilding the tree to ask it.
+  useEffect(() => {
+    const projectId = explorer.projectId;
+    if (!projectId || explorer.files.length === 0) return;
+    if (initialisedFor.current === projectId) return;
+    initialisedFor.current = projectId;
+
+    const roots = new Set<string>();
+    for (const item of explorer.files) {
+      const slash = item.relative_path.indexOf('/');
+      if (slash > 0) roots.add(item.relative_path.slice(0, slash));
+    }
+    setExpanded(roots);
+  }, [explorer.projectId, explorer.files]);
+
+  const toggle = useCallback((path: string) => {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(path)) next.add(path);
+      return next;
+    });
+  }, []);
+
+  const rows = useMemo(
+    // While filtering everything is open: a match buried in a closed folder
+    // would look like no match at all.
+    () => flattenTree(tree, (node) => filtering || expanded.has(node.path)),
+    [tree, expanded, filtering],
+  );
 
   return (
     <div className={styles.shell}>
@@ -90,15 +135,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
           />
-          <div className={styles.tree}>
-            {tree.length === 0 ? (
-              <p className={styles.muted}>Sin archivos que mostrar.</p>
-            ) : (
-              tree.map((node) => (
-                <TreeBranch key={node.path} node={node} depth={0} />
-              ))
-            )}
-          </div>
+          <FileTree rows={rows} expanded={expanded} onToggle={toggle} />
         </aside>
 
         <div
@@ -271,9 +308,62 @@ function SearchBox(): JSX.Element {
   );
 }
 
-function TreeBranch({ node, depth }: { node: TreeNode; depth: number }): JSX.Element {
-  const [open, setOpen] = useState(depth < 1);
-  const { selectFile, selectedFile } = useExplorerStore();
+/** Height of one row, in pixels. Pinned in the stylesheet — the windowing
+ *  arithmetic below is wrong the moment the two disagree. */
+const ROW_HEIGHT = 24;
+
+function FileTree({
+  rows,
+  expanded,
+  onToggle,
+}: {
+  rows: TreeRow[];
+  expanded: ReadonlySet<string>;
+  onToggle: (path: string) => void;
+}): JSX.Element {
+  const window = useVirtualRows(rows.length, ROW_HEIGHT);
+
+  if (rows.length === 0) {
+    return (
+      <div className={styles.tree}>
+        <p className={styles.muted}>Sin archivos que mostrar.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.tree} ref={window.ref} onScroll={window.onScroll}>
+      {/* Full height so the scrollbar describes the whole list, not the slice. */}
+      <div style={{ height: window.totalHeight, position: 'relative' }}>
+        <div style={{ transform: `translateY(${window.offsetY}px)` }}>
+          {rows.slice(window.start, window.end).map((row) => (
+            <TreeBranch
+              key={row.node.path}
+              node={row.node}
+              depth={row.depth}
+              open={expanded.has(row.node.path)}
+              onToggle={onToggle}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TreeBranch({
+  node,
+  depth,
+  open,
+  onToggle,
+}: {
+  node: TreeNode;
+  depth: number;
+  open: boolean;
+  onToggle: (path: string) => void;
+}): JSX.Element {
+  const selectFile = useExplorerStore((state) => state.selectFile);
+  const selectedFile = useExplorerStore((state) => state.selectedFile);
 
   if (!node.isDirectory && node.file) {
     const file = node.file;
@@ -298,20 +388,15 @@ function TreeBranch({ node, depth }: { node: TreeNode; depth: number }): JSX.Ele
   }
 
   return (
-    <div>
-      <button
-        className={styles.folder}
-        style={{ paddingLeft: 10 + depth * 14 }}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className={styles.chevron}>{open ? '▾' : '▸'}</span>
-        {node.name}
-      </button>
-      {open &&
-        node.children.map((child) => (
-          <TreeBranch key={child.path} node={child} depth={depth + 1} />
-        ))}
-    </div>
+    <button
+      className={styles.folder}
+      style={{ paddingLeft: 10 + depth * 14 }}
+      onClick={() => onToggle(node.path)}
+      title={node.path}
+    >
+      <span className={styles.chevron}>{open ? '▾' : '▸'}</span>
+      <span className={styles.fileName}>{node.name}</span>
+    </button>
   );
 }
 

@@ -267,3 +267,34 @@ class TestHashingAndReading:
         target = tmp_path / "bom.sql"
         target.write_bytes(b"\xef\xbb\xbfselect 1 from dual;")
         assert read_text_file(target).startswith("select")
+
+
+class TestPolicyValidation:
+    """The policy is now editable from the settings screen, so junk can arrive."""
+
+    def test_a_zero_size_limit_is_rejected(self):
+        # Silently scanning nothing would look exactly like an empty project.
+        with pytest.raises(ValueError):
+            ScanPolicy(max_file_size_bytes=0)
+
+    def test_a_negative_size_limit_is_rejected(self):
+        with pytest.raises(ValueError):
+            ScanPolicy(max_file_size_bytes=-1)
+
+    def test_a_zero_depth_is_rejected(self):
+        with pytest.raises(ValueError):
+            ScanPolicy(max_depth=0)
+
+    def test_the_defaults_are_valid(self):
+        assert ScanPolicy().max_file_size_bytes > 0
+
+    def test_a_policy_survives_a_round_trip_through_settings(self):
+        original = ScanPolicy(
+            ignored_directories=("build",),
+            ignored_files=("*.tmp",),
+            max_file_size_bytes=1024,
+            max_depth=3,
+            follow_symlinks=True,
+            hash_binary_files=False,
+        )
+        assert ScanPolicy.from_dict(original.to_dict()) == original

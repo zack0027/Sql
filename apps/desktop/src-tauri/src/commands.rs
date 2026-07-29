@@ -267,6 +267,26 @@ pub async fn scan_policy(state: State<'_, AppState>, project_id: String) -> Comm
     .await
 }
 
+/// Replace a project's scan policy.
+///
+/// Sent through as opaque JSON rather than a typed struct: the engine owns the
+/// policy's shape and validates it (`ScanPolicy.from_dict` drops unknown keys),
+/// and mirroring the fields here would create a second definition to keep in
+/// step with the first.
+#[tauri::command]
+pub async fn set_scan_policy(
+    state: State<'_, AppState>,
+    project_id: String,
+    policy: Value,
+) -> CommandResult<Value> {
+    call(
+        Arc::clone(&state.sidecar),
+        "project.scan_policy.set",
+        json!({ "project_id": project_id, "policy": policy }),
+    )
+    .await
+}
+
 #[tauri::command]
 pub async fn analysis_history(
     state: State<'_, AppState>,

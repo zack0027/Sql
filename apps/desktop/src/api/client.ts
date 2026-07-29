@@ -39,6 +39,8 @@ export interface EngineClient {
   projectStats(projectId: string): Promise<ProjectStats>;
   projectFiles(projectId: string): Promise<FileTreeItem[]>;
   scanPolicy(projectId: string): Promise<ScanPolicy>;
+  /** Replace the scan policy. Takes effect on the next analysis. */
+  setScanPolicy(projectId: string, policy: ScanPolicy): Promise<ScanPolicy>;
 
   analyze(projectId: string): Promise<AnalysisRun>;
   cancelAnalysis(projectId: string): Promise<void>;
@@ -136,6 +138,10 @@ class TauriEngineClient implements EngineClient {
 
   scanPolicy(projectId: string): Promise<ScanPolicy> {
     return this.call('scan_policy', { projectId });
+  }
+
+  setScanPolicy(projectId: string, policy: ScanPolicy): Promise<ScanPolicy> {
+    return this.call('set_scan_policy', { projectId, policy });
   }
 
   analyze(projectId: string): Promise<AnalysisRun> {

@@ -7,45 +7,67 @@ explorarlo sin enviar nada fuera del equipo.
 
 No es un chatbot. No es un servidor web. No usa OpenAI ni ninguna API externa.
 
-> **Estado: Etapa 1 completa.** Base ejecutable con escaneo seguro, hashing,
-> análisis incremental, persistencia y pantalla de inicio. Los analizadores
-> (SQL, APEX, MOCA, JRXML, JSON) llegan en la Etapa 2 — ver
-> [`ROADMAP.md`](ROADMAP.md).
+> **Estado: las cinco etapas están completas.** Escaneo seguro, seis
+> analizadores, grafo interactivo, diagrama ER, previsualización de reportes,
+> visor de código e instalador de Windows. Lo pendiente —firma de código, macOS
+> y Linux— está en [`ROADMAP.md`](ROADMAP.md).
+>
+> Para instalarlo y usarlo sin compilar nada:
+> [`docs/INSTALL_WINDOWS.md`](docs/INSTALL_WINDOWS.md).
 
 ---
 
 ![Pantalla de inicio de HANA](docs/screenshots/home.png)
 
-## Qué hace hoy
+## Qué hace
+
+**Inventario y análisis incremental**
 
 * Registra una carpeta como proyecto y la escanea de forma segura.
-* Calcula el SHA-256 de cada archivo y detecta qué cambió desde el análisis previo.
-* Analiza **solo** los archivos nuevos o modificados.
+* Calcula el SHA-256 de cada archivo y detecta qué cambió desde el análisis
+  previo. Analiza **solo** lo nuevo o modificado — por contenido, nunca por fecha.
+* Relee los archivos cuyo conocimiento produjo una versión anterior de los
+  analizadores, aunque su contenido siga intacto, y lo avisa en pantalla.
 * Guarda archivos, versiones, entidades, relaciones, evidencias y ejecuciones en
   SQLite con búsqueda de texto completo FTS5.
-* Conserva todo el conocimiento al cerrar y reabrir la aplicación.
-* Funciona con el adaptador de red desconectado.
 
-* Extrae tablas y columnas Oracle, distinguiendo **lectura de escritura**.
+**Analizadores**
+
+* Extrae tablas y columnas Oracle, distinguiendo **lectura de escritura**, y las
+  condiciones `JOIN` que las relacionan entre sí.
 * Detecta items APEX (`:P117_NUMCTL`), infiere su página y, cuando el SQL lo
   prueba, los conecta con la columna que alimentan.
-* Lee reportes JasperReports con un parser XML real: campos, parámetros,
+* Lee reportes JasperReports con un parser XML real: bandas, campos, parámetros,
   variables, consultas, imágenes y subreportes — y avisa de campos usados sin
   declarar y de parámetros declarados sin usar.
 * Descompone pipelines MOCA: comandos, variables `@x`, `publish data`,
   `catch(@?)` y el SQL embebido.
 * Recorre JSON y código JavaScript/Python.
 
-Sobre las 5 carpetas de ejemplo produce **70 entidades, 143 relaciones y 242
-evidencias**, todas con archivo, línea y fragmento.
+**Exploración**
 
-## Qué todavía no hace
+* Grafo interactivo que crece por expansión, nunca cargando el proyecto entero.
+* **Diagrama ER** deducido de las condiciones `JOIN` del código — no del esquema
+  de Oracle, y el resultado lo dice.
+* **Previsualización de reportes pieza por pieza**: cada banda a escala con sus
+  elementos y de dónde sale cada dato. Estructura, no ejecución.
+* Visor de código en solo lectura que abre en la línea que prueba lo que estás
+  mirando.
+* Búsqueda global, avisos de análisis y vista de qué cambió.
 
-* Mostrar el grafo interactivo — Etapa 3.
-* Visor de código y buscador global en la interfaz — Etapas 3 y 4.
+Cada relación conserva **archivo, línea y fragmento**, y dice si es un hecho
+confirmado por la sintaxis o una inferencia con su nivel de confianza.
 
-La pantalla de inicio muestra los contadores reales, pero explorar el grafo
-evidencia. Es poco, pero es real: todo lo que se muestra viene de la base.
+## Qué no hace
+
+* No envía nada fuera del equipo — comprobado por `engine/tests/test_offline.py`,
+  que ejecuta un análisis completo con la red bloqueada.
+* No ejecuta nada de lo que analiza.
+* No se conecta a Oracle: las relaciones entre tablas salen de las consultas
+  escritas en el código.
+* No usa ningún modelo de lenguaje. Las respuestas se calculan sobre el grafo.
+* No está firmado digitalmente todavía — ver
+  [`docs/FIRMA_DE_CODIGO.md`](docs/FIRMA_DE_CODIGO.md).
 
 ---
 
@@ -146,13 +168,17 @@ base de conocimiento.
 
 ```bash
 python -m pip install pyinstaller
-pnpm build:desktop
+python scripts/build_release.py
 ```
 
-Congela el motor Python en un binario propio y lo empaqueta dentro de la
-aplicación, de modo que **el instalador resultante no necesita Python** en la
-máquina destino. Los artefactos quedan en
-`apps/desktop/src-tauri/target/release/bundle/`.
+Congela el motor y la CLI, los firma si hay certificado, y compila la aplicación
+y el instalador — en ese orden, para que el instalador no acabe envolviendo
+binarios sin firma. **El resultado no necesita Python** en la máquina destino.
+Los artefactos quedan en
+`apps/desktop/src-tauri/target/<triple>/release/bundle/`.
+
+Sin variables de firma la compilación sale sin firmar y lo dice. Ver
+[`docs/FIRMA_DE_CODIGO.md`](docs/FIRMA_DE_CODIGO.md).
 
 Para Windows sin tener Windows: el flujo de trabajo
 [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml)
@@ -166,9 +192,9 @@ pestaña *Actions* → *Build Windows* → *Run workflow*, o publicando una etiq
 
 ```bash
 pnpm test              # las tres suites
-pnpm test:engine       # pytest        (155 pruebas)
-pnpm test:native       # cargo test    (30 pruebas)
-pnpm test:ui           # vitest        (22 pruebas)
+pnpm test:engine       # pytest        (387 pruebas)
+pnpm test:native       # cargo test    (27 pruebas)
+pnpm test:ui           # vitest        (62 pruebas)
 ```
 
 Cada suite corre de forma aislada: pytest no necesita Node ni Rust, `cargo test
@@ -260,8 +286,12 @@ reporta más, el análisis incremental está roto.
 | [`SECURITY.md`](SECURITY.md) | Modelo de amenazas y garantías |
 | [`ROADMAP.md`](ROADMAP.md) | Etapas y alcance |
 | [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | Plan y riesgos |
+| [`docs/INSTALL_WINDOWS.md`](docs/INSTALL_WINDOWS.md) | Instalar y usar, sin compilar nada |
+| [`docs/FIRMA_DE_CODIGO.md`](docs/FIRMA_DE_CODIGO.md) | SmartScreen, certificados y cómo firmar |
+| [`docs/REPORTES_JASPER.md`](docs/REPORTES_JASPER.md) | `.jrxml` frente a `.jasper`, y qué se extrae |
 | [`docs/SCAN_CONTRACT.md`](docs/SCAN_CONTRACT.md) | Invariantes compartidas de los escáneres |
 | [`docs/IPC_PROTOCOL.md`](docs/IPC_PROTOCOL.md) | Protocolo JSON-Lines |
+| [`docs/OFFLINE_DEPENDENCIES.md`](docs/OFFLINE_DEPENDENCIES.md) | Por qué hay dependencias en `vendor/` |
 
 ## Licencia
 

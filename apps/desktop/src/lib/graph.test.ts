@@ -7,7 +7,9 @@ import {
   buildFileTree,
   colorOf,
   directoryPaths,
+  flattenTree,
   layoutNeighborhood,
+  type TreeRow,
 } from './graph';
 
 function node(id: string, name: string, depth: number, confidence = 1) {
@@ -185,6 +187,47 @@ describe('buildFileTree', () => {
   it('lists every directory path', () => {
     const tree = buildFileTree([file('a/b/c.sql'), file('d/e.sql')]);
     expect(directoryPaths(tree).sort()).toEqual(['a', 'a/b', 'd']);
+  });
+});
+
+describe('flattenTree', () => {
+  const tree = buildFileTree([
+    file('sql/a.sql'),
+    file('sql/sub/b.sql'),
+    file('raiz.sql'),
+  ]);
+  const paths = (rows: TreeRow[]) => rows.map((row) => row.node.path);
+
+  it('shows a closed folder without its contents', () => {
+    expect(paths(flattenTree(tree, () => false))).toEqual(['sql', 'raiz.sql']);
+  });
+
+  it('shows the children of an open folder', () => {
+    expect(paths(flattenTree(tree, (node) => node.path === 'sql'))).toEqual([
+      'sql',
+      'sql/sub',
+      'sql/a.sql',
+      'raiz.sql',
+    ]);
+  });
+
+  it('descends only where every level is open', () => {
+    expect(paths(flattenTree(tree, () => true))).toEqual([
+      'sql',
+      'sql/sub',
+      'sql/sub/b.sql',
+      'sql/a.sql',
+      'raiz.sql',
+    ]);
+  });
+
+  it('records how deep each row sits, for the indent', () => {
+    const rows = flattenTree(tree, () => true);
+    expect(rows.find((row) => row.node.path === 'sql/sub/b.sql')?.depth).toBe(2);
+  });
+
+  it('an empty tree yields no rows', () => {
+    expect(flattenTree([], () => true)).toEqual([]);
   });
 });
 

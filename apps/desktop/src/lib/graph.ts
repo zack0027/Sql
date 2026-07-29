@@ -217,6 +217,38 @@ function sortTree(node: TreeNode): void {
   node.children.forEach(sortTree);
 }
 
+/** One visible line of the tree: what to draw and how far to indent it. */
+export interface TreeRow {
+  node: TreeNode;
+  depth: number;
+}
+
+/**
+ * Flatten the visible part of the tree into rows.
+ *
+ * Virtualising needs a list, not a recursion: to draw only the rows on screen a
+ * component has to know how many rows there are and what sits at index *n*
+ * without walking the whole structure first. A collapsed folder contributes one
+ * row and nothing beneath it, so what this costs follows what is open rather
+ * than how large the project is.
+ */
+export function flattenTree(
+  nodes: TreeNode[],
+  isExpanded: (node: TreeNode) => boolean,
+): TreeRow[] {
+  const rows: TreeRow[] = [];
+  const walk = (list: TreeNode[], depth: number): void => {
+    for (const node of list) {
+      rows.push({ node, depth });
+      if (node.isDirectory && isExpanded(node)) {
+        walk(node.children, depth + 1);
+      }
+    }
+  };
+  walk(nodes, 0);
+  return rows;
+}
+
 /** Every directory path in a tree, for expanding all at once. */
 export function directoryPaths(nodes: TreeNode[]): string[] {
   const paths: string[] = [];

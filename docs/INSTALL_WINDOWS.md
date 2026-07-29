@@ -1,118 +1,179 @@
-# Instalación en Windows
+# Instalar y usar HANA en Windows
 
-Guía para probar HANA sin compilar nada. **No hace falta instalar Python**: el
-motor viaja congelado dentro del instalador.
+Guía para quien solo quiere usar el programa. **No hace falta instalar Python,
+Node ni ninguna otra cosa**: todo viaja dentro del instalador.
 
-## 1. Descargar
+---
 
-1. Abre la pestaña **Actions** del repositorio.
-2. Entra en la ejecución más reciente de **Build Windows** que aparezca en verde.
-3. Al final de la página, en **Artifacts**, descarga
-   `hana-knowledge-engine-windows`.
-4. Descomprime el `.zip`. Dentro encontrarás:
+## 1. Instalar
 
-| Archivo | Tamaño | Qué es |
-|---|---|---|
-| `HANA Knowledge Engine_0.1.0_x64_en-US.msi` | 10,8 MB | Instalador MSI |
-| `HANA Knowledge Engine_0.1.0_x64-setup.exe` | 10,3 MB | Instalador NSIS |
-| `portable/hana-desktop.exe` | 3,5 MB | Aplicación, sin instalar |
-| `portable/hana-engine.exe` | 9,1 MB | Motor congelado |
+Ejecuta **`HANA Knowledge Engine_0.1.0_x64-setup.exe`** y sigue el asistente.
 
-Los dos archivos de `portable/` **deben quedar en la misma carpeta**: la
-aplicación busca el motor junto a su propio ejecutable y no arranca sin él.
+### Windows te va a avisar. Es normal.
 
-Los artefactos de GitHub Actions **caducan a los 30 días** y requieren haber
-iniciado sesión en GitHub para descargarlos.
+Aparecerá una pantalla azul:
 
-## 2. Instalar
+> **Windows protegió su PC**
+> Microsoft Defender SmartScreen impidió el inicio de una aplicación no
+> reconocida.
 
-Ejecuta cualquiera de los dos instaladores. El MSI es el más predecible en
-equipos corporativos; el NSIS permite instalar sin privilegios de administrador.
+Pulsa **Más información** y después **Ejecutar de todas formas**.
 
-### El aviso de SmartScreen
+No es un virus ni un fallo. El instalador no lleva firma digital, y Windows
+avisa de todo lo que no reconoce. Por qué, y qué haría falta para quitar el
+aviso, está en [`FIRMA_DE_CODIGO.md`](FIRMA_DE_CODIGO.md).
 
-El ejecutable **no está firmado digitalmente**, así que Windows mostrará:
+### Si la ventana abre en blanco
 
-> *Windows protegió su PC — Microsoft Defender SmartScreen impidió el inicio de
-> una aplicación desconocida.*
+Falta el **WebView2 Runtime**, que Windows 11 y Windows 10 actualizado ya
+traen. Se descarga gratis desde el sitio de Microsoft buscando
+«Evergreen WebView2 Runtime».
 
-Es lo esperado en una compilación de prueba. Para continuar:
-**Más información → Ejecutar de todas formas**.
+---
 
-Firmar el código requiere un certificado de firma comercial; está anotado como
-pendiente en `ROADMAP.md`.
-
-### WebView2
-
-La aplicación usa el motor de WebView2, incluido de serie en Windows 11 y en
-Windows 10 actualizado. Si el instalador se queja, instala el
-*Evergreen WebView2 Runtime* desde el sitio de Microsoft.
-
-## 3. Probar
+## 2. Analizar tu primer proyecto
 
 1. Abre **HANA Knowledge Engine** desde el menú Inicio.
-2. Pulsa **Abrir proyecto** y elige una carpeta con archivos `.sql`, `.jrxml`,
-   `.mcmd` o `.json`. Empieza por algo pequeño.
+2. Pulsa **Abrir proyecto** y elige la carpeta que quieras estudiar. Vale
+   cualquier carpeta con archivos `.sql`, `.jrxml`, `.mcmd`, `.json`, `.js` o
+   `.py`. **Empieza por una pequeña** para ver el resultado en segundos.
 3. Pulsa **Analizar proyecto**.
 
-Deberías ver el progreso por fases (escaneando → comparando → inventariando →
-analizando), y al terminar los contadores de archivos, entidades y relaciones.
+Verás el avance por fases: escaneando → comparando → inventariando →
+analizando. Al terminar aparecen los contadores reales de archivos, entidades y
+relaciones.
 
-**Qué esperar de esta versión:** los analizadores llegan en la Etapa 2, así que
-el grafo todavía contiene una entidad `File` por archivo analizado. Lo que ya es
-real y comprobable es la tubería completa: escaneo seguro, hash SHA-256,
-detección incremental y persistencia con procedencia.
+4. Pulsa **Explorar** para entrar al proyecto.
 
-### La prueba que de verdad demuestra el motor
+### Qué puedes hacer dentro
 
-1. Analiza la carpeta. Anota los archivos nuevos.
-2. Vuelve a pulsar **Analizar proyecto** sin tocar nada.
-   → debe reportar **0 nuevos, 0 modificados** y 0 archivos analizados.
-3. Edita **un** archivo y analiza otra vez.
-   → debe reportar exactamente **1 modificado**.
-4. Cierra la aplicación y vuelve a abrirla.
-   → el proyecto y sus contadores siguen ahí.
-5. Desconecta el adaptador de red y repite.
-   → nada cambia.
+| Pestaña | Para qué |
+|---|---|
+| **Grafo** | Ver una entidad y lo que la rodea. Doble clic en un nodo para expandirlo. |
+| **Diagrama ER** | Las tablas y cómo se relacionan, deducido de los `JOIN` que aparecen en el código. |
+| **Reporte** | Un reporte Jasper pieza por pieza: cada banda con sus elementos y de dónde salen sus datos. |
+| **Código** | El archivo abierto en la línea que prueba lo que estás mirando. |
+| **Avisos** | Campos usados sin declarar, parámetros declarados sin usar, archivos que fallaron. |
+| **Cambios** | Qué se movió desde el análisis anterior. |
 
-## 4. Dónde queda el conocimiento
+El panel de la derecha es el importante: **cada relación trae el archivo, la
+línea y el fragmento que la demuestran**. Pulsa cualquiera y se abre el código
+justo ahí.
+
+---
+
+## 3. Qué significan las etiquetas
+
+- **confirmado** — lo dice la sintaxis del archivo. No hay interpretación.
+- **inferido** — HANA lo dedujo de una convención, por ejemplo que el item
+  `P117_NUMCTL` pertenece a la página 117. Va con su nivel de confianza y puedes
+  no estar de acuerdo.
+
+Ninguna relación entra al grafo sin decir de dónde salió.
+
+---
+
+## 4. Volver a analizar
+
+Analiza de nuevo cuando quieras: HANA solo relee lo que cambió, comparando el
+contenido de cada archivo, no su fecha.
+
+A veces verás un **aviso ámbar** al abrir un proyecto:
+
+> *N archivos se analizaron con una versión anterior de los analizadores.*
+
+Significa que HANA aprendió a extraer algo que antes no sabía leer, y que tu
+grafo todavía no lo tiene. Pulsa **Volver a analizar** en el propio aviso. Tus
+archivos no tienen nada malo.
+
+---
+
+## 5. Ajustar qué se escanea
+
+Botón **Configuración**, en la pantalla de inicio, con un proyecto seleccionado.
+
+| Ajuste | Qué hace |
+|---|---|
+| Carpetas ignoradas | Se saltan por nombre, a cualquier profundidad. Ya vienen `.git`, `node_modules`, `dist`… |
+| Archivos ignorados | Patrones como `*.pyc`. |
+| Tamaño máximo | Los archivos mayores se inventarían, pero no se leen. |
+| Profundidad máxima | Niveles de carpeta por debajo de la raíz. |
+| Seguir enlaces simbólicos | **Déjalo desactivado** salvo que sepas que lo necesitas: es la vía por la que un escaneo puede salirse de la carpeta que elegiste. |
+
+Los cambios se aplican **en el próximo análisis**.
+
+---
+
+## 6. Lo que HANA nunca hace
+
+Esto no son buenas intenciones: son restricciones comprobadas por las pruebas
+automáticas del proyecto.
+
+- **No envía nada fuera de tu equipo.** Ni tu código, ni nombres de archivo, ni
+  estadísticas. No hay ninguna llamada de red — comprobado en
+  `engine/tests/test_offline.py`, que ejecuta un análisis completo con la red
+  bloqueada.
+- **No ejecuta nada de lo que analiza.** Ni SQL, ni PL/SQL, ni comandos MOCA, ni
+  scripts de Python o JavaScript, ni expresiones de JasperReports. Todo el
+  análisis es lectura de texto.
+- **No se conecta a Oracle.** Las relaciones entre tablas salen de las consultas
+  escritas en tu código, no de la base de datos.
+- **No modifica tus archivos.** Los abre en solo lectura.
+- **No usa OpenAI ni ningún modelo remoto.** No hay ningún modelo de lenguaje
+  involucrado: las respuestas se calculan sobre el grafo.
+
+Puedes comprobarlo tú: desconecta el adaptador de red y usa el programa
+normalmente. No cambia nada.
+
+---
+
+## 7. Dónde queda lo aprendido
 
 ```
-%APPDATA%\HanaKnowledgeEngine\hana.db
+%APPDATA%\com.hana.knowledge-engine\hana.db
 ```
 
-Borrar ese archivo borra todo lo aprendido. **No toca ningún archivo de tus
-proyectos**: HANA los abre en solo lectura y nunca ejecuta nada de lo que
-encuentra.
+Un solo archivo SQLite. Copiarlo es copiar todo el conocimiento; borrarlo es
+empezar de cero. **No toca ningún archivo de tus proyectos.**
 
-## 5. Usar el motor desde la terminal
+Para llegar rápido: `Win + R`, pega `%APPDATA%\com.hana.knowledge-engine` y
+Enter.
 
-El motor congelado funciona sin la interfaz:
+---
 
-```powershell
-.\portable\hana-engine.exe C:\ruta\hana.db
-```
+## 8. Desinstalar
 
-Queda a la espera de líneas JSON. Para probarlo:
+Configuración → *Aplicaciones* → **HANA Knowledge Engine** → Desinstalar.
 
-```json
-{"id":"1","method":"engine.ping"}
-{"id":"2","method":"project.open","params":{"path":"C:\\proyectos\\inspeccion"}}
-```
+La base de conocimiento en `%APPDATA%` **no se borra**. Elimínala a mano si
+quieres no dejar rastro.
 
-El protocolo completo está en [`IPC_PROTOCOL.md`](IPC_PROTOCOL.md).
-
-## 6. Desinstalar
-
-Panel de control → *Aplicaciones* → **HANA Knowledge Engine** → Desinstalar.
-La base de conocimiento en `%APPDATA%` no se borra automáticamente; elimínala a
-mano si quieres empezar de cero.
+---
 
 ## Problemas conocidos
 
-| Síntoma | Causa y solución |
+| Síntoma | Qué pasa |
 |---|---|
-| SmartScreen bloquea el inicio | El binario no está firmado. *Más información → Ejecutar de todas formas*. |
+| SmartScreen bloquea el inicio | El binario no está firmado. *Más información → Ejecutar de todas formas*. Ver [`FIRMA_DE_CODIGO.md`](FIRMA_DE_CODIGO.md). |
 | La ventana abre en blanco | Falta el runtime de WebView2. Instálalo desde Microsoft. |
-| Los contadores quedan en cero | Normal si la carpeta no tiene archivos analizables. Prueba con `.sql` o `.jrxml`. |
-| El antivirus marca el ejecutable | Los binarios de PyInstaller disparan heurísticas con frecuencia. La compilación es reproducible desde el código fuente del repositorio. |
+| «no se encontró WebView2Loader.dll» | Solo ocurre con la versión portátil: ese archivo tiene que estar en la misma carpeta que `hana-desktop.exe`. |
+| Los contadores quedan en cero | La carpeta no tiene archivos analizables. Prueba con una que contenga `.sql` o `.jrxml`. |
+| Un reporte `.jasper` no se analiza | Correcto: el `.jasper` es el compilado. HANA analiza el `.jrxml`. Ver [`REPORTES_JASPER.md`](REPORTES_JASPER.md). |
+| El antivirus marca el ejecutable | Los binarios de PyInstaller disparan heurísticas con frecuencia. Se puede recompilar desde el código fuente para comprobarlo. |
+| El análisis tarda mucho la primera vez | Es normal: la primera pasada lee todo. Las siguientes solo leen lo que cambió. |
+
+---
+
+## Versión portátil
+
+Si prefieres no instalar nada, la carpeta portátil funciona igual. Estos tres
+archivos **tienen que estar juntos**:
+
+```
+hana-desktop.exe        la aplicación
+hana-engine.exe         el motor
+WebView2Loader.dll      componente de la ventana
+```
+
+Se añade `hana.exe`, que es el motor desde la terminal, para quien lo quiera.
+El protocolo que habla está en [`IPC_PROTOCOL.md`](IPC_PROTOCOL.md).

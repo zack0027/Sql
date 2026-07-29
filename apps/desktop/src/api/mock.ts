@@ -196,6 +196,8 @@ export class MockEngineClient implements EngineClient {
   private analysed = new Set<string>();
   private handlers = new Set<(event: ProgressEvent) => void>();
   private cancelled = new Set<string>();
+  /** Set by the settings screen; null means "still the defaults". */
+  private policy: ScanPolicy | null = null;
 
   async status(): Promise<EngineStatus> {
     return {
@@ -276,8 +278,13 @@ export class MockEngineClient implements EngineClient {
     }));
   }
 
+  async setScanPolicy(_projectId: string, policy: ScanPolicy): Promise<ScanPolicy> {
+    this.policy = policy;
+    return policy;
+  }
+
   async scanPolicy(): Promise<ScanPolicy> {
-    return {
+    return this.policy ?? {
       ignored_directories: [
         '.git',
         'node_modules',

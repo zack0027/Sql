@@ -42,6 +42,7 @@ pub fn run() {
             commands::project_stats,
             commands::project_files,
             commands::scan_policy,
+            commands::set_scan_policy,
             commands::analysis_history,
             commands::analyze_project,
             commands::cancel_analysis,

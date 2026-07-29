@@ -69,6 +69,16 @@ class ScanPolicy:
     hash_binary_files: bool = True
     extra_ignored_directories: tuple[str, ...] = field(default=())
 
+    def __post_init__(self) -> None:
+        # A policy now arrives from the settings screen, so these are reachable
+        # by typing rather than only by a programming mistake. A zero size limit
+        # or a zero depth would scan nothing at all and look like an empty
+        # project — a wrong answer is worse than a rejected one.
+        if self.max_file_size_bytes <= 0:
+            raise ValueError("max_file_size_bytes debe ser mayor que cero")
+        if self.max_depth <= 0:
+            raise ValueError("max_depth debe ser mayor que cero")
+
     @property
     def all_ignored_directories(self) -> frozenset[str]:
         return frozenset(self.ignored_directories) | frozenset(

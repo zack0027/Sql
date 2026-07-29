@@ -1,7 +1,8 @@
 # Roadmap — HANA Knowledge Engine
 
-Estado: **Etapa 1 completa.** Base ejecutable, motor incremental, persistencia,
-seguridad del sistema de archivos y pantalla de inicio.
+Estado: **las cinco etapas están completas.** El producto analiza, explica y se
+instala. Lo que queda abierto está al final, y lo que se decidió no hacer
+también.
 
 ---
 
@@ -22,112 +23,136 @@ Fases 1 y 2 de la especificación.
 - [x] Sidecar JSON-Lines y CLI headless
 - [x] Host Tauri con comandos, eventos de progreso y raíces permitidas
 - [x] Pantalla de inicio funcional
-- [x] 207 pruebas automáticas (155 Python, 30 Rust, 22 TypeScript)
 
 ---
 
-## Etapa 2 — Motor de análisis
+## Etapa 2 — Motor de análisis ✅
 
-Fase 3. **Es la etapa que convierte el inventario en conocimiento.**
+Fase 3. La etapa que convierte el inventario en conocimiento.
 
 ### Analizador SQL / PL/SQL
-- [ ] `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `MERGE`
-- [ ] Tablas, vistas, columnas calificadas por alias, resolución de alias
-- [ ] Subconsultas y CTE
-- [ ] Procedimientos, funciones, packages; definición frente a llamada
-- [ ] Distinguir lectura de tabla, escritura de tabla y uso de columna
-- [ ] Variables bind `:P117_NUMCTL` y variables MOCA `@ordnum`
+- [x] `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `MERGE`
+- [x] Tablas, vistas, columnas calificadas por alias, resolución de alias
+- [x] Subconsultas y CTE
+- [x] Procedimientos, funciones, packages; definición frente a llamada
+- [x] Distinguir lectura de tabla, escritura de tabla y uso de columna
+- [x] Variables bind `:P117_NUMCTL` y variables MOCA `@ordnum`
+- [x] Condiciones `JOIN` entre tablas, que alimentan el diagrama ER
 
 ### Analizador Oracle APEX
-- [ ] Referencias `:P117_*`, `:APP_USER`, `:APP_PAGE_ID`, `:APP_ID`
-- [ ] Inferencia de página desde el número del item (confianza 0.90, `inferred`)
-- [ ] `APEX_ITEM_MAPS_TO_COLUMN` a partir de `INSERT`/`UPDATE`
+- [x] Referencias `:P117_*`, `:APP_USER`, `:APP_PAGE_ID`, `:APP_ID`
+- [x] Inferencia de página desde el número del item (confianza 0.90, `inferred`)
+- [x] `APEX_ITEM_MAPS_TO_COLUMN` a partir de `INSERT`/`UPDATE`, con evidencia por
+      item — cada mapeo cita su propia línea, no la del `values (`
 
 ### Analizador MOCA
-- [ ] Pipelines separados por `|`
-- [ ] Variables `@variable`, bloques entre corchetes
-- [ ] `publish data` y `catch(@?)`
-- [ ] Dependencias entre variables publicadas y consumidas
+- [x] Pipelines separados por `|`
+- [x] Variables `@variable`, bloques entre corchetes
+- [x] `publish data` y `catch(@?)`
+- [x] Dependencias entre variables publicadas y consumidas
 
 ### Analizador JRXML
-- [ ] Parser XML real (nunca expresiones regulares para la estructura)
-- [ ] Nombre, fields, parameters, variables, queryString, subreports, imágenes
-- [ ] Tablas y columnas usadas dentro de las consultas
-- [ ] **Campos usados pero no declarados** (advertencia)
-- [ ] **Parámetros declarados pero no usados** (advertencia)
-- [ ] Imágenes con ruta relativa → `REPORT_REFERENCES_IMAGE` a un `File`
+- [x] Parser XML real (nunca expresiones regulares para la estructura)
+- [x] Nombre, fields, parameters, variables, queryString, subreports, imágenes
+- [x] Tablas y columnas usadas dentro de las consultas, y sus `JOIN`
+- [x] Bandas en orden de impresión, con geometría y elementos
+- [x] **Campos usados pero no declarados** (advertencia)
+- [x] **Parámetros declarados pero no usados** (advertencia), excluyendo los
+      parámetros de plataforma `MOCA_REPORT_*`
+- [x] Imágenes con ruta relativa → `REPORT_REFERENCES_IMAGE` a un `File`
 
 ### Analizadores JSON y de código
-- [ ] JSON: propiedades, objetos, arrays, estructuras repetidas
-- [ ] JavaScript y Python: funciones, clases, imports, llamadas, endpoints
-- [ ] Referencias a items APEX, tablas Oracle y reportes desde el código
+- [x] JSON: propiedades, objetos, arrays, estructuras repetidas
+- [x] JavaScript y Python: funciones, clases, imports, llamadas, endpoints
+- [x] Referencias a items APEX, tablas Oracle y reportes desde el código
 
 ### Infraestructura
-- [ ] Tree-sitter donde exista gramática adecuada
-- [ ] Fixtures y pruebas por analizador (las de `fixtures/` ya están listas)
+- [x] Fixtures y pruebas por analizador
+- [x] Versión por analizador y huella del conjunto: un archivo intacto se relee
+      cuando quien lo leyó ya no es quien lo leería hoy
+- [~] Tree-sitter — **descartado por ahora**. El registro npm no es alcanzable
+      desde esta red (ver `docs/OFFLINE_DEPENDENCIES.md`) y los analizadores
+      escritos a mano cubren los dialectos que importan aquí, incluido MOCA, que
+      no tiene gramática publicada.
 
 ---
 
-## Etapa 3 — Grafo y búsqueda
+## Etapa 3 — Grafo y búsqueda ✅
 
 Fase 4.
 
-- [ ] Consultas de grafo con expansión por niveles
-- [ ] Búsqueda global FTS5 sobre entidades, rutas, contenido, evidencias
-- [ ] React Flow con carga progresiva: nodo seleccionado → vecinos → bajo demanda
-- [ ] Zoom, desplazamiento, centrar nodo, ocultar tipos, filtrar relaciones
-- [ ] Panel de detalles: relaciones entrantes, salientes, evidencias, historial
-- [ ] Iconos y colores por tipo de entidad, configurables
+- [x] Consultas de grafo con expansión por niveles
+- [x] Búsqueda global FTS5 sobre entidades, rutas, contenido, evidencias
+- [x] Carga progresiva: nodo seleccionado → vecinos → bajo demanda
+- [x] Zoom, desplazamiento, centrar nodo, filtrar relaciones
+- [x] Panel de detalles: relaciones entrantes, salientes, evidencias
+- [x] Colores por tipo de entidad
+- [~] React Flow — **sustituido por SVG escrito a mano**. La biblioteca no es
+      instalable desde esta red, y dibujar el grafo directamente da control sobre
+      lo que más importa aquí: distinguir en pantalla un hecho confirmado de una
+      inferencia.
 
 ---
 
-## Etapa 4 — Experiencia de usuario
+## Etapa 4 — Experiencia de usuario ✅
 
 Fase 5.
 
-- [ ] Explorador de tres paneles redimensionables
-- [ ] Árbol de archivos virtualizado, filtro por extensión, estado de análisis
-- [ ] Monaco Editor en solo lectura: abrir archivo, saltar a línea, resaltar
-- [ ] Barra de progreso y cancelación desde la interfaz
-- [ ] Pantalla de configuración (ignorados, límites, colores)
-- [ ] Historial de análisis y vista de "qué cambió"
+- [x] Explorador de tres paneles redimensionables
+- [x] Árbol de archivos virtualizado, filtro por ruta, estado de análisis
+- [x] Monaco Editor en solo lectura: abrir archivo, saltar a línea, resaltar
+- [x] Barra de progreso y cancelación desde la interfaz
+- [x] Pantalla de configuración: carpetas y archivos ignorados, tamaño máximo,
+      profundidad, enlaces simbólicos
+- [x] Historial de análisis y vista de «qué cambió»
+- [x] Diagrama ER a partir de las condiciones `JOIN`
+- [x] Previsualización de reportes Jasper banda por banda
 
 ### Las diez consultas deterministas (sin modelo de lenguaje)
-- [ ] ¿Dónde se utiliza esta entidad?
-- [ ] ¿Qué depende de esta entidad?
-- [ ] ¿Qué tablas lee esta consulta?
-- [ ] ¿Qué tablas modifica este proceso?
-- [ ] ¿Qué items APEX aparecen en este archivo?
-- [ ] ¿Qué reportes utilizan esta tabla?
-- [ ] ¿Qué imágenes utiliza este reporte?
-- [ ] ¿Qué cambió desde el análisis anterior?
-- [ ] ¿Qué archivos presentan errores de análisis?
-- [ ] ¿Qué entidades tienen baja confianza?
+- [x] ¿Dónde se utiliza esta entidad?
+- [x] ¿Qué depende de esta entidad?
+- [x] ¿Qué tablas lee esta consulta?
+- [x] ¿Qué tablas modifica este proceso?
+- [x] ¿Qué items APEX aparecen en este archivo?
+- [x] ¿Qué reportes utilizan esta tabla?
+- [x] ¿Qué imágenes utiliza este reporte?
+- [x] ¿Qué cambió desde el análisis anterior?
+- [x] ¿Qué archivos presentan errores de análisis?
+- [x] ¿Qué entidades tienen baja confianza?
 
 ---
 
-## Etapa 5 — Empaquetado (adelantada parcialmente)
+## Etapa 5 — Empaquetado ✅ (salvo la firma)
 
-Fase 6. Era **el riesgo técnico más alto del proyecto** (R2) y se adelantó para
-poder distribuir una versión de prueba.
+Fase 6. Era **el riesgo técnico más alto del proyecto** (R2) y se adelantó
+parcialmente para poder distribuir versiones de prueba desde la Etapa 1.
 
 - [x] Congelar el motor con PyInstaller como binario `externalBin`
-- [x] Verificado: la aplicación empaquetada arranca el motor congelado, aplica
-      las migraciones y crea la base — sin Python en el proceso
+- [x] La aplicación empaquetada arranca el motor congelado, aplica las
+      migraciones y crea la base — sin Python en el proceso
 - [x] Flujo de trabajo de GitHub Actions que compila el instalador de Windows
-- [x] Instalador `.msi` y `.exe` producidos en verde sobre windows-latest, con
-      las 155 pruebas del motor pasando en Windows
-- [ ] Instalador verificado a mano sobre un Windows real (pendiente: nadie lo
-      ha ejecutado todavía)
-- [ ] Verificar funcionamiento con el adaptador de red desconectado
-- [ ] Firma de código (Windows marcará el ejecutable como no firmado)
-- [ ] Documentar la instalación para usuarios no técnicos
+- [x] Instalador `.msi` y `.exe`
+- [x] **Instalador verificado a mano sobre un Windows real**, con proyectos
+      reales del usuario (1239 archivos, base de 208 MB)
+- [x] **Aislamiento de red comprobado automáticamente**: `test_offline.py`
+      ejecuta un análisis completo y las trece consultas con el módulo `socket`
+      bloqueado, e incluye un JRXML con un DTD externo para probar que el parser
+      XML no sale a buscarlo
+- [x] Documentación de instalación para usuarios no técnicos
+      (`docs/INSTALL_WINDOWS.md`)
+- [x] Cadena de compilación firmable: `scripts/build_release.py` firma los
+      binarios antes de empaquetarlos y deja que Tauri firme la aplicación y el
+      instalador, gobernado por variables de entorno
+- [ ] **Firmar de verdad.** Requiere comprar un certificado de firma
+      (200–600 USD/año) y, desde 2023, guardarlo en un HSM o token físico. Es
+      una decisión de negocio, no una tarea de programación — el mecanismo ya
+      está listo y documentado en `docs/FIRMA_DE_CODIGO.md`.
 
 ---
 
-## Más adelante
+## Abierto
 
-Nada de esto entra hasta que el grafo sea útil sin ello.
+Nada de esto entra hasta que haga falta de verdad.
 
 - Modelo local (llama.cpp, Ollama, GGUF empaquetado) para explicar el grafo
 - Embeddings locales y búsqueda semántica
@@ -137,6 +162,8 @@ Nada de esto entra hasta que el grafo sea útil sin ello.
 - Exportar el grafo (GraphML, JSON)
 - Anotaciones manuales con estado `manual`
 - Multiplataforma: macOS y Linux
+- Actualizaciones automáticas — hoy se reinstala a mano, que para una
+  herramienta interna es suficiente y no abre un canal de red
 
 ## Principios que no cambian
 

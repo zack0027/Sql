@@ -167,9 +167,35 @@ Pruebas que cubren específicamente la seguridad:
 * `test_oversized_files_are_inventoried_but_not_hashed`
 * `test_depth_limit_is_enforced`
 * `test_unreadable_directory_is_reported_without_aborting`
+* `test_a_zero_size_limit_is_rejected` / `test_a_zero_depth_is_rejected` — la
+  política de escaneo es editable desde la interfaz desde la Etapa 5, así que
+  ahora puede llegar con valores imposibles
 
-Comprobación de funcionamiento sin red: desconectar el adaptador y ejecutar el
-escenario completo de la sección "Criterios de aceptación" del README. No debe
+### Aislamiento de red, comprobado
+
+`engine/tests/test_offline.py` no se limita a afirmarlo:
+
+```bash
+python -m pytest engine/tests/test_offline.py
+```
+
+Reemplaza `socket.socket`, `socket.create_connection`, `socket.getaddrinfo`,
+`socket.gethostbyname` y `urllib.request.urlopen` por versiones que fallan, y
+sobre eso ejecuta un análisis completo —escaneo, hashing, los seis analizadores,
+persistencia— y las trece consultas. Cualquier intento de salir a la red rompe la
+prueba y dice quién lo intentó.
+
+Incluye además un JRXML que declara un DTD externo. Un parser XML que resuelva
+entidades saldría a buscarlo: es la forma clásica de que una herramienta «local»
+empiece a hacer peticiones, y con un archivo hostil, de que empiece a leer
+archivos del sistema.
+
+`TestNoListeningPorts` comprueba que el código del sidecar no menciona sockets,
+`bind`, `listen`, HTTP ni `localhost`. Un puerto significaría que cualquier cosa
+en la máquina puede hablar con el motor que sostiene el código del usuario.
+
+Comprobación manual complementaria: desconectar el adaptador de red y ejecutar el
+escenario completo de la sección «Verificar que funciona» del README. No debe
 cambiar nada.
 
 ## 8. Reporte de vulnerabilidades

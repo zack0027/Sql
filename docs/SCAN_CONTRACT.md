@@ -24,6 +24,12 @@ cambio de comportamiento se escribe aquí primero.**
 | I11 | Un directorio ilegible se registra como error sin abortar el escaneo | (cubierto por `report.errors`) | `test_unreadable_directory_is_reported_without_aborting` |
 | I12 | La cancelación detiene el recorrido y lo marca `cancelled` | `cancellation_stops_the_walk` | `test_progress_and_cancellation` |
 | I13 | Una raíz inexistente es un error, nunca un pánico | `a_missing_root_is_an_error_not_a_panic` | `test_missing_root_is_rejected` |
+| I15 | Un límite de tamaño o de profundidad menor o igual que cero se rechaza | (la política llega ya validada desde el motor) | `test_a_zero_size_limit_is_rejected`, `test_a_zero_depth_is_rejected` |
+
+I15 apareció con la pantalla de configuración de la Etapa 5. Hasta entonces la
+política solo la construía el código; ahora la escribe una persona. Un límite de
+cero no escanearía nada, y el resultado sería indistinguible de un proyecto
+vacío — una respuesta equivocada es peor que un rechazo.
 
 ## Reparto de responsabilidades
 

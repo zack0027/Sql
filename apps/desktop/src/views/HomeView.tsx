@@ -6,8 +6,9 @@
  * actions Etapa 1 supports: open a folder, and analyse it.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { SettingsDialog } from '../components/SettingsDialog';
 import { useActiveProject, useAppStore } from '../state/store';
 import {
   formatBytes,
@@ -48,6 +49,7 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
   } = useAppStore();
 
   const activeProject = useActiveProject();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     void initialize();
@@ -105,11 +107,27 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
               Analizar proyecto
             </button>
           )}
+          <button
+            className={styles.ghost}
+            disabled={!activeProjectId || analyzing}
+            onClick={() => setSettingsOpen(true)}
+            title="Qué carpetas y archivos entran en el escaneo"
+          >
+            Configuración
+          </button>
           <button className={styles.primary} onClick={() => void openFolder()}>
             Abrir proyecto
           </button>
         </div>
       </header>
+
+      {settingsOpen && activeProjectId && (
+        <SettingsDialog
+          projectId={activeProjectId}
+          projectName={activeProject?.root_path ?? ''}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {error && (
         <div className={styles.banner}>

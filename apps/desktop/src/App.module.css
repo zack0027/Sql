@@ -1,0 +1,19 @@
+/*
+ * The switch between the home screen and the explorer.
+ *
+ * A short lift and fade, not a slide: the two views are not side by side in any
+ * mental model, so sliding one out to the left would invent a spatial
+ * relationship that does not exist. What the movement says is only "this is a
+ * different place now".
+ */
+.view {
+  height: 100%;
+  animation: view-enter var(--speed-calm) var(--ease-out) backwards;
+}
+
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}

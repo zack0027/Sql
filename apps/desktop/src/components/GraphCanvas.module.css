@@ -84,7 +84,7 @@
 }
 
 .node > * {
-  animation: node-appear var(--speed-calm) var(--ease-spring) both;
+  animation: node-appear var(--speed-calm) var(--ease-spring) backwards;
   animation-delay: var(--delay, 0ms);
   transform-box: fill-box;
   transform-origin: center;

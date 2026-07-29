@@ -21,7 +21,7 @@
     rgba(28, 25, 48, 0.72)
   );
   backdrop-filter: blur(14px);
-  animation: slide-down var(--speed-calm) var(--ease-out) both;
+  animation: slide-down var(--speed-calm) var(--ease-out) backwards;
 }
 
 .brand {
@@ -44,7 +44,7 @@
   font-weight: 700;
   letter-spacing: -0.5px;
   box-shadow: 0 6px 20px rgba(79, 209, 197, 0.28);
-  animation: pop-in var(--speed-slow) var(--ease-spring) both;
+  animation: pop-in var(--speed-slow) var(--ease-spring) backwards;
 }
 
 /* A slow highlight sweeping across the mark — the one purely decorative
@@ -200,7 +200,7 @@
   );
   padding: 18px;
   box-shadow: var(--shadow-panel);
-  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation: rise-in var(--speed-calm) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 
@@ -223,7 +223,7 @@
     border-color var(--speed-quick) var(--ease-out),
     transform var(--speed-quick) var(--ease-out),
     box-shadow var(--speed-quick) var(--ease-out);
-  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation: rise-in var(--speed-calm) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 
@@ -286,7 +286,7 @@
   border-radius: var(--radius-md);
   background: var(--surface-raised);
   text-align: left;
-  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation: rise-in var(--speed-calm) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 
@@ -315,7 +315,7 @@
   border-radius: var(--radius-pill);
   background: var(--accent);
   box-shadow: 0 0 12px var(--accent-glow);
-  animation: pop-in var(--speed-calm) var(--ease-spring) both;
+  animation: pop-in var(--speed-calm) var(--ease-spring) backwards;
 }
 
 .projectMain {
@@ -383,7 +383,7 @@
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-md);
   text-align: center;
-  animation: fade-in var(--speed-slow) var(--ease-out) both;
+  animation: fade-in var(--speed-slow) var(--ease-out) backwards;
 }
 
 .emptyTitle {
@@ -403,7 +403,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  animation: rise-in var(--speed-quick) var(--ease-out) both;
+  animation: rise-in var(--speed-quick) var(--ease-out) backwards;
 }
 
 .progressHead {
@@ -512,7 +512,7 @@
   transition:
     border-color var(--speed-quick) var(--ease-out),
     transform var(--speed-quick) var(--ease-out);
-  animation: pop-in var(--speed-quick) var(--ease-out) both;
+  animation: pop-in var(--speed-quick) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 
@@ -585,7 +585,7 @@
   border-bottom: 1px solid var(--danger-border);
   color: var(--danger-text);
   font-size: 12.5px;
-  animation: slide-down var(--speed-quick) var(--ease-out) both;
+  animation: slide-down var(--speed-quick) var(--ease-out) backwards;
 }
 
 .noticeBanner {

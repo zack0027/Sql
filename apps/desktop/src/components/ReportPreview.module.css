@@ -78,7 +78,7 @@
   overflow: hidden;
   box-shadow: var(--shadow-panel);
   transition: border-color var(--speed-quick) var(--ease-out);
-  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation: rise-in var(--speed-calm) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 

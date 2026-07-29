@@ -19,7 +19,7 @@
     rgba(28, 25, 48, 0.74)
   );
   backdrop-filter: blur(14px);
-  animation: slide-down var(--speed-calm) var(--ease-out) both;
+  animation: slide-down var(--speed-calm) var(--ease-out) backwards;
 }
 
 .back {
@@ -109,7 +109,7 @@
   backdrop-filter: blur(18px);
   box-shadow: var(--shadow-raised);
   transform-origin: top;
-  animation: pop-in var(--speed-quick) var(--ease-out) both;
+  animation: pop-in var(--speed-quick) var(--ease-out) backwards;
 }
 
 .result {
@@ -175,12 +175,12 @@
    in the first third of a second. */
 .left {
   border-right: 1px solid var(--border-subtle);
-  animation: enter-left var(--speed-calm) var(--ease-out) both;
+  animation: enter-left var(--speed-calm) var(--ease-out) backwards;
 }
 
 .right {
   border-left: 1px solid var(--border-subtle);
-  animation: enter-right var(--speed-calm) var(--ease-out) both;
+  animation: enter-right var(--speed-calm) var(--ease-out) backwards;
 }
 
 @keyframes enter-left {
@@ -462,7 +462,7 @@
   transition:
     border-color var(--speed-quick) var(--ease-out),
     transform var(--speed-quick) var(--ease-out);
-  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation: rise-in var(--speed-calm) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 
@@ -643,7 +643,7 @@
   transition:
     border-color var(--speed-quick) var(--ease-out),
     transform var(--speed-quick) var(--ease-out);
-  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation: rise-in var(--speed-calm) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 
@@ -758,7 +758,7 @@
   border-bottom: 1px solid var(--danger-border);
   color: var(--danger-text);
   font-size: 12.5px;
-  animation: slide-down var(--speed-quick) var(--ease-out) both;
+  animation: slide-down var(--speed-quick) var(--ease-out) backwards;
 }
 
 .banner button {
@@ -787,7 +787,7 @@
   border-bottom: 1px solid var(--inferred-border);
   color: var(--inferred-text);
   font-size: 12.5px;
-  animation: slide-down var(--speed-calm) var(--ease-out) both;
+  animation: slide-down var(--speed-calm) var(--ease-out) backwards;
 }
 
 /* A slow sweep of light. This banner is the only thing telling the user their

@@ -8,7 +8,7 @@
   padding: 32px;
   background: rgba(8, 6, 16, 0.72);
   backdrop-filter: blur(6px);
-  animation: fade-in var(--speed-quick) var(--ease-out) both;
+  animation: fade-in var(--speed-quick) var(--ease-out) backwards;
 }
 
 .dialog {
@@ -27,7 +27,7 @@
   box-shadow: var(--shadow-raised);
   /* Grows out of the middle rather than appearing: the backdrop fades first,
      so the dialog reads as arriving on top of the screen behind it. */
-  animation: dialog-in var(--speed-calm) var(--ease-spring) both;
+  animation: dialog-in var(--speed-calm) var(--ease-spring) backwards;
 }
 
 @keyframes dialog-in {
@@ -241,7 +241,7 @@
 
 .error {
   margin: 0;
-  animation: slide-down var(--speed-quick) var(--ease-out) both;
+  animation: slide-down var(--speed-quick) var(--ease-out) backwards;
   padding: 9px 22px;
   background: var(--danger-dim);
   border-bottom: 1px solid var(--danger-border);

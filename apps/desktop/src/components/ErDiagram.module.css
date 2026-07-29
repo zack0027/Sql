@@ -69,7 +69,7 @@
   cursor: pointer;
   transform-box: fill-box;
   transform-origin: center;
-  animation: er-appear var(--speed-calm) var(--ease-spring) both;
+  animation: er-appear var(--speed-calm) var(--ease-spring) backwards;
   animation-delay: var(--delay, 0ms);
   transition: filter var(--speed-quick) var(--ease-out);
 }

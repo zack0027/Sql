@@ -203,6 +203,14 @@ pre,
  * Global rather than per-module because several views compose them, and the
  * `--delay` custom property lets a list stagger its children without a
  * component having to know the animation's internals.
+ *
+ * Every one of these is used with `animation-fill-mode: backwards`, never
+ * `both`. That is not a detail. A filled-forwards animation keeps applying its
+ * final keyframe at a higher precedence than ordinary declarations, so a card
+ * that ends on `transform: none` becomes permanently immune to
+ * `:hover { transform: … }` — the entrance plays, and then the card is dead to
+ * the touch. `backwards` holds the *first* frame during the delay and then gets
+ * out of the way, which is all a stagger ever needed.
  * ------------------------------------------------------------------------ */
 
 @keyframes rise-in {
@@ -271,7 +279,7 @@ pre,
 }
 
 .riseIn {
-  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation: rise-in var(--speed-calm) var(--ease-out) backwards;
   animation-delay: var(--delay, 0ms);
 }
 

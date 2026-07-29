@@ -39,6 +39,13 @@ export function parseLines(text: string): string[] {
 
 const MIB = 1024 * 1024;
 
+/** What to put on screen when the engine refuses something. */
+function describe(problem: unknown): string {
+  if (problem instanceof Error) return problem.message;
+  if (typeof problem === 'string') return problem;
+  return 'El motor rechazó la configuración.';
+}
+
 export function SettingsDialog({ projectId, projectName, onClose }: Props): JSX.Element {
   const [policy, setPolicy] = useState<ScanPolicy | null>(null);
   const [directories, setDirectories] = useState('');
@@ -108,7 +115,7 @@ export function SettingsDialog({ projectId, projectName, onClose }: Props): JSX.
       load(stored);
       setSaved(true);
     } catch (problem) {
-      setError(String(problem));
+      setError(describe(problem));
     } finally {
       setSaving(false);
     }

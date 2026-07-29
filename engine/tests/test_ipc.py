@@ -200,6 +200,38 @@ class TestSidecar:
         assert responses["3"]["result"]["max_depth"] == 5
         assert responses["3"]["result"]["ignored_directories"] == [".git"]
 
+    def test_an_impossible_policy_is_refused_readably(self, server, sample_project):
+        """This one is typed by a person, so the answer has to be for a person.
+
+        Left to the generic handler it would come back as a Python traceback, and
+        the settings dialog would put it on screen.
+        """
+        writer = _run(
+            server,
+            [{"id": "1", "method": "project.open", "params": {"path": str(sample_project)}}],
+        )
+        project_id = writer.responses()[0]["result"]["id"]
+
+        server.writer = CapturingWriter()
+        writer = _run(
+            server,
+            [
+                {
+                    "id": "2",
+                    "method": "project.scan_policy.set",
+                    "params": {
+                        "project_id": project_id,
+                        "policy": {"max_file_size_bytes": 0},
+                    },
+                }
+            ],
+        )
+        error = writer.responses()[0]["error"]
+        assert error["code"] == "invalid_policy"
+        assert "cero" in error["message"]
+        assert "Traceback" not in error["message"]
+        assert "traceback" not in writer.responses()[0]["error"]
+
 
 class TestCli:
     def test_open_analyze_and_report(self, db_path, sample_project, capsys):

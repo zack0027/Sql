@@ -323,7 +323,13 @@ class EngineServer:
 
     def _scan_policy_set(self, params: dict[str, Any]) -> dict[str, Any]:
         project_id = self._require(params, "project_id")
-        policy = ScanPolicy.from_dict(params.get("policy") or {})
+        try:
+            policy = ScanPolicy.from_dict(params.get("policy") or {})
+        except (ValueError, TypeError) as exc:
+            # This one arrives from the settings screen, where a person typed it.
+            # The generic handler would answer with a Python traceback, and the
+            # dialog would put it on screen.
+            raise RpcError("invalid_policy", str(exc)) from exc
         self.engine.update_scan_policy(project_id, policy)
         return policy.to_dict()
 

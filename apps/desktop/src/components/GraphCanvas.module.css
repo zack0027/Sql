@@ -12,12 +12,13 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: rgba(28, 25, 48, 0.62);
+  backdrop-filter: blur(10px);
 }
 
 .tool {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
@@ -27,8 +28,10 @@
 }
 
 .tool:hover {
+  border-color: var(--accent);
   background: var(--surface-hover);
-  color: var(--text-primary);
+  color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .count {
@@ -41,6 +44,13 @@
 .loading {
   color: var(--accent);
   font-size: 11px;
+  animation: pulse-text 1.1s var(--ease-in-out) infinite;
+}
+
+@keyframes pulse-text {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .canvas {
@@ -48,8 +58,9 @@
   width: 100%;
   min-height: 0;
   background:
-    radial-gradient(circle at 50% 40%, rgba(59, 163, 255, 0.05), transparent 60%),
-    var(--surface-sunken);
+    radial-gradient(circle at 50% 42%, rgba(79, 209, 197, 0.07), transparent 62%),
+    radial-gradient(circle at 78% 22%, rgba(167, 139, 250, 0.06), transparent 55%),
+    rgba(14, 12, 23, 0.62);
   cursor: grab;
   touch-action: none;
 }
@@ -58,8 +69,61 @@
   cursor: grabbing;
 }
 
+/*
+ * Nodes grow in from nothing.
+ *
+ * `transform-box: fill-box` with a centred origin makes the scale happen about
+ * the node itself rather than about the SVG's origin, which would otherwise fling
+ * every node in from the corner.
+ */
 .node {
   cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity var(--speed-quick) var(--ease-out);
+}
+
+.node > * {
+  animation: node-appear var(--speed-calm) var(--ease-spring) both;
+  animation-delay: var(--delay, 0ms);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes node-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+.nodeBody {
+  transition:
+    r var(--speed-calm) var(--ease-spring),
+    stroke-width var(--speed-quick) var(--ease-out);
+}
+
+.node:hover .nodeBody {
+  filter: brightness(1.2);
+}
+
+.nodeDimmed {
+  opacity: 0.18;
+}
+
+/* Breathing ring on the focused node: the one thing on screen that says "you
+   are here" in a picture with no other anchor. */
+.halo {
+  opacity: 0.5;
+  animation: halo 2.4s var(--ease-in-out) infinite;
+}
+
+.edge {
+  transition: opacity var(--speed-quick) var(--ease-out);
+}
+
+.edgeDimmed {
+  opacity: 0.12;
 }
 
 /* A dot means "there is more here" — the graph loads on demand, so the user
@@ -68,6 +132,10 @@
   fill: var(--accent);
   stroke: var(--surface-sunken);
   stroke-width: 1.5;
+}
+
+.node:hover .expandDot {
+  filter: drop-shadow(0 0 5px var(--accent));
 }
 
 .nodeLabel {
@@ -100,7 +168,8 @@
   margin: 0;
   padding: 6px 12px;
   border-top: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: rgba(28, 25, 48, 0.62);
+  backdrop-filter: blur(10px);
   color: var(--text-muted);
   font-size: 11px;
 }

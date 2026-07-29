@@ -98,15 +98,39 @@ export function CodeViewer({
         if (disposed || !host.current) return;
         monaco.current = mod;
 
+        // Monaco owns its own colours and cannot read CSS variables, so the
+        // palette is mirrored here. These literals are the same values as the
+        // `--surface-*` tokens in styles/theme.css — if those move, these have
+        // to move with them, or the editor becomes a rectangle from a different
+        // application in the middle of the window.
         mod.editor.defineTheme('hana-dark', {
           base: 'vs-dark',
           inherit: true,
-          rules: [],
+          rules: [
+            { token: 'comment', foreground: '8479a6', fontStyle: 'italic' },
+            { token: 'keyword', foreground: 'c4b5fd' },
+            { token: 'string', foreground: '7ee8dd' },
+            { token: 'number', foreground: 'fbbf24' },
+            { token: 'type', foreground: '7aa2ff' },
+            { token: 'tag', foreground: 'f472b6' },
+            { token: 'attribute.name', foreground: 'a78bfa' },
+            { token: 'attribute.value', foreground: '7ee8dd' },
+            { token: 'delimiter', foreground: 'b3a9d0' },
+          ],
           colors: {
-            'editor.background': '#070a0e',
-            'editorGutter.background': '#0b0f14',
-            'editorLineNumber.foreground': '#3a4d61',
-            'editor.lineHighlightBackground': '#111820',
+            'editor.background': '#0e0c17',
+            'editor.foreground': '#ece9f5',
+            'editorGutter.background': '#14121f',
+            'editorLineNumber.foreground': '#4a4170',
+            'editorLineNumber.activeForeground': '#a78bfa',
+            'editor.lineHighlightBackground': '#1c1930',
+            'editor.selectionBackground': '#3d3463',
+            'editorCursor.foreground': '#4fd1c5',
+            'editorIndentGuide.background1': '#2a2445',
+            'editorWidget.background': '#1c1930',
+            'editorWidget.border': '#3d3463',
+            'scrollbarSlider.background': '#3d346399',
+            'scrollbarSlider.hoverBackground': '#a78bfa66',
           },
         });
 

@@ -6,7 +6,7 @@
  * actions Etapa 1 supports: open a folder, and analyse it.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { SettingsDialog } from '../components/SettingsDialog';
 import { useActiveProject, useAppStore } from '../state/store';
@@ -16,7 +16,16 @@ import {
   formatRelativeTime,
   truncatePath,
 } from '../lib/format';
+import { useCountUp } from '../lib/useCountUp';
 import styles from './HomeView.module.css';
+
+/** Milliseconds between one card's entrance and the next. */
+const STAGGER = 55;
+
+/** CSS custom property the stylesheet reads as an animation delay. */
+function stagger(index: number): CSSProperties {
+  return { '--delay': `${index * STAGGER}ms` } as CSSProperties;
+}
 
 const PHASE_LABELS: Record<string, string> = {
   scanning: 'Escaneando',
@@ -149,18 +158,23 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
 
       <div className={styles.body}>
         <div className={styles.column}>
-          <section className={styles.panel}>
+          <section className={styles.panel} style={stagger(0)}>
             <h2 className={styles.sectionTitle}>
               Estado del motor
               <span className={styles.count}>v{engine?.version ?? '—'}</span>
             </h2>
             <div className={styles.statGrid}>
-              <Stat label="Proyectos" value={formatCount(engine?.projects)} />
-              <Stat label="Entidades" value={formatCount(engine?.entities)} />
-              <Stat label="Relaciones" value={formatCount(engine?.relationships)} />
+              <Stat label="Proyectos" value={engine?.projects} delay={0} />
+              <Stat label="Entidades" value={engine?.entities} delay={STAGGER} />
+              <Stat
+                label="Relaciones"
+                value={engine?.relationships}
+                delay={STAGGER * 2}
+              />
               <Stat
                 label="Analizadores"
-                value={formatCount(engine?.analyzers.length)}
+                value={engine?.analyzers.length}
+                delay={STAGGER * 3}
               />
             </div>
           </section>
@@ -195,7 +209,7 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
             </section>
           )}
 
-          <section className={styles.panel}>
+          <section className={styles.panel} style={stagger(1)}>
             <h2 className={styles.sectionTitle}>
               Proyectos recientes
               <span className={styles.count}>{projects.length}</span>
@@ -215,12 +229,13 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
               </div>
             ) : (
               <div className={styles.projectList}>
-                {projects.map((project) => (
+                {projects.map((project, index) => (
                   <button
                     key={project.id}
                     className={`${styles.project} ${
                       project.id === activeProjectId ? styles.projectActive : ''
                     }`}
+                    style={stagger(index)}
                     onClick={() => void selectProject(project.id)}
                   >
                     <div className={styles.projectMain}>
@@ -257,7 +272,7 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
         </div>
 
         <div className={styles.column}>
-          <section className={styles.panel}>
+          <section className={styles.panel} style={stagger(2)}>
             <h2 className={styles.sectionTitle}>Proyecto seleccionado</h2>
             {!activeProject ? (
               <span className={styles.emptyText}>
@@ -291,8 +306,12 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
 
                 {topEntityTypes.length > 0 && (
                   <div className={styles.typeList}>
-                    {topEntityTypes.map(([type, count]) => (
-                      <span key={type} className={styles.typeChip}>
+                    {topEntityTypes.map(([type, count], index) => (
+                      <span
+                        key={type}
+                        className={styles.typeChip}
+                        style={stagger(index)}
+                      >
                         {type} <strong>{count}</strong>
                       </span>
                     ))}
@@ -328,7 +347,7 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
           </section>
 
           {lastRun && (
-            <section className={styles.panel}>
+            <section className={styles.panel} style={stagger(3)}>
               <h2 className={styles.sectionTitle}>Último análisis</h2>
               <Detail label="Resultado" value={lastRun.status} />
               <Detail label="Archivos escaneados" value={formatCount(lastRun.files_scanned)} />
@@ -371,10 +390,19 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }): JSX.Element {
+function Stat({
+  label,
+  value,
+  delay = 0,
+}: {
+  label: string;
+  value: number | null | undefined;
+  delay?: number;
+}): JSX.Element {
+  const shown = useCountUp(value);
   return (
-    <div className={styles.stat}>
-      <div className={styles.statValue}>{value}</div>
+    <div className={styles.stat} style={{ '--delay': `${delay}ms` } as CSSProperties}>
+      <div className={styles.statValue}>{formatCount(shown)}</div>
       <div className={styles.statLabel}>{label}</div>
     </div>
   );

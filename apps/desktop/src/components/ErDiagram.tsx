@@ -12,7 +12,7 @@
  * navigate schemas from memory of where things sat.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 
 import type { ErModel, ErTable } from '@hana/shared-types';
 
@@ -109,7 +109,7 @@ export function ErDiagram({ model, loading, onOpenEvidence }: Props): JSX.Elemen
           <defs>
             <marker id="erArrow" viewBox="0 0 10 10" refX="9" refY="5"
                     markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#3a4d61" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border-strong)" />
             </marker>
           </defs>
 
@@ -131,7 +131,7 @@ export function ErDiagram({ model, loading, onOpenEvidence }: Props): JSX.Elemen
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke="#2b3b4c"
+                  stroke="var(--border-strong)"
                   strokeWidth={1.8}
                   markerEnd="url(#erArrow)"
                 />
@@ -151,10 +151,11 @@ export function ErDiagram({ model, loading, onOpenEvidence }: Props): JSX.Elemen
             );
           })}
 
-          {placed.map((item) => (
+          {placed.map((item, index) => (
             <TableBox
               key={item.table.id}
               item={item}
+              order={index}
               dimmed={selected !== null && selected !== item.table.id}
               onSelect={() =>
                 setSelected((current) => (current === item.table.id ? null : item.table.id))
@@ -175,10 +176,13 @@ export function ErDiagram({ model, loading, onOpenEvidence }: Props): JSX.Elemen
 function TableBox({
   item,
   dimmed,
+  order,
   onSelect,
 }: {
   item: Placed;
   dimmed: boolean;
+  /** Position in the grid, which decides when this box animates in. */
+  order: number;
   onSelect: () => void;
 }): JSX.Element {
   const shown = item.table.columns.slice(0, MAX_COLUMNS);
@@ -189,17 +193,18 @@ function TableBox({
       transform={`translate(${item.x} ${item.y})`}
       opacity={dimmed ? 0.25 : 1}
       className={styles.box}
+      style={{ '--delay': `${Math.min(order, 14) * 35}ms` } as CSSProperties}
       onClick={onSelect}
     >
       <rect
         width={BOX_WIDTH}
         height={item.height}
         rx={6}
-        fill="#111820"
-        stroke="#2b3b4c"
+        fill="var(--surface-panel)"
+        stroke="var(--border-strong)"
         strokeWidth={1.5}
       />
-      <rect width={BOX_WIDTH} height={HEADER_HEIGHT} rx={6} fill="#16202b" />
+      <rect width={BOX_WIDTH} height={HEADER_HEIGHT} rx={6} fill="var(--surface-raised)" />
       <text className={styles.tableName} x={10} y={20}>
         {item.table.name.length > 24
           ? `${item.table.name.slice(0, 23)}…`

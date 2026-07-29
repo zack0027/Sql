@@ -7,6 +7,7 @@ import {
   buildFileTree,
   colorOf,
   directoryPaths,
+  ENTITY_COLORS,
   flattenTree,
   layoutNeighborhood,
   type TreeRow,
@@ -238,5 +239,42 @@ describe('colorOf', () => {
 
   it('falls back for an unknown type', () => {
     expect(colorOf('AlgoNuevo')).toBeTruthy();
+  });
+
+  /**
+   * A dense graph is only readable if the families stay apart. Retheming is
+   * exactly the kind of change that quietly collapses two of them into the same
+   * swatch, so the separation is pinned rather than trusted to the eye.
+   */
+  it('keeps every family visually distinct from the others', () => {
+    const families = {
+      oracle: 'OracleTable',
+      apex: 'ApexItem',
+      jasper: 'JasperReport',
+      moca: 'MocaCommand',
+      structural: 'File',
+    };
+
+    const seen = new Map<string, string>();
+    for (const [family, type] of Object.entries(families)) {
+      const colour = colorOf(type);
+      const clash = seen.get(colour);
+      expect(clash, `${family} y ${clash} comparten ${colour}`).toBeUndefined();
+      seen.set(colour, family);
+    }
+  });
+
+  it('keeps a family together', () => {
+    // Same hue family, different shades: neighbours, not strangers.
+    expect(colorOf('JasperReport')).not.toBe(colorOf('JasperField'));
+    expect(colorOf('OracleTable')).not.toBe(colorOf('ApexItem'));
+  });
+
+  it('every entity colour is a full hex triplet', () => {
+    // These are written straight into SVG attributes; a malformed one renders
+    // as black and looks like a missing node rather than a typo.
+    for (const colour of Object.values(ENTITY_COLORS)) {
+      expect(colour).toMatch(/^#[0-9a-f]{6}$/);
+    }
   });
 });

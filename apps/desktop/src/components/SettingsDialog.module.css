@@ -6,7 +6,9 @@
   align-items: center;
   justify-content: center;
   padding: 32px;
-  background: rgba(3, 6, 10, 0.72);
+  background: rgba(8, 6, 16, 0.72);
+  backdrop-filter: blur(6px);
+  animation: fade-in var(--speed-quick) var(--ease-out) both;
 }
 
 .dialog {
@@ -17,8 +19,22 @@
   overflow: hidden;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  background: var(--surface-panel);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(
+    165deg,
+    rgba(38, 32, 64, 0.97),
+    rgba(28, 25, 48, 0.99)
+  );
+  box-shadow: var(--shadow-raised);
+  /* Grows out of the middle rather than appearing: the backdrop fades first,
+     so the dialog reads as arriving on top of the screen behind it. */
+  animation: dialog-in var(--speed-calm) var(--ease-spring) both;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
 }
 
 .head {
@@ -111,6 +127,14 @@
 .input:focus {
   border-color: var(--accent);
   outline: none;
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.textarea,
+.input {
+  transition:
+    border-color var(--speed-quick) var(--ease-out),
+    box-shadow var(--speed-quick) var(--ease-out);
 }
 
 .check {
@@ -123,6 +147,14 @@
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
   cursor: pointer;
+  transition:
+    border-color var(--speed-quick) var(--ease-out),
+    background var(--speed-quick) var(--ease-out);
+}
+
+.check:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
 }
 
 .check strong {
@@ -141,8 +173,13 @@
 /* The one setting that can widen where HANA reads. It should not look like the
    others. */
 .danger {
-  border-color: rgba(210, 153, 34, 0.4);
-  background: rgba(210, 153, 34, 0.07);
+  border-color: var(--inferred-border);
+  background: var(--inferred-dim);
+}
+
+.danger:hover {
+  border-color: var(--inferred);
+  background: rgba(251, 191, 36, 0.18);
 }
 
 .danger input {
@@ -166,7 +203,7 @@
 .ghost,
 .primary {
   padding: 7px 16px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: 12.5px;
   cursor: pointer;
 }
@@ -178,18 +215,23 @@
 }
 
 .ghost:hover {
+  border-color: var(--accent);
   background: var(--surface-hover);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .primary {
-  border: 1px solid var(--accent);
-  background: var(--accent-dim);
-  color: var(--accent-strong);
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: #06171a;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(79, 209, 197, 0.24);
 }
 
 .primary:hover:not(:disabled) {
-  background: rgba(59, 163, 255, 0.24);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(79, 209, 197, 0.4);
 }
 
 .primary:disabled {
@@ -199,10 +241,11 @@
 
 .error {
   margin: 0;
+  animation: slide-down var(--speed-quick) var(--ease-out) both;
   padding: 9px 22px;
-  background: rgba(248, 81, 73, 0.12);
-  border-bottom: 1px solid rgba(248, 81, 73, 0.3);
-  color: #ffb3ae;
+  background: var(--danger-dim);
+  border-bottom: 1px solid var(--danger-border);
+  color: var(--danger-text);
   font-size: 12px;
 }
 

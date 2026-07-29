@@ -11,7 +11,8 @@
   gap: 10px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: rgba(28, 25, 48, 0.62);
+  backdrop-filter: blur(10px);
 }
 
 .name {
@@ -36,15 +37,17 @@
 }
 
 .tool:hover {
+  border-color: var(--accent);
   background: var(--surface-hover);
-  color: var(--text-primary);
+  color: var(--accent);
+  transform: translateY(-1px);
 }
 
 /* Stated where it cannot be missed: this is structure, not a rendering. */
 .caveat {
   margin-left: auto;
   padding: 3px 10px;
-  border: 1px solid rgba(210, 153, 34, 0.4);
+  border: 1px solid var(--inferred-border);
   border-radius: 999px;
   color: var(--inferred);
   font-size: 10.5px;
@@ -55,7 +58,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  background: var(--surface-sunken);
+  background: rgba(14, 12, 23, 0.6);
 }
 
 .page {
@@ -65,12 +68,22 @@
 
 /* ------------------------------------------------------------------- bands */
 
+/* Bands drop in one after another, top to bottom — the order Jasper prints
+   them, which is the one thing this preview is trying to teach. */
 .band {
   margin-bottom: 14px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--surface-panel);
   overflow: hidden;
+  box-shadow: var(--shadow-panel);
+  transition: border-color var(--speed-quick) var(--ease-out);
+  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.band:hover {
+  border-color: var(--border-strong);
 }
 
 .bandHead {
@@ -108,10 +121,10 @@
       0deg,
       transparent,
       transparent 9px,
-      rgba(255, 255, 255, 0.02) 9px,
-      rgba(255, 255, 255, 0.02) 10px
+      rgba(167, 139, 250, 0.05) 9px,
+      rgba(167, 139, 250, 0.05) 10px
     ),
-    var(--surface-sunken);
+    rgba(14, 12, 23, 0.55);
 }
 
 .emptyBand {
@@ -132,18 +145,29 @@
   padding: 0 3px;
   border: 1px solid var(--border-strong);
   border-radius: 2px;
-  background: rgba(59, 163, 255, 0.1);
+  background: var(--accent-dim);
   text-align: left;
 }
 
+.element {
+  transition:
+    border-color var(--speed-instant) var(--ease-out),
+    background var(--speed-instant) var(--ease-out),
+    box-shadow var(--speed-instant) var(--ease-out);
+}
+
+/* No transform on hover: elements are absolutely positioned to scale, and
+   moving one would misrepresent where it sits on the page. */
 .element:hover {
   border-color: var(--accent);
+  background: rgba(79, 209, 197, 0.22);
   z-index: 2;
 }
 
 .elementSelected {
   border-color: var(--accent);
-  background: rgba(59, 163, 255, 0.28);
+  background: rgba(79, 209, 197, 0.3);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 14px var(--accent-glow);
   z-index: 3;
 }
 

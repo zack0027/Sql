@@ -13,7 +13,13 @@
   gap: 16px;
   padding: 10px 18px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: linear-gradient(
+    180deg,
+    rgba(28, 25, 48, 0.94),
+    rgba(28, 25, 48, 0.74)
+  );
+  backdrop-filter: blur(14px);
+  animation: slide-down var(--speed-calm) var(--ease-out) both;
 }
 
 .back {
@@ -27,8 +33,11 @@
 }
 
 .back:hover {
+  border-color: var(--accent);
   background: var(--surface-hover);
   color: var(--text-primary);
+  /* Leans the way it sends you. */
+  transform: translateX(-2px);
 }
 
 .title {
@@ -68,6 +77,16 @@
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 12.5px;
+  transition:
+    border-color var(--speed-quick) var(--ease-out),
+    box-shadow var(--speed-quick) var(--ease-out);
+}
+
+.search:focus,
+.filter:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
 .search::placeholder,
@@ -86,8 +105,11 @@
   overflow-y: auto;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-panel);
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-raised);
+  transform-origin: top;
+  animation: pop-in var(--speed-quick) var(--ease-out) both;
 }
 
 .result {
@@ -102,6 +124,7 @@
 
 .result:hover {
   background: var(--surface-hover);
+  padding-left: 16px;
 }
 
 .resultName {
@@ -144,15 +167,34 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--surface-panel);
+  background: rgba(28, 25, 48, 0.78);
+  backdrop-filter: blur(12px);
 }
 
+/* The side panels arrive from their own edges, so the layout explains itself
+   in the first third of a second. */
 .left {
   border-right: 1px solid var(--border-subtle);
+  animation: enter-left var(--speed-calm) var(--ease-out) both;
 }
 
 .right {
   border-left: 1px solid var(--border-subtle);
+  animation: enter-right var(--speed-calm) var(--ease-out) both;
+}
+
+@keyframes enter-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-16px, 0, 0);
+  }
+}
+
+@keyframes enter-right {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, 0, 0);
+  }
 }
 
 .centre {
@@ -160,7 +202,7 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--surface-base);
+  background: transparent;
 }
 
 .panelHead {
@@ -216,9 +258,13 @@
   font-weight: 500;
 }
 
+/* Colour and background only. These rows are virtualised and there are
+   thousands of them; anything that moves or resizes here would undo the reason
+   the list is windowed in the first place. */
 .folder:hover,
 .file:hover {
   background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .chevron {
@@ -238,6 +284,7 @@
 .fileSelected {
   background: var(--accent-dim);
   color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .fileMeta {
@@ -257,27 +304,53 @@
 /* -------------------------------------------------------------------- tabs */
 
 .tabs {
+  position: relative;
   display: flex;
   gap: 2px;
   padding: 8px 12px 0;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: rgba(28, 25, 48, 0.7);
+  backdrop-filter: blur(12px);
 }
 
 .tab {
-  padding: 7px 14px;
-  border-bottom: 2px solid transparent;
+  position: relative;
+  padding: 7px 14px 9px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   color: var(--text-muted);
   font-size: 12.5px;
 }
 
 .tab:hover {
+  background: rgba(167, 139, 250, 0.08);
   color: var(--text-primary);
 }
 
 .tabActive {
-  border-bottom-color: var(--accent);
   color: var(--text-primary);
+}
+
+/*
+ * One bar that travels, rather than a border switching between tabs.
+ *
+ * Its position comes from `--tab-x` / `--tab-w`, measured by
+ * `useSlidingIndicator` — the tabs carry counts in their labels, so their widths
+ * differ and cannot be derived in CSS.
+ */
+.tabIndicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: var(--tab-w, 0);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent), var(--violet));
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform: translateX(var(--tab-x, 0));
+  transition:
+    transform var(--speed-calm) var(--ease-spring),
+    width var(--speed-calm) var(--ease-spring);
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ panels */
@@ -386,6 +459,16 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
+  transition:
+    border-color var(--speed-quick) var(--ease-out),
+    transform var(--speed-quick) var(--ease-out);
+  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.usage:hover {
+  border-color: var(--border-strong);
+  transform: translateX(3px);
 }
 
 .usageHead {
@@ -483,12 +566,13 @@
   width: 4px;
   cursor: col-resize;
   background: transparent;
-  transition: background 120ms ease;
+  transition: background var(--speed-quick) var(--ease-out);
 }
 
 .handle:hover,
 .handleActive {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent), var(--violet));
+  box-shadow: 0 0 14px var(--accent-glow);
 }
 
 .confirmed {
@@ -537,8 +621,15 @@
   font-size: 11.5px;
 }
 
+.chip {
+  transition:
+    border-color var(--speed-quick) var(--ease-out),
+    transform var(--speed-quick) var(--ease-out);
+}
+
 .chip:hover {
   border-color: var(--accent);
+  transform: translateY(-2px);
 }
 
 /* ------------------------------------------------------------------ issues */
@@ -549,6 +640,16 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-panel);
+  transition:
+    border-color var(--speed-quick) var(--ease-out),
+    transform var(--speed-quick) var(--ease-out);
+  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.issue:hover {
+  border-color: var(--border-strong);
+  transform: translateX(3px);
 }
 
 .issueHead {
@@ -653,45 +754,77 @@
   justify-content: space-between;
   gap: 16px;
   padding: 8px 18px;
-  background: rgba(248, 81, 73, 0.12);
-  border-bottom: 1px solid rgba(248, 81, 73, 0.35);
-  color: #ffb3ae;
+  background: var(--danger-dim);
+  border-bottom: 1px solid var(--danger-border);
+  color: var(--danger-text);
   font-size: 12.5px;
+  animation: slide-down var(--speed-quick) var(--ease-out) both;
 }
 
 .banner button {
   color: inherit;
   font-size: 16px;
   line-height: 1;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+}
+
+.banner button:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Amber, not red: nothing is broken and nothing was lost — HANA simply reads
    more than it did when these files were last analysed. */
 .staleBanner {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 8px 18px;
-  background: rgba(210, 153, 34, 0.12);
-  border-bottom: 1px solid rgba(210, 153, 34, 0.35);
-  color: #e3b341;
+  overflow: hidden;
+  background: var(--inferred-dim);
+  border-bottom: 1px solid var(--inferred-border);
+  color: var(--inferred-text);
   font-size: 12.5px;
+  animation: slide-down var(--speed-calm) var(--ease-out) both;
+}
+
+/* A slow sweep of light. This banner is the only thing telling the user their
+   graph is behind, and it appears above content that looks perfectly fine — it
+   has to catch an eye that is already reading something else. */
+.staleBanner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(251, 191, 36, 0.16) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 3.6s var(--ease-in-out) infinite;
 }
 
 .staleAction {
+  position: relative;
   flex: none;
-  padding: 4px 12px;
-  border: 1px solid rgba(210, 153, 34, 0.5);
-  border-radius: 6px;
-  background: rgba(210, 153, 34, 0.16);
-  color: #f0cc6b;
+  padding: 5px 14px;
+  border: 1px solid var(--inferred-border);
+  border-radius: var(--radius-md);
+  background: rgba(251, 191, 36, 0.16);
+  color: var(--inferred-text);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .staleAction:hover:not(:disabled) {
-  background: rgba(210, 153, 34, 0.28);
+  background: rgba(251, 191, 36, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(251, 191, 36, 0.22);
 }
 
 .staleAction:disabled {

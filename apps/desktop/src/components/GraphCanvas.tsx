@@ -10,7 +10,14 @@
  * inference look like a proof.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
 import type { Neighborhood } from '@hana/shared-types';
 
@@ -148,7 +155,7 @@ export function GraphCanvas({
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#3a4d61" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border-strong)" />
           </marker>
         </defs>
 
@@ -196,13 +203,13 @@ function Edge({ edge, dimmed }: { edge: PositionedEdge; dimmed: boolean }): JSX.
   const midX = (edge.source.x + edge.target.x) / 2;
   const midY = (edge.source.y + edge.target.y) / 2;
   return (
-    <g opacity={dimmed ? 0.15 : 1}>
+    <g className={`${styles.edge} ${dimmed ? styles.edgeDimmed : ''}`}>
       <line
         x1={edge.source.x}
         y1={edge.source.y}
         x2={edge.target.x}
         y2={edge.target.y}
-        stroke={edge.inferred ? '#d29922' : '#2b3b4c'}
+        stroke={edge.inferred ? 'var(--inferred)' : 'var(--border-strong)'}
         strokeWidth={edge.inferred ? 1.4 : 2}
         // Dashed means inferred. A convention, not a proof — and the picture
         // says so without anyone having to read a tooltip.
@@ -238,9 +245,12 @@ function Node({
 
   return (
     <g
-      className={styles.node}
-      opacity={dimmed ? 0.2 : 1}
+      className={`${styles.node} ${dimmed ? styles.nodeDimmed : ''}`}
       transform={`translate(${node.x} ${node.y})`}
+      // Rings expand outward from the centre, so the further a node sits from
+      // what was clicked the later it arrives — the expansion reads as
+      // travelling rather than as the whole picture being replaced.
+      style={{ '--delay': `${Math.min(node.depth, 4) * 70}ms` } as CSSProperties}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(node.id);
@@ -252,11 +262,17 @@ function Node({
       onPointerEnter={() => onHover(node.id)}
       onPointerLeave={() => onHover(null)}
     >
+      {/* A breathing ring around whatever is focused. Purely an eye-catcher, so
+          it sits behind the node and never changes its size or hit area. */}
+      {isFocus && (
+        <circle className={styles.halo} r={radius + 8} fill="none" stroke={color} strokeWidth={2} />
+      )}
       <circle
+        className={styles.nodeBody}
         r={radius}
         fill={color}
         fillOpacity={node.inferred ? 0.25 : 0.9}
-        stroke={isFocus ? '#e6edf3' : color}
+        stroke={isFocus ? 'var(--text-primary)' : color}
         strokeWidth={isFocus ? 3 : 1.5}
         strokeDasharray={node.inferred ? '5 4' : undefined}
       />

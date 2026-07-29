@@ -11,12 +11,13 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: rgba(28, 25, 48, 0.62);
+  backdrop-filter: blur(10px);
 }
 
 .tool {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
@@ -26,8 +27,10 @@
 }
 
 .tool:hover {
+  border-color: var(--accent);
   background: var(--surface-hover);
-  color: var(--text-primary);
+  color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .count {
@@ -41,7 +44,7 @@
 .caveat {
   margin-left: auto;
   padding: 3px 10px;
-  border: 1px solid rgba(210, 153, 34, 0.4);
+  border: 1px solid var(--inferred-border);
   border-radius: 999px;
   color: var(--inferred);
   font-size: 10.5px;
@@ -51,7 +54,8 @@
   flex: 1;
   overflow: auto;
   background:
-    radial-gradient(circle at 40% 30%, rgba(59, 163, 255, 0.04), transparent 60%),
+    radial-gradient(circle at 40% 30%, rgba(79, 209, 197, 0.06), transparent 60%),
+    radial-gradient(circle at 76% 74%, rgba(167, 139, 250, 0.05), transparent 55%),
     var(--surface-sunken);
 }
 
@@ -59,8 +63,26 @@
   display: block;
 }
 
+/* Tables settle into place one after another. Scaled about their own centres
+   (`fill-box`), or they would fly in from the SVG's origin. */
 .box {
   cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: er-appear var(--speed-calm) var(--ease-spring) both;
+  animation-delay: var(--delay, 0ms);
+  transition: filter var(--speed-quick) var(--ease-out);
+}
+
+@keyframes er-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
+.box:hover {
+  filter: brightness(1.25) drop-shadow(0 0 10px var(--accent-glow));
 }
 
 .tableName {
@@ -98,7 +120,8 @@
   margin: 0;
   padding: 6px 12px;
   border-top: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: rgba(28, 25, 48, 0.62);
+  backdrop-filter: blur(10px);
   color: var(--text-muted);
   font-size: 11px;
 }

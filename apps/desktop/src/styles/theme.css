@@ -1,44 +1,91 @@
 /*
- * HANA — dark technical theme.
+ * HANA — «violeta nocturno».
  *
- * Design tokens only. Components consume these variables through CSS Modules so
- * that retheming (and the per-entity-type colours the graph will need) happens
- * in one place.
+ * Design tokens only. Components consume these through CSS Modules so that
+ * retheming happens in one place.
+ *
+ * Two rules govern colour here, and they are not decorative:
+ *
+ *   1. Colour carries meaning. `--confirmed` / `--inferred` / `--low` map to the
+ *      confidence bands in `domain/confidence.py`, and the whole product rests on
+ *      a user being able to tell a fact from an inference at a glance. They stay
+ *      far apart in hue and in luminance, so they survive a projector, a bad
+ *      monitor and the commonest forms of colour blindness.
+ *   2. Everything else is atmosphere and may change freely.
+ *
+ * Motion follows the same split: transitions that explain a change (a panel
+ * arriving, a tab moving, a node appearing) are worth the frames; motion that
+ * only decorates is kept cheap and to compositor-friendly properties.
  */
 
 :root {
-  /* Surfaces, from the window background up to raised panels. */
-  --surface-base: #0b0f14;
-  --surface-sunken: #070a0e;
-  --surface-panel: #111820;
-  --surface-raised: #16202b;
-  --surface-hover: #1c2836;
+  /* -- surfaces ---------------------------------------------------------- */
+  /* A warm blue-violet rather than the old near-black: easier to sit in front
+     of for an afternoon, and it lets the turquoise accent read as a highlight
+     instead of as the only colour on screen. */
+  --surface-base: #14121f;
+  --surface-sunken: #0e0c17;
+  --surface-panel: #1c1930;
+  --surface-raised: #262040;
+  --surface-hover: #302949;
+  --surface-glass: rgba(38, 32, 64, 0.72);
 
-  --border-subtle: #1e2a36;
-  --border-strong: #2b3b4c;
+  --border-subtle: #2a2445;
+  --border-strong: #3d3463;
 
-  --text-primary: #e6edf3;
-  --text-secondary: #9bb0c3;
-  --text-muted: #64798d;
+  --text-primary: #ece9f5;
+  --text-secondary: #b3a9d0;
+  --text-muted: #8479a6;
 
-  --accent: #3ba3ff;
-  --accent-strong: #63b8ff;
-  --accent-dim: rgba(59, 163, 255, 0.14);
+  /* -- accents ----------------------------------------------------------- */
+  --accent: #4fd1c5;
+  --accent-strong: #7ee8dd;
+  --accent-deep: #2ba79b;
+  --accent-dim: rgba(79, 209, 197, 0.14);
+  --accent-glow: rgba(79, 209, 197, 0.38);
 
-  /* Confidence and status. These map to the bands in domain/confidence.py. */
-  --confirmed: #3fb950;
-  --inferred: #d29922;
-  --low: #8b949e;
-  --danger: #f85149;
+  /* Secondary hue, for the graph and for gradients. */
+  --violet: #a78bfa;
+  --violet-strong: #c4b5fd;
+  --violet-dim: rgba(167, 139, 250, 0.16);
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* -- meaning ----------------------------------------------------------- */
+  --confirmed: #4ade80;
+  --confirmed-dim: rgba(74, 222, 128, 0.14);
+  --inferred: #fbbf24;
+  --inferred-dim: rgba(251, 191, 36, 0.13);
+  --inferred-border: rgba(251, 191, 36, 0.38);
+  --inferred-text: #fcd34d;
+  --low: #a89fc4;
+  --danger: #fb7185;
+  --danger-dim: rgba(251, 113, 133, 0.13);
+  --danger-border: rgba(251, 113, 133, 0.34);
+  --danger-text: #fda4af;
+
+  /* -- shape ------------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
 
   --font-sans: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Consolas', ui-monospace, monospace;
 
-  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-panel: 0 10px 30px rgba(6, 4, 14, 0.5);
+  --shadow-raised: 0 18px 48px rgba(6, 4, 14, 0.62);
+  --shadow-accent: 0 0 0 1px var(--accent-dim), 0 8px 26px rgba(79, 209, 197, 0.16);
+
+  /* -- motion ------------------------------------------------------------ */
+  /* Named by intent, so a component asks for "the speed of a hover" rather than
+     inventing a number. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --speed-instant: 90ms;
+  --speed-quick: 160ms;
+  --speed-calm: 280ms;
+  --speed-slow: 460ms;
 
   color-scheme: dark;
 }
@@ -65,17 +112,58 @@ body {
   overflow: hidden;
 }
 
+/*
+ * The window's ambient light.
+ *
+ * Two very large, very soft radial gradients drifting against each other. Fixed
+ * and behind everything, animating only `transform`, so it never triggers layout
+ * or paint on the panels above it — the cost is one composited layer that the
+ * GPU moves, not a repaint per frame.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -40%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 44% at 22% 18%, rgba(124, 58, 237, 0.20), transparent 68%),
+    radial-gradient(36% 42% at 82% 78%, rgba(45, 212, 191, 0.14), transparent 68%),
+    radial-gradient(30% 36% at 68% 12%, rgba(236, 72, 153, 0.07), transparent 70%);
+  animation: ambient-drift 44s var(--ease-in-out) infinite alternate;
+  will-change: transform;
+}
+
+@keyframes ambient-drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.12);
+  }
+}
+
 button {
   font: inherit;
   color: inherit;
   cursor: pointer;
   border: none;
   background: none;
+  transition:
+    background var(--speed-quick) var(--ease-out),
+    border-color var(--speed-quick) var(--ease-out),
+    color var(--speed-quick) var(--ease-out),
+    box-shadow var(--speed-quick) var(--ease-out),
+    transform var(--speed-instant) var(--ease-out);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.975);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 code,
@@ -91,16 +179,17 @@ pre,
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--surface-sunken);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-pill);
+  transition: background var(--speed-quick) var(--ease-out);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a4d61;
+  background: var(--violet);
 }
 
 :focus-visible {
@@ -108,11 +197,89 @@ pre,
   outline-offset: 2px;
 }
 
+/* ---------------------------------------------------------------------------
+ * Shared entrance animations.
+ *
+ * Global rather than per-module because several views compose them, and the
+ * `--delay` custom property lets a list stagger its children without a
+ * component having to know the animation's internals.
+ * ------------------------------------------------------------------------ */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -100%, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/** A slow sheen, for surfaces that are waiting on the engine. */
+@keyframes shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+/** Breathing ring, for whatever is currently selected. */
+@keyframes halo {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.14);
+  }
+}
+
+.riseIn {
+  animation: rise-in var(--speed-calm) var(--ease-out) both;
+  animation-delay: var(--delay, 0ms);
+}
+
 /* Evidence highlighting inside the code viewer.
    Global because Monaco applies decoration classes to its own DOM, which CSS
    Modules cannot reach. */
 .hanaEvidence {
-  background: rgba(59, 163, 255, 0.18);
+  background: rgba(79, 209, 197, 0.2);
 }
 
 .hanaEvidenceGutter {
@@ -129,12 +296,23 @@ pre,
   background: var(--border-strong);
 }
 
-/* Animations stay short and purposeful; nothing decorative. */
+/*
+ * Someone who asks the operating system for less motion is usually not asking
+ * for a subtler animation — they are asking not to be moved. So movement is
+ * removed outright rather than shortened, and only opacity survives.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  body::before {
+    animation: none;
+    transform: none;
   }
 }

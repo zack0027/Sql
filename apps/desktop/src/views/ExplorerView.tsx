@@ -8,7 +8,14 @@
  * convention. Nothing is shown that HANA cannot justify.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
 import type { EntityHit, UsageHit } from '@hana/shared-types';
 
@@ -26,10 +33,24 @@ import {
 } from '../lib/graph';
 import { formatBytes } from '../lib/format';
 import { useResizable } from '../lib/useResizable';
+import {
+  ACTIVE_TAB_ATTRIBUTE,
+  useSlidingIndicator,
+} from '../lib/useSlidingIndicator';
 import { useVirtualRows } from '../lib/useVirtualRows';
 import { useExplorerStore } from '../state/explorer';
 import { useAppStore } from '../state/store';
 import styles from './ExplorerView.module.css';
+
+/** Milliseconds between one card's entrance and the next. */
+const STAGGER = 40;
+
+/** CSS custom property the stylesheet reads as an animation delay. */
+function stagger(index: number): CSSProperties {
+  // Past a dozen items the cascade stops reading as a cascade and starts
+  // reading as a wait, so the delay is capped rather than scaled.
+  return { '--delay': `${Math.min(index, 12) * STAGGER}ms` } as CSSProperties;
+}
 
 export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
   const project = useAppStore((state) =>
@@ -39,6 +60,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
   const [filter, setFilter] = useState('');
   const left = useResizable('hana.panel.left', 280, { min: 200, max: 520, side: 'left' });
   const right = useResizable('hana.panel.right', 380, { min: 280, max: 680, side: 'right' });
+  const tabs = useSlidingIndicator<HTMLDivElement>(explorer.tab);
 
   useEffect(() => {
     if (project && explorer.projectId !== project.id) {
@@ -147,7 +169,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
 
         {/* ---- centre: graph / code / file / issues ----------------------- */}
         <main className={styles.centre}>
-          <div className={styles.tabs}>
+          <div className={styles.tabs} ref={tabs}>
             {(
               [
                 ['graph', 'Grafo'],
@@ -162,11 +184,13 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
               <button
                 key={key}
                 className={`${styles.tab} ${explorer.tab === key ? styles.tabActive : ''}`}
+                {...{ [ACTIVE_TAB_ATTRIBUTE]: explorer.tab === key }}
                 onClick={() => explorer.setTab(key)}
               >
                 {label}
               </button>
             ))}
+            <span className={styles.tabIndicator} aria-hidden="true" />
           </div>
 
           {explorer.tab === 'graph' && (
@@ -463,7 +487,9 @@ function FilePanel(): JSX.Element {
       {fileTables.length === 0 ? (
         <p className={styles.muted}>Ninguna.</p>
       ) : (
-        fileTables.map((hit, index) => <UsageRow key={index} hit={hit} />)
+        fileTables.map((hit, index) => (
+          <UsageRow key={index} hit={hit} index={index} />
+        ))
       )}
 
       <h4 className={styles.subTitle}>Entidades detectadas ({fileEntities.length})</h4>
@@ -488,7 +514,7 @@ function IssuesPanel(): JSX.Element {
   return (
     <div className={styles.scroll}>
       {issues.map((issue, index) => (
-        <div key={index} className={styles.issue}>
+        <div key={index} className={styles.issue} style={stagger(index)}>
           <div className={styles.issueHead}>
             <span
               className={
@@ -596,27 +622,31 @@ function DetailsPanel(): JSX.Element {
       {incoming.length === 0 ? (
         <p className={styles.muted}>Nada.</p>
       ) : (
-        incoming.map((hit, index) => <UsageRow key={`in-${index}`} hit={hit} />)
+        incoming.map((hit, index) => (
+          <UsageRow key={`in-${index}`} hit={hit} index={index} />
+        ))
       )}
 
       <h4 className={styles.subTitle}>Depende de ({outgoing.length})</h4>
       {outgoing.length === 0 ? (
         <p className={styles.muted}>Nada.</p>
       ) : (
-        outgoing.map((hit, index) => <UsageRow key={`out-${index}`} hit={hit} />)
+        outgoing.map((hit, index) => (
+          <UsageRow key={`out-${index}`} hit={hit} index={index} />
+        ))
       )}
     </div>
   );
 }
 
 /** One relation, with the evidence that proves it. */
-function UsageRow({ hit }: { hit: UsageHit }): JSX.Element {
+function UsageRow({ hit, index = 0 }: { hit: UsageHit; index?: number }): JSX.Element {
   const { selectEntity, openEvidence } = useExplorerStore();
   const inferred = hit.evidence.status !== 'confirmed';
   const where = hit.evidence.file_path;
 
   return (
-    <div className={styles.usage}>
+    <div className={styles.usage} style={stagger(index)}>
       <div className={styles.usageHead}>
         <span className={styles.relation}>{relationLabel(hit.relation_type)}</span>
         <button className={styles.usageName} onClick={() => void selectEntity(hit.entity)}>

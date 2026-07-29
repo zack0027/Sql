@@ -12,7 +12,7 @@
  * wrong band or a parameter is not reaching the page.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 
 import type { ReportBand, ReportElement, ReportStructure } from '@hana/shared-types';
 
@@ -124,6 +124,7 @@ export function ReportPreview({ report, loading }: Props): JSX.Element {
             <Band
               key={`${band.section}-${index}`}
               band={band}
+              index={index}
               zoom={zoom}
               selected={selected}
               onSelect={setSelected}
@@ -171,11 +172,13 @@ export function ReportPreview({ report, loading }: Props): JSX.Element {
 
 function Band({
   band,
+  index,
   zoom,
   selected,
   onSelect,
 }: {
   band: ReportBand;
+  index: number;
   zoom: number;
   selected: ReportElement | null;
   onSelect: (element: ReportElement) => void;
@@ -184,7 +187,10 @@ function Band({
   const height = Math.max(band.height ?? 0, 24);
 
   return (
-    <section className={styles.band}>
+    <section
+      className={styles.band}
+      style={{ '--delay': `${Math.min(index, 10) * 45}ms` } as CSSProperties}
+    >
       <header className={styles.bandHead}>
         <span className={styles.bandName}>
           {SECTION_LABELS[band.section] ?? band.section}

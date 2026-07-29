@@ -269,33 +269,55 @@ export function directoryPaths(nodes: TreeNode[]): string[] {
 // ---------------------------------------------------------------------------
 
 /** Colour per entity family. Keeps the graph readable at a glance. */
+/**
+ * One colour per entity type, grouped by family.
+ *
+ * Related types share a hue and differ in lightness — every Jasper thing is
+ * pink, every Oracle thing is blue — so a dense graph reads as a few
+ * neighbourhoods rather than as confetti. Families are kept apart in hue *and*
+ * in brightness, which is what keeps them legible to someone who cannot
+ * separate red from green.
+ *
+ * These are deliberately literals rather than CSS variables: they are painted
+ * into SVG attributes and read back by `layoutNeighborhood`, so they have to be
+ * values the code can compute with, not names the browser resolves later.
+ */
 export const ENTITY_COLORS: Record<string, string> = {
-  OracleTable: '#3ba3ff',
-  OracleView: '#3ba3ff',
-  OracleColumn: '#63b8ff',
-  OracleProcedure: '#9d7bff',
-  OracleFunction: '#9d7bff',
+  // Oracle — periwinkle blue
+  OracleTable: '#7aa2ff',
+  OracleView: '#93b4ff',
+  OracleColumn: '#b3c9ff',
+  OracleProcedure: '#a78bfa',
+  OracleFunction: '#bda5fc',
   OraclePackage: '#8b5cf6',
-  SqlQuery: '#4dd4ac',
-  ApexItem: '#f59e0b',
+  SqlQuery: '#4fd1c5',
+
+  // APEX — amber
+  ApexItem: '#f5a623',
   ApexPage: '#fbbf24',
-  ApexApplication: '#fbbf24',
-  JasperReport: '#ef6461',
-  JasperField: '#f79c98',
-  JasperParameter: '#f79c98',
-  JasperVariable: '#f79c98',
-  JasperSubreport: '#ef6461',
+  ApexApplication: '#fcd34d',
+
+  // Jasper — pink
+  JasperReport: '#f472b6',
+  JasperField: '#f9a8d4',
+  JasperParameter: '#fbcfe8',
+  JasperVariable: '#f9a8d4',
+  JasperSubreport: '#ec4899',
+
+  // MOCA — teal
   MocaCommand: '#2dd4bf',
   MocaVariable: '#5eead4',
+
+  // Everything else — deliberately quiet, so structure never outshines meaning
   JsonProperty: '#94a3b8',
-  JavaScriptFunction: '#eab308',
+  JavaScriptFunction: '#facc15',
   PythonFunction: '#38bdf8',
-  File: '#64798d',
-  Directory: '#64798d',
+  File: '#8479a6',
+  Directory: '#8479a6',
 };
 
 export function colorOf(type: string): string {
-  return ENTITY_COLORS[type] ?? '#8b949e';
+  return ENTITY_COLORS[type] ?? '#a89fc4';
 }
 
 /** Short label for a relation, for edge captions. */

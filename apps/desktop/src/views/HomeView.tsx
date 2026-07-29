@@ -93,9 +93,9 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <div className={styles.mark}>HK</div>
+          <div className={styles.mark}>H</div>
           <div>
-            <h1 className={styles.title}>HANA Knowledge Engine</h1>
+            <h1 className={styles.title}>HANA</h1>
             <p className={styles.subtitle}>
               Motor de conocimiento técnico local · análisis estático · sin conexión
             </p>

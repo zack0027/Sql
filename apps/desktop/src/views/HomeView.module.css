@@ -30,8 +30,10 @@
   gap: 14px;
 }
 
+/* Still, on purpose. The wordmark is the one thing on screen that never
+   changes, so it is the one thing with nothing to report — animating it was
+   decoration competing with the parts that carry news. */
 .mark {
-  position: relative;
   display: grid;
   place-items: center;
   width: 42px;
@@ -39,46 +41,26 @@
   border-radius: var(--radius-md);
   background: linear-gradient(140deg, var(--accent-deep), #6d43d6);
   color: #0c1a1d;
-  font-family: var(--font-mono);
-  font-size: 17px;
+  font-family: var(--font-display);
+  font-size: 21px;
   font-weight: 700;
-  letter-spacing: -0.5px;
   box-shadow: 0 6px 20px rgba(79, 209, 197, 0.28);
-  animation: pop-in var(--speed-slow) var(--ease-spring) backwards;
-}
-
-/* A slow highlight sweeping across the mark — the one purely decorative
-   flourish, kept to one small element and to `transform` alone. */
-.mark::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    115deg,
-    transparent 38%,
-    rgba(255, 255, 255, 0.42) 50%,
-    transparent 62%
-  );
-  animation: mark-sheen 5.5s var(--ease-in-out) infinite;
-}
-
-@keyframes mark-sheen {
-  0%,
-  62% {
-    transform: translateX(-120%);
-  }
-  92%,
-  100% {
-    transform: translateX(120%);
-  }
 }
 
 .title {
   margin: 0;
-  font-size: 17px;
+  font-family: var(--font-display);
+  font-size: 23px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  /* Wide tracking is what makes four letters read as a mark rather than as a
+     word someone forgot to finish. */
+  letter-spacing: 5px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  background: linear-gradient(100deg, var(--text-primary), var(--accent-strong));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .subtitle {

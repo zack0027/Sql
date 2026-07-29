@@ -30,22 +30,10 @@
   gap: 14px;
 }
 
-/* Still, on purpose. The wordmark is the one thing on screen that never
-   changes, so it is the one thing with nothing to report — animating it was
-   decoration competing with the parts that carry news. */
-.mark {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(140deg, var(--accent-deep), #6d43d6);
-  color: #0c1a1d;
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 700;
-  box-shadow: 0 6px 20px rgba(79, 209, 197, 0.28);
-}
+/* The mark itself lives in components/Mark.tsx. Still, on purpose: the brand is
+   the one thing on screen that never changes, so it is the one thing with
+   nothing to report — animating it was decoration competing with the parts that
+   carry news. */
 
 .title {
   margin: 0;

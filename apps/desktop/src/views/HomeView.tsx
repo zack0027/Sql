@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
+import { Mark } from '../components/Mark';
 import { SettingsDialog } from '../components/SettingsDialog';
 import { useActiveProject, useAppStore } from '../state/store';
 import {
@@ -93,7 +94,7 @@ export function HomeView({ onExplore }: { onExplore?: () => void }): JSX.Element
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <div className={styles.mark}>H</div>
+          <Mark />
           <div>
             <h1 className={styles.title}>HANA</h1>
             <p className={styles.subtitle}>

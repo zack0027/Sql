@@ -1,0 +1,35 @@
+.mark {
+  flex: none;
+  display: block;
+  /* Matches the depth the old badge had, so the header keeps its weight. */
+  filter: drop-shadow(0 6px 18px rgba(79, 209, 197, 0.24));
+}
+
+.plate {
+  fill: var(--surface-raised);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.ring {
+  stroke: var(--border-strong);
+  stroke-width: 1.2;
+}
+
+.spoke {
+  stroke: var(--accent);
+  stroke-width: 2.3;
+  stroke-linecap: round;
+}
+
+.nodeAccent {
+  fill: var(--accent);
+}
+
+.nodePale {
+  fill: var(--accent-strong);
+}
+
+.nodeViolet {
+  fill: var(--violet);
+}

@@ -41,6 +41,9 @@ const ENGINE_STOPPED: &str = "el motor se detuvo";
 /// scanning it can add several seconds on a machine that has never seen it.
 const READY_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Windows' `STILL_ACTIVE`: not an exit code, a statement that there isn't one.
+const STILL_ACTIVE: i32 = 259;
+
 type Pending = Arc<Mutex<HashMap<String, Sender<Result<Value, String>>>>>;
 
 /// The engine's last words, for when it dies.
@@ -263,29 +266,50 @@ impl Sidecar {
             .and_then(|mut child| child.try_wait().ok().flatten());
 
         let mut parts = Vec::new();
-        match status {
-            Some(status) => match status.code() {
-                Some(code) => parts.push(format!("el motor terminó con código {code}")),
-                None => parts.push("el motor fue terminado por el sistema".to_string()),
-            },
+        match status.and_then(|status| status.code()) {
+            // 259 is STILL_ACTIVE, Windows' sentinel for "this process has not
+            // exited". Reporting it as an exit code invents a failure that never
+            // happened. It shows up here because the frozen engine is a
+            // PyInstaller one-file build: the executable we launched is a
+            // bootloader that unpacks itself and runs the real interpreter as a
+            // *second* process. When the inner one dies the pipes break, while
+            // the outer one is still winding down.
+            Some(STILL_ACTIVE) => parts.push(
+                "el proceso interno del motor murió; el lanzador seguía cerrándose"
+                    .to_string(),
+            ),
+            Some(code) => parts.push(format!("el motor terminó con código {code}")),
+            None if status.is_some() => {
+                parts.push("el motor fue terminado por el sistema".to_string())
+            }
             None => parts.push("el motor sigue vivo pero no responde".to_string()),
         }
 
-        if let Ok(tail) = self.stderr_tail.lock() {
+        let said = self.stderr_tail.lock().ok().map(|tail| {
             // The last lines, not the first: a traceback names its failure at
             // the end.
-            let said: Vec<&str> = tail
-                .iter()
+            tail.iter()
                 .rev()
                 .take(6)
                 .map(String::as_str)
                 .collect::<Vec<_>>()
                 .into_iter()
                 .rev()
-                .collect();
-            if !said.is_empty() {
-                parts.push(format!("dijo: {}", said.join(" · ")));
-            }
+                .collect::<Vec<_>>()
+                .join(" · ")
+        });
+
+        match said.as_deref() {
+            Some("") | None => parts.push(
+                // The absence is the evidence. Python that fails on its own
+                // leaves a traceback; silence means something outside the
+                // process ended it — an antivirus, a policy, or the machine
+                // running out of memory.
+                "no dejó ningún mensaje, lo que apunta a que algo externo lo \
+                 cerró (antivirus, política del equipo o falta de memoria)"
+                    .to_string(),
+            ),
+            Some(text) => parts.push(format!("dijo: {text}")),
         }
 
         parts.push(format!("detalle completo en {}", self.log_path.display()));

@@ -37,6 +37,9 @@ export type CenterTab =
   | 'issues'
   | 'changes';
 
+/** Whether the centre panel describes the selection or the whole project. */
+export type Scope = 'selection' | 'project';
+
 interface ExplorerState {
   projectId: string | null;
   files: FileTreeItem[];
@@ -67,6 +70,8 @@ interface ExplorerState {
   changes: ChangesResult | null;
 
   er: ErModel | null;
+  /** Table the diagram is centred on; null when it shows the whole project. */
+  erFocus: string | null;
   loadingEr: boolean;
   report: ReportStructure | null;
   loadingReport: boolean;
@@ -74,12 +79,21 @@ interface ExplorerState {
   /** Whether this project's knowledge predates the installed analyzers. */
   freshness: Freshness | null;
 
+  /**
+   * What the centre panel is describing.
+   *
+   * `'selection'` — everything follows what you clicked. `'project'` — the whole
+   * project, which is what the tabs used to always show.
+   */
+  scope: Scope;
+
   tab: CenterTab;
   error: string | null;
 
   open: (projectId: string) => Promise<void>;
   reset: () => void;
   setTab: (tab: CenterTab) => void;
+  setScope: (scope: Scope) => void;
   loadEr: () => Promise<void>;
   loadReport: (entityId: string) => Promise<void>;
   search: (text: string) => Promise<void>;
@@ -91,6 +105,7 @@ interface ExplorerState {
     relativePath: string,
     startLine?: number | null,
     endLine?: number | null,
+    options?: { keepTab?: boolean },
   ) => Promise<void>;
   dismissError: () => void;
 }
@@ -139,6 +154,30 @@ export function mergeNeighborhood(
   };
 }
 
+/**
+ * Which table the ER diagram should be centred on, if any.
+ *
+ * One function so that the entity selection and the file selection cannot
+ * disagree about it — they each used to work it out, and whichever ran last won.
+ *
+ * Only a table can focus the diagram. Asking for the neighbours of an APEX item
+ * would narrow it to nothing, and an empty diagram reads as a bug rather than as
+ * "that is not a table".
+ */
+export function erFocusOf(state: {
+  scope: Scope;
+  selected: EntityHit | null;
+  fileTables: UsageHit[];
+}): string | null {
+  if (state.scope !== 'selection') return null;
+  if (state.selected?.entity_type === 'OracleTable') return state.selected.id;
+
+  const fromFile = state.fileTables.find(
+    (hit) => hit.entity.entity_type === 'OracleTable',
+  );
+  return fromFile ? fromFile.entity.id : null;
+}
+
 const EMPTY = {
   files: [] as FileTreeItem[],
   searchText: '',
@@ -160,10 +199,12 @@ const EMPTY = {
   issues: [] as AnalysisIssue[],
   changes: null,
   er: null,
+  erFocus: null,
   loadingEr: false,
   report: null,
   loadingReport: false,
   freshness: null,
+  scope: 'selection' as Scope,
   tab: 'graph' as CenterTab,
   error: null,
 };
@@ -194,18 +235,30 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
 
   setTab(tab: CenterTab) {
     set({ tab });
-    // Both views are expensive enough to be worth fetching only when opened,
-    // and cheap enough to keep once fetched.
+    // Fetched only when opened: expensive enough to be worth the delay, and
+    // cheap enough to keep afterwards.
     if (tab === 'er' && !get().er && !get().loadingEr) void get().loadEr();
+  },
+
+  setScope(scope: Scope) {
+    if (get().scope === scope) return;
+    // The ER model is the one view whose *contents* come from the engine rather
+    // than being filtered here, so widening or narrowing means asking again.
+    set({ scope, er: null });
+    if (get().tab === 'er') void get().loadEr();
   },
 
   async loadEr() {
     const projectId = get().projectId;
     if (!projectId) return;
-    set({ loadingEr: true });
+
+    const focus = erFocusOf(get());
+    set({ loadingEr: true, erFocus: focus });
     try {
       const client = await getClient();
-      set({ er: await client.erModel(projectId) });
+      const model = await client.erModel(projectId, undefined, focus);
+      // A slower earlier request must not overwrite a newer selection's answer.
+      if (get().erFocus === focus) set({ er: model });
     } catch (error) {
       set({ error: describe(error) });
     } finally {
@@ -271,6 +324,20 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         const structure = await client.reportStructure(entity.id);
         set({ report: structure });
       }
+
+      // Every other tab follows the selection as well. The diagram is refetched
+      // because only the engine can say which tables this one joins; the file
+      // is opened at the line where the entity is defined, so the code tab is
+      // showing the same thing the graph is.
+      if (get().scope === 'selection') {
+        set({ er: null });
+        if (get().tab === 'er') void get().loadEr();
+        if (entity.file_path) {
+          void get().openEvidence(entity.file_path, entity.start_line, null, {
+            keepTab: true,
+          });
+        }
+      }
     } catch (error) {
       set({ error: describe(error) });
     } finally {
@@ -296,7 +363,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   },
 
   async selectFile(file: FileTreeItem) {
-    set({ selectedFile: file, tab: 'file' });
+    set({ selectedFile: file, tab: 'file', highlight: null });
     const projectId = get().projectId;
     if (!projectId) return;
     try {
@@ -306,18 +373,36 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         client.tablesOfFile(projectId, file.relative_path),
       ]);
       set({ fileEntities: entities, fileTables: tables });
+
+      if (get().scope !== 'selection') return;
+
+      // Load the source now, so the code tab is showing this file the moment
+      // it is opened. Skipped for anything the viewer cannot render as text —
+      // a compiled .jasper or a PNG would arrive as a screen of mojibake.
+      if (!file.skip_reason) {
+        void get().openEvidence(file.relative_path, null, null, { keepTab: true });
+      } else {
+        set({ source: null });
+      }
+
+      // The diagram follows too, centred on whichever table this file uses.
+      set({ er: null });
+      if (get().tab === 'er') void get().loadEr();
     } catch (error) {
       set({ error: describe(error) });
     }
   },
 
-  async openEvidence(relativePath, startLine, endLine) {
+  async openEvidence(relativePath, startLine, endLine, options) {
     const projectId = get().projectId;
     if (!projectId || !relativePath) return;
 
     const start = startLine && startLine >= 1 ? startLine : null;
     set({
-      tab: 'code',
+      // Clicking a piece of evidence *means* "show me the code"; loading it
+      // behind a selection does not, and stealing the tab would yank the user
+      // away from the graph they were reading.
+      ...(options?.keepTab ? {} : { tab: 'code' as CenterTab }),
       highlight: start ? { start, end: Math.max(start, endLine ?? start) } : null,
     });
 

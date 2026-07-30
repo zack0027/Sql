@@ -545,7 +545,7 @@ export class MockEngineClient implements EngineClient {
     };
   }
 
-  async erModel(): Promise<ErModel> {
+  async erModel(_projectId?: string, _tableIds?: string[], _focusId?: string | null): Promise<ErModel> {
     const table = (id: string, name: string, columns: string[]) => ({
       ...(DEMO_ENTITIES.find((item) => item.id === id) ??
         entity(id, 'OracleTable', name, null, null)),

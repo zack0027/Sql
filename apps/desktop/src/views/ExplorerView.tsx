@@ -191,6 +191,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
               </button>
             ))}
             <span className={styles.tabIndicator} aria-hidden="true" />
+            <ScopeSwitch />
           </div>
 
           {explorer.tab === 'graph' && (
@@ -278,6 +279,51 @@ function StaleBanner(): JSX.Element | null {
         }}
       >
         {analyzing ? 'Analizando…' : 'Volver a analizar'}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Whether the centre panel describes what you clicked, or the whole project.
+ *
+ * The tabs used to mix the two without saying so: the graph and the report
+ * followed the selection while the diagram, the warnings and the changes always
+ * showed everything. That is a difficult thing to notice and an easy thing to be
+ * misled by — an empty warnings tab meant "this project is clean", never "this
+ * file is clean". Now it is one setting, stated on screen.
+ */
+function ScopeSwitch(): JSX.Element {
+  const scope = useExplorerStore((state) => state.scope);
+  const setScope = useExplorerStore((state) => state.setScope);
+  const selected = useExplorerStore((state) => state.selected);
+  const selectedFile = useExplorerStore((state) => state.selectedFile);
+
+  const what = selected?.name ?? selectedFile?.relative_path ?? null;
+
+  return (
+    <div className={styles.scopeSwitch}>
+      <button
+        className={`${styles.scopeOption} ${
+          scope === 'selection' ? styles.scopeActive : ''
+        }`}
+        onClick={() => setScope('selection')}
+        title={
+          what
+            ? `Mostrar solo lo relacionado con ${what}`
+            : 'Las pestañas seguirán a lo que selecciones'
+        }
+      >
+        Selección
+      </button>
+      <button
+        className={`${styles.scopeOption} ${
+          scope === 'project' ? styles.scopeActive : ''
+        }`}
+        onClick={() => setScope('project')}
+        title="Mostrar todo el proyecto"
+      >
+        Proyecto
       </button>
     </div>
   );
@@ -425,16 +471,27 @@ function TreeBranch({
 }
 
 function CodePanel(): JSX.Element {
-  const { source, loadingSource, highlight, fileEntities } = useExplorerStore();
+  const { source, loadingSource, highlight, fileEntities, selectedFile } =
+    useExplorerStore();
 
   if (loadingSource) {
     return <p className={styles.placeholder}>Abriendo el archivo…</p>;
   }
   if (!source) {
+    // A file *is* selected but there is nothing to show: it was skipped, and
+    // saying which reason is more use than repeating the generic invitation.
+    if (selectedFile?.skip_reason) {
+      return (
+        <p className={styles.placeholder}>
+          {selectedFile.relative_path} no se puede mostrar como texto
+          ({selectedFile.skip_reason}).
+        </p>
+      );
+    }
     return (
       <p className={styles.placeholder}>
-        Pulsa la evidencia de cualquier relación para abrir el archivo en la línea
-        que la prueba.
+        Selecciona un archivo del árbol, o pulsa la evidencia de cualquier
+        relación para abrirlo en la línea que la prueba.
       </p>
     );
   }
@@ -507,13 +564,32 @@ function FilePanel(): JSX.Element {
 }
 
 function IssuesPanel(): JSX.Element {
-  const { issues } = useExplorerStore();
-  if (issues.length === 0) {
-    return <p className={styles.placeholder}>Sin avisos del analizador.</p>;
+  const { issues, scope, selectedFile } = useExplorerStore();
+
+  // Filtered here rather than refetched: the whole list already arrived with the
+  // project, and a round trip to drop rows would be slower and no more correct.
+  const path = scope === 'selection' ? selectedFile?.relative_path : undefined;
+  const shown = path
+    ? issues.filter((issue) => issue.relative_path === path)
+    : issues;
+
+  if (shown.length === 0) {
+    return (
+      <p className={styles.placeholder}>
+        {path
+          ? `${path} no tiene avisos del analizador.`
+          : 'Sin avisos del analizador.'}
+      </p>
+    );
   }
   return (
     <div className={styles.scroll}>
-      {issues.map((issue, index) => (
+      {path && (
+        <p className={styles.muted}>
+          {shown.length} de {issues.length} avisos · solo {path}
+        </p>
+      )}
+      {shown.map((issue, index) => (
         <div key={index} className={styles.issue} style={stagger(index)}>
           <div className={styles.issueHead}>
             <span
@@ -535,7 +611,7 @@ function IssuesPanel(): JSX.Element {
 
 /** What the last analysis changed — the "qué cambió" question, answered. */
 function ChangesPanel(): JSX.Element {
-  const { changes, openEvidence } = useExplorerStore();
+  const { changes, openEvidence, scope, selectedFile } = useExplorerStore();
 
   if (!changes || changes.changes.length === 0) {
     return (
@@ -547,8 +623,21 @@ function ChangesPanel(): JSX.Element {
     );
   }
 
+  const path = scope === 'selection' ? selectedFile?.relative_path : undefined;
+  const visible = path
+    ? changes.changes.filter((change) => change.relative_path === path)
+    : changes.changes;
+
+  if (visible.length === 0) {
+    return (
+      <p className={styles.placeholder}>
+        {path} no cambió en la última ejecución.
+      </p>
+    );
+  }
+
   const order: Record<string, number> = { added: 0, modified: 1, deleted: 2, unchanged: 3 };
-  const sorted = [...changes.changes].sort(
+  const sorted = [...visible].sort(
     (a, b) =>
       (order[a.change_kind] ?? 9) - (order[b.change_kind] ?? 9) ||
       a.relative_path.localeCompare(b.relative_path),
@@ -558,6 +647,7 @@ function ChangesPanel(): JSX.Element {
     <div className={styles.scroll}>
       <p className={styles.muted}>
         Ejecución {changes.run_id?.slice(0, 12)} · {sorted.length} archivos
+        {path && ` de ${changes.changes.length}`}
       </p>
       {sorted.map((change) => (
         <button

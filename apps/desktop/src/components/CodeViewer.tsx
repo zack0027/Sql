@@ -55,7 +55,28 @@ function languageOf(path: string): string {
     case 'tsx':
       return 'typescript';
     case 'py':
+    case 'pyw':
       return 'python';
+    case 'java':
+      return 'java';
+    case 'kt':
+    case 'kts':
+      return 'kotlin';
+    case 'properties':
+    case 'ini':
+    case 'cfg':
+      return 'ini';
+    case 'yml':
+    case 'yaml':
+      return 'yaml';
+    case 'sh':
+    case 'bash':
+      return 'shell';
+    case 'bat':
+    case 'cmd':
+      return 'bat';
+    case 'ps1':
+      return 'powershell';
     case 'html':
     case 'htm':
       return 'html';

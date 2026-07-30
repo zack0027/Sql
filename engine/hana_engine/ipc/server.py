@@ -495,9 +495,11 @@ class EngineServer:
 
     def _query_er_model(self, params: dict[str, Any]) -> dict[str, Any]:
         table_ids = params.get("table_ids")
+        focus_id = params.get("focus_id")
         return self.engine.queries.er_model(
             self._require(params, "project_id"),
             table_ids=list(table_ids) if table_ids else None,
+            focus_id=str(focus_id) if focus_id else None,
         )
 
     def _query_report_structure(self, params: dict[str, Any]) -> dict[str, Any] | None:

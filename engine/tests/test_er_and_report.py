@@ -186,6 +186,77 @@ class TestErModel:
         assert model == {"tables": [], "links": [], "derived_from": "join_conditions"}
 
 
+class TestErFocus:
+    """Narrowing the diagram to what the user selected."""
+
+    def focus(self, engine, project_id, name="UC_INSP_ENT"):
+        hits = engine.queries.resolve(
+            project_id, name, entity_type=EntityType.ORACLE_TABLE
+        )
+        assert hits, f"no se encontró la tabla {name}"
+        return hits[0].id
+
+    def test_a_focused_table_brings_the_tables_it_joins(self, analyzed):
+        engine, project_id = analyzed
+        model = engine.queries.er_model(
+            project_id, focus_id=self.focus(engine, project_id)
+        )
+        names = {table["normalized_name"] for table in model["tables"]}
+        assert "UC_INSP_ENT" in names
+        assert "PRTMST" in names
+
+    def test_the_focused_diagram_still_has_its_links(self, analyzed):
+        """The reason focus expands to neighbours at all.
+
+        A link needs both ends present. Narrowing to the table alone would draw a
+        lone box, which reads as "this table relates to nothing" — the opposite
+        of what the user asked to see.
+        """
+        engine, project_id = analyzed
+        model = engine.queries.er_model(
+            project_id, focus_id=self.focus(engine, project_id)
+        )
+        assert model["links"]
+
+    def test_focus_leaves_out_the_rest_of_the_project(self, analyzed):
+        engine, project_id = analyzed
+        whole = engine.queries.er_model(project_id)
+        focused = engine.queries.er_model(
+            project_id, focus_id=self.focus(engine, project_id)
+        )
+        assert len(focused["tables"]) < len(whole["tables"])
+
+    def test_a_table_that_joins_nothing_comes_back_alone(self, analyzed):
+        engine, project_id = analyzed
+        lonely = engine.queries.resolve(
+            project_id, "MOCA_DUAL", entity_type=EntityType.ORACLE_TABLE
+        )
+        if not lonely:  # fixture dependent; the assertion below is the point
+            return
+        model = engine.queries.er_model(project_id, focus_id=lonely[0].id)
+        assert len(model["tables"]) == 1
+        assert model["links"] == []
+
+    def test_an_unknown_focus_yields_an_empty_diagram(self, analyzed):
+        engine, project_id = analyzed
+        model = engine.queries.er_model(project_id, focus_id="NO_EXISTE")
+        assert model["tables"] == []
+
+    def test_joined_with_is_symmetric(self, analyzed):
+        """A join relates two tables; which one was written first is an accident."""
+        engine, project_id = analyzed
+        table = self.focus(engine, project_id)
+        partners = engine.queries.joined_with(table)
+        assert partners
+        for partner in partners:
+            assert table in engine.queries.joined_with(partner)
+
+    def test_a_table_is_never_its_own_neighbour(self, analyzed):
+        engine, project_id = analyzed
+        table = self.focus(engine, project_id)
+        assert table not in engine.queries.joined_with(table)
+
+
 class TestJoinsFromReportQueries:
     """A folder of JRXML and no .sql at all is a common shape in this domain."""
 

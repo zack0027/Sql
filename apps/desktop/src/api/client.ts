@@ -70,8 +70,17 @@ export interface EngineClient {
   issues(projectId: string, severity?: string): Promise<AnalysisIssue[]>;
   lowConfidence(projectId: string, threshold?: number): Promise<EntityHit[]>;
   neighborhood(entityId: string, depth?: number): Promise<Neighborhood>;
-  /** Tables, columns and the joins that relate them. */
-  erModel(projectId: string, tableIds?: string[]): Promise<ErModel>;
+  /**
+   * Tables, columns and the joins that relate them.
+   *
+   * `focusId` narrows to one table *and the tables it joins to* — a single-table
+   * diagram would be a lone box, which says the opposite of what it means.
+   */
+  erModel(
+    projectId: string,
+    tableIds?: string[],
+    focusId?: string | null,
+  ): Promise<ErModel>;
   /** A Jasper report broken down into its bands. */
   reportStructure(entityId: string): Promise<ReportStructure | null>;
   /** How much of the project was read by an analyzer older than the installed one. */
@@ -241,10 +250,15 @@ class TauriEngineClient implements EngineClient {
     return this.query('query.neighborhood', { entity_id: entityId, depth });
   }
 
-  erModel(projectId: string, tableIds?: string[]): Promise<ErModel> {
+  erModel(
+    projectId: string,
+    tableIds?: string[],
+    focusId?: string | null,
+  ): Promise<ErModel> {
     return this.query('query.er_model', {
       project_id: projectId,
       table_ids: tableIds ?? null,
+      focus_id: focusId ?? null,
     });
   }
 

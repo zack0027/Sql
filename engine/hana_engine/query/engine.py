@@ -503,8 +503,28 @@ class QueryEngine:
 
     # -- entity-relationship model ------------------------------------------
 
+    def joined_with(self, entity_id: str) -> list[str]:
+        """Tables that share a join condition with this one, in either direction."""
+        rows = self.connection.execute(
+            """
+            SELECT source_entity_id, target_entity_id FROM relationships
+            WHERE relation_type = ?
+              AND (source_entity_id = ? OR target_entity_id = ?)
+            """,
+            (RelationType.TABLE_JOINS_TABLE.value, entity_id, entity_id),
+        ).fetchall()
+
+        partners = {row["source_entity_id"] for row in rows}
+        partners |= {row["target_entity_id"] for row in rows}
+        partners.discard(entity_id)
+        return sorted(partners)
+
     def er_model(
-        self, project_id: str, *, table_ids: Sequence[str] | None = None
+        self,
+        project_id: str,
+        *,
+        table_ids: Sequence[str] | None = None,
+        focus_id: str | None = None,
     ) -> dict[str, Any]:
         """Tables, their columns, and the joins that relate them.
 
@@ -513,7 +533,15 @@ class QueryEngine:
         Oracle — so the result says so and must not be presented as the
         database's schema. It is the schema *as the code uses it*, which is
         often the more useful picture and occasionally a different one.
+
+        ``focus_id`` narrows the diagram to one table **and the tables it joins
+        to**. Narrowing to the table alone would be useless: a link needs both of
+        its ends present, so a single-table diagram is always a box on its own,
+        which says "this table relates to nothing" — the opposite of the truth.
         """
+        if focus_id is not None:
+            table_ids = [focus_id, *self.joined_with(focus_id)]
+
         params: list[Any] = [project_id, EntityType.ORACLE_TABLE.value]
         sql = f"""
             SELECT {_ENTITY_COLUMNS}

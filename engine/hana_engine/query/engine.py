@@ -172,6 +172,17 @@ _ENTITY_COLUMNS = """
     e.confidence, e.verification_status, e.start_line, f.relative_path
 """
 
+#: The same entity, located by the evidence that brought it into the answer
+#: rather than by where it was first defined. For queries scoped to one file:
+#: `MIN` picks the first mention in that file, and ignores relationships that
+#: recorded no line. Requires `GROUP BY e.id` and a `sf` join on
+#: `r.source_file_id`.
+_EVIDENCE_ENTITY_COLUMNS = """
+    e.id, e.entity_type, e.name, e.normalized_name, e.qualified_name,
+    e.confidence, e.verification_status,
+    MIN(r.start_line) AS start_line, sf.relative_path AS relative_path
+"""
+
 #: FTS5 treats these as operators; a user typing `UC_INSP_ENT.NUMCTL` means them
 #: literally.
 _FTS_SPECIAL = re.compile(r'["*():^\-]')
@@ -352,12 +363,22 @@ class QueryEngine:
         *,
         entity_type: EntityType | None = None,
     ) -> list[EntityHit]:
-        """Entities a file produced, optionally narrowed to one type."""
+        """Entities a file produced, optionally narrowed to one type.
+
+        The location reported is the evidence **inside the file asked about**,
+        not the entity's canonical definition site. The distinction only shows
+        when an entity appears in more than one file — ``P117_PRTNUM`` lives in
+        two of the fixtures — and there the canonical site is the wrong answer
+        twice over: it names a file the caller did not ask about, and clicking
+        it opens somewhere the item may not even be mentioned.
+
+        Where a file mentions the same entity several times, the first
+        occurrence wins. It is the one a reader scrolling down meets first.
+        """
         sql = f"""
-            SELECT DISTINCT {_ENTITY_COLUMNS}
+            SELECT {_EVIDENCE_ENTITY_COLUMNS}
             FROM relationships r
             JOIN entities e ON e.id = r.target_entity_id
-            LEFT JOIN files f ON f.id = e.source_file_id
             JOIN files sf ON sf.id = r.source_file_id
             WHERE r.project_id = ? AND sf.relative_path = ?
         """
@@ -365,7 +386,7 @@ class QueryEngine:
         if entity_type is not None:
             sql += " AND e.entity_type = ?"
             params.append(entity_type.value)
-        sql += " ORDER BY e.entity_type, e.normalized_name"
+        sql += " GROUP BY e.id ORDER BY e.entity_type, e.normalized_name"
         return [
             EntityHit.of(row) for row in self.connection.execute(sql, params).fetchall()
         ]

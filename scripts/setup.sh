@@ -9,6 +9,11 @@ for tool in node pnpm python3 cargo; do
   printf '    %-8s %s\n' "$tool" "$($tool --version | head -1)"
 done
 
+# vendor/ no está en el repositorio y package.json lo referencia con file:, así
+# que sin esto un clon limpio no puede instalar nada. Ver docs/OFFLINE_DEPENDENCIES.md.
+echo "==> Aprovisionando vendor/"
+python3 scripts/fetch_vendor.py
+
 echo "==> Instalando dependencias de la interfaz"
 pnpm install
 

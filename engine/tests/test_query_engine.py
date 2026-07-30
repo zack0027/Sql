@@ -186,6 +186,48 @@ class TestApexItems:
             == []
         )
 
+    def test_each_file_reports_its_own_line(self, engine):
+        """`P117_PRTNUM` appears in both SQL fixtures, at different lines.
+
+        Asking about one file used to answer with the other file's line,
+        because the columns came from the entity's definition site instead of
+        the evidence that put it in this answer. Clicking the result opened the
+        wrong file — and opening at the exact line of evidence is the whole
+        promise of the product.
+        """
+        seen = {}
+        for path in ("sql/guardar_inspeccion.sql", "sql/consulta_inspecciones.sql"):
+            hits = [
+                hit
+                for hit in engine.queries.apex_items_in_file(engine.project_id, path)
+                if hit.normalized_name == "P117_PRTNUM"
+            ]
+            assert len(hits) == 1, f"se esperaba un P117_PRTNUM en {path}"
+            assert hits[0].file_path == path
+            seen[path] = hits[0].start_line
+
+        assert seen["sql/guardar_inspeccion.sql"] == 20
+        assert seen["sql/consulta_inspecciones.sql"] == 21
+
+    def test_an_entity_mentioned_twice_is_listed_once_at_its_first_line(self, engine):
+        """`guardar_inspeccion.sql` touches `UC_INSP_ENT` at lines 11 and 27.
+
+        Three relationships, two distinct lines. Without grouping the table
+        would appear twice in the same file's listing; with it, once, at the
+        first mention — where a reader scrolling down meets it.
+        """
+        hits = [
+            hit
+            for hit in engine.queries.entities_in_file(
+                engine.project_id,
+                "sql/guardar_inspeccion.sql",
+                entity_type=EntityType.ORACLE_TABLE,
+            )
+            if hit.normalized_name == "UC_INSP_ENT"
+        ]
+        assert len(hits) == 1
+        assert hits[0].start_line == 11
+
 
 class TestReportsAndImages:
     def test_reports_using_a_table(self, engine):

@@ -9,6 +9,8 @@ on:
     tags:
       - 'v*'
     branches:
+      - 'main'
+      - 'motor-de-conocimiento'
       - 'claude/**'
     # Documentation-only commits do not change the installer.
     paths-ignore:
@@ -44,6 +46,13 @@ jobs:
           workspaces: |
             apps/desktop/src-tauri
             crates/hana-fs
+
+      # `vendor/` is not in the repository (18 MB of third-party tarballs), and
+      # package.json references them with `file:`, so a fresh clone cannot
+      # install anything until they are on disk. See docs/OFFLINE_DEPENDENCIES.md.
+      # Each download is verified against the sha512 already in the lockfile.
+      - name: Provision the vendored packages
+        run: python scripts/fetch_vendor.py
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile

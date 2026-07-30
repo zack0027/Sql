@@ -33,25 +33,37 @@ modo pnpm iría a buscarlas al registro inalcanzable.
 `vendor/` **no está en el repositorio**: son 18 MB que no pertenecen al
 historial. Para reconstruirlo:
 
-```powershell
-$vendor = "vendor"
-New-Item -ItemType Directory -Path $vendor -Force | Out-Null
-$specs = @(
-  @{ n="monaco-editor";  v="0.56.0";  f="monaco-editor-0.56.0.tgz" },
-  @{ n="marked";         v="18.0.7";  f="marked-18.0.7.tgz" },
-  @{ n="dompurify";      v="3.4.12";  f="dompurify-3.4.12.tgz" }
-)
-foreach ($s in $specs) {
-  Invoke-WebRequest "https://registry.yarnpkg.com/$($s.n)/-/$($s.n)-$($s.v).tgz" `
-    -OutFile (Join-Path $vendor $s.f) -UseBasicParsing
-}
-Invoke-WebRequest "https://registry.yarnpkg.com/@types/trusted-types/-/trusted-types-2.0.7.tgz" `
-  -OutFile (Join-Path $vendor "types-trusted-types-2.0.7.tgz") -UseBasicParsing
+```bash
+python scripts/fetch_vendor.py
 pnpm install
 ```
 
+El script no lleva dentro la lista de lo que hay que bajar: la lee de
+`pnpm-lock.yaml`, donde ya está el `sha512` de cada tarball. Así cada descarga
+se verifica contra el mismo hash que pnpm comprobará después, y añadir un quinto
+paquete vendorizado no obliga a editar el script. Es idempotente: si el archivo
+ya está y es correcto, no lo vuelve a bajar; si está y no cuadra, lo reemplaza.
+
+Es una herramienta de compilación. No viaja en el ejecutable y el motor sigue
+sin abrir un solo socket — lo comprueba `engine/tests/test_offline.py`.
+
 En una red con acceso normal a npm nada de esto hace falta: basta con borrar los
 `overrides` y sustituir la referencia `file:` por `"monaco-editor": "^0.56.0"`.
+
+## Un clon limpio
+
+Esto era lo que estaba roto: `.gitignore` excluye `vendor/`, `package.json` lo
+referencia con `file:`, y el flujo de CI hacía `pnpm install --frozen-lockfile`
+sin aprovisionarlo. Un clon limpio fallaba con:
+
+```
+ENOENT: no such file or directory, open '.../vendor/monaco-editor-0.56.0.tgz'
+```
+
+Y no se notaba, porque el flujo solo se disparaba en ramas `claude/**` y
+etiquetas `v*`. Ahora `.github/workflows/build-windows.yml` ejecuta
+`scripts/fetch_vendor.py` antes de instalar, y corre también en `main` y en la
+rama de trabajo.
 
 ## Lo que no se instaló
 

@@ -1,0 +1,186 @@
+HANA — Motor de conocimiento técnico
+Version 0.1.0
+====================================================================
+
+Analiza proyectos Oracle, APEX, PL/SQL, Blue Yonder/JDA MOCA,
+JasperReports, JSON, JavaScript y Python, y construye un grafo de
+conocimiento donde cada dato trae el archivo y la linea que lo prueban.
+
+Funciona sin conexion. Nada sale de tu equipo.
+
+
+--------------------------------------------------------------------
+ANTES DE NADA: DESCOMPRIME ESTE ZIP
+--------------------------------------------------------------------
+
+Windows te deja hacer doble clic en un .exe DENTRO del zip, pero saca
+ese archivo solo y deja los demas atras. La aplicacion arranca sin su
+motor y falla.
+
+Descomprime todo a una carpeta y trabaja desde ahi.
+Boton derecho sobre el zip -> Extraer todo.
+
+
+--------------------------------------------------------------------
+COMO USARLO — dos opciones
+--------------------------------------------------------------------
+
+OPCION A · Sin instalar  (carpeta "HANA")
+
+  1. Descomprime y copia la carpeta HANA donde quieras.
+  2. Ejecuta hana-desktop.exe
+
+  Los tres archivos tienen que estar JUNTOS en la misma carpeta:
+
+      hana-desktop.exe      la aplicacion
+      hana-engine.exe       el motor
+      WebView2Loader.dll    componente de la ventana
+
+  Si falta el .dll, no abre.
+
+
+OPCION B · Instalando  (carpeta "instalador")
+
+  Ejecuta HANA_0.1.0_x64-setup.exe y sigue el asistente.
+  Queda en el menu Inicio como "HANA".
+
+
+--------------------------------------------------------------------
+WINDOWS TE VA A AVISAR. ES NORMAL.
+--------------------------------------------------------------------
+
+Aparecera una pantalla azul:
+
+    Windows protegio su PC
+    Microsoft Defender SmartScreen impidio el inicio de una
+    aplicacion no reconocida.
+
+Pulsa  Mas informacion  y despues  Ejecutar de todas formas.
+
+No es un virus ni un fallo. El programa no lleva firma digital
+todavia, y Windows avisa de todo lo que no reconoce.
+
+El antivirus tambien puede marcar hana-engine.exe. Es un falso
+positivo habitual: los programas empaquetados con PyInstaller
+disparan las heuristicas con frecuencia.
+
+
+--------------------------------------------------------------------
+SI LA VENTANA ABRE EN BLANCO
+--------------------------------------------------------------------
+
+Falta el WebView2 Runtime de Microsoft, que Windows 11 y Windows 10
+actualizado ya traen. Es gratuito: busca "Evergreen WebView2 Runtime"
+en el sitio de Microsoft e instalalo.
+
+Es lo unico que HANA necesita y no lleva dentro. No hace falta
+Python, ni Java, ni Visual C++, ni ninguna otra cosa.
+
+
+--------------------------------------------------------------------
+PRIMEROS PASOS
+--------------------------------------------------------------------
+
+  1. Abre HANA.
+  2. Pulsa "Abrir proyecto" y elige una carpeta con archivos .sql,
+     .jrxml, .mcmd, .json, .js o .py.
+     Empieza por una carpeta pequena para ver el resultado rapido.
+  3. Pulsa "Analizar proyecto".
+  4. Cuando termine, pulsa "Explorar el grafo".
+
+Dentro, el panel de la derecha es lo importante: cada relacion trae
+el archivo, la linea y el fragmento que la demuestran. Pulsa
+cualquiera y se abre el codigo justo ahi.
+
+El interruptor "Seleccion / Proyecto", arriba a la derecha, decide si
+las pestanas describen lo que acabas de seleccionar o el proyecto
+entero.
+
+
+--------------------------------------------------------------------
+QUE SIGNIFICAN LAS ETIQUETAS
+--------------------------------------------------------------------
+
+  confirmado   lo dice la sintaxis del archivo, sin interpretacion.
+
+  inferido     HANA lo dedujo de una convencion, por ejemplo que el
+               item P117_NUMCTL pertenece a la pagina 117. Va con su
+               nivel de confianza, y puedes no estar de acuerdo.
+
+Nada entra al grafo sin decir de donde salio.
+
+
+--------------------------------------------------------------------
+LO QUE HANA NUNCA HACE
+--------------------------------------------------------------------
+
+  · No envia nada fuera de tu equipo. Ni codigo, ni nombres de
+    archivo, ni estadisticas. No abre ninguna conexion de red.
+
+  · No ejecuta nada de lo que analiza: ni SQL, ni PL/SQL, ni comandos
+    MOCA, ni scripts, ni expresiones de JasperReports.
+
+  · No se conecta a Oracle. Las relaciones entre tablas salen de las
+    consultas escritas en tu codigo.
+
+  · No modifica tus archivos. Los abre en solo lectura.
+
+  · No usa ningun modelo de lenguaje ni servicio en la nube.
+
+Puedes comprobarlo: desconecta el adaptador de red y usalo
+normalmente. No cambia nada.
+
+
+--------------------------------------------------------------------
+DONDE QUEDA LO ANALIZADO
+--------------------------------------------------------------------
+
+  %APPDATA%\com.hana.knowledge-engine\hana.db
+
+Un solo archivo. Es de cada usuario y de cada equipo: esta carpeta
+comprimida NO lleva ningun proyecto analizado dentro, asi que
+empezaras de cero con el tuyo.
+
+Para llegar rapido: pulsa Win+R, pega
+%APPDATA%\com.hana.knowledge-engine  y Enter.
+
+Borrar ese archivo borra todo lo aprendido. No toca ningun archivo de
+tus proyectos.
+
+
+--------------------------------------------------------------------
+PROBLEMAS CONOCIDOS
+--------------------------------------------------------------------
+
+  "no se pudo escribir al motor" / "se esta cerrando la canalizacion"
+      Casi siempre significa que hana-engine.exe no estaba junto a
+      hana-desktop.exe. Descomprime el zip entero a una carpeta y
+      ejecuta desde ahi, no desde dentro del zip.
+      Si aun asi falla, ejecuta diagnostico.cmd y manda la captura.
+
+  SmartScreen bloquea el inicio
+      Mas informacion -> Ejecutar de todas formas.
+
+  La ventana abre en blanco
+      Falta el WebView2 Runtime. Ver arriba.
+
+  "no se encontro WebView2Loader.dll"
+      Ese archivo tiene que estar en la misma carpeta que
+      hana-desktop.exe.
+
+  Los contadores quedan en cero
+      La carpeta no tiene archivos analizables. Prueba con una que
+      contenga .sql o .jrxml.
+
+  Un reporte .jasper no se analiza
+      Correcto. El .jasper es el compilado; HANA analiza el .jrxml,
+      que es el fuente.
+
+  El primer analisis tarda
+      Es normal: la primera pasada lee todo. Las siguientes solo leen
+      lo que cambio.
+
+  Aparece un aviso ambar al abrir un proyecto
+      Significa que HANA aprendio a extraer algo que antes no sabia
+      leer. Pulsa "Volver a analizar" en el propio aviso. Tus
+      archivos no tienen nada malo.

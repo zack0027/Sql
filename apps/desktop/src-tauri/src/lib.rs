@@ -31,6 +31,9 @@ pub fn run() {
                 Sidecar::spawn(app.handle().clone(), database_path)
                     .map_err(std::io::Error::other)?,
             );
+            // Off the setup thread: the engine gets a while to announce itself,
+            // and the window must not wait for the verdict.
+            sidecar.watch_startup();
             app.manage(AppState::new(sidecar));
             Ok(())
         })

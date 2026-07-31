@@ -24,6 +24,7 @@ import { ComparePanel } from '../components/ComparePanel';
 import { ErDiagram } from '../components/ErDiagram';
 import { GraphCanvas } from '../components/GraphCanvas';
 import { ImpactPanel } from '../components/ImpactPanel';
+import { IncidentPanel } from '../components/IncidentPanel';
 import { OrphanPanel } from '../components/OrphanPanel';
 import { ReportPreview } from '../components/ReportPreview';
 import {
@@ -181,6 +182,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
                 ['impact', 'Impacto'],
                 ['orphans', 'Sin usar'],
                 ['compare', 'Comparar'],
+                ['incidents', 'Incidencias'],
                 ['er', 'Diagrama ER'],
                 ['report', 'Reporte'],
                 ['code', 'Código'],
@@ -252,6 +254,17 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
               againstId={explorer.compareAgainst}
               loading={explorer.loadingComparison}
               onPick={(id) => void explorer.compareWith(id)}
+            />
+          )}
+
+          {explorer.tab === 'incidents' && (
+            <IncidentPanel
+              incidents={explorer.incidents}
+              loading={explorer.loadingIncidents}
+              onSolve={(errorId, description, worked) =>
+                void explorer.solve(errorId, description, worked)
+              }
+              onOpenEvidence={(path, line) => void explorer.openEvidence(path, line)}
             />
           )}
 

@@ -1,0 +1,15 @@
+2026-07-28 03:12:04 [WMSBATCH] Iniciando proceso nocturno de inspecciones
+2026-07-28 03:12:07 [WMSBATCH] Leyendo pendientes
+ORA-01400: cannot insert NULL into ("WMS"."UC_INSP_ENT"."NUMCTL")
+ORA-06512: at "WMS.PKG_INSPECCION", line 42
+ORA-06512: at line 1
+2026-07-28 03:12:09 [WMSBATCH] Reintentando con el siguiente registro
+2026-07-28 03:14:51 [WMSBATCH] Publicando a MOCA
+ORA-00942: table or view does not exist
+2026-07-28 03:14:52 [WMSBATCH] Abortando el segmento
+2026-07-29 03:11:58 [WMSBATCH] Iniciando proceso nocturno de inspecciones
+ORA-01400: cannot insert NULL into ("WMS"."UC_INSP_ENT"."NUMCTL")
+ORA-06512: at "WMS.PKG_INSPECCION", line 42
+2026-07-29 03:12:30 [WMSBATCH] Reintentando con el siguiente registro
+ORA-12899: value too large for column ("WMS"."UC_INSP_ENT"."PRTNUM") (actual: 32, maximum: 25)
+2026-07-29 03:15:02 [WMSBATCH] Proceso terminado con 3 errores

@@ -388,6 +388,41 @@ export interface OrphanReport {
   caveat: string;
 }
 
+/** A runtime failure read from a log, with how often it happened. */
+export interface Incident extends EntityHit {
+  identity_key: string;
+  message: string | null;
+  times_seen: number;
+  first_seen: string | null;
+  last_seen: string | null;
+  affects: AffectedEntity[];
+  solutions: Solution[];
+}
+
+export interface AffectedEntity extends EntityHit {
+  /**
+   * Entities identical but for the schema.
+   *
+   * Logs name objects with their schema and source code usually does not, so
+   * the two never become one entity — unknown must not match known. This is the
+   * correspondence recorded as an inference instead, and must be shown as one.
+   */
+  probably_same_as: Array<EntityHit & { reason: string }>;
+}
+
+/** What a person did that made an error stop. */
+export interface Solution {
+  id: string;
+  project_id: string;
+  error_key: string;
+  description: string;
+  author: string | null;
+  /** False is kept on purpose: a dead end nobody has to walk twice. */
+  worked: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ComparisonSide {
   project_id: string;
   name: string;

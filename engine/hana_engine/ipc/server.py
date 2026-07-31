@@ -162,6 +162,9 @@ class EngineServer:
             "query.impact": self._query_impact,
             "query.orphans": self._query_orphans,
             "query.compare": self._query_compare,
+            "query.incidents": self._query_incidents,
+            "solution.add": self._solution_add,
+            "solution.forget": self._solution_forget,
             # The only methods through which a human writes into the graph.
             "annotation.list": self._annotation_list,
             "annotation.set": self._annotation_set,
@@ -496,6 +499,31 @@ class EngineServer:
             limit=int(params.get("limit") or 500),
         )
         return report.to_dict() if report is not None else None
+
+    # -- incidents and what fixed them --------------------------------------
+
+    def _query_incidents(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        return self.engine.incidents(
+            self._require(params, "project_id"),
+            limit=int(params.get("limit") or 200),
+        )
+
+    def _solution_add(self, params: dict[str, Any]) -> dict[str, Any]:
+        try:
+            solution = self.engine.record_solution(
+                self._require(params, "project_id"),
+                self._require(params, "error_id"),
+                self._require(params, "description"),
+                worked=bool(params.get("worked", True)),
+                author=params.get("author"),
+            )
+        except ValueError as exc:
+            raise RpcError("invalid_solution", str(exc)) from exc
+        return solution.to_dict()
+
+    def _solution_forget(self, params: dict[str, Any]) -> dict[str, Any]:
+        removed = self.engine.forget_solution(self._require(params, "solution_id"))
+        return {"removed": removed}
 
     # -- annotations --------------------------------------------------------
 

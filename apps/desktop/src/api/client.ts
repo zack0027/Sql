@@ -21,6 +21,7 @@ import type {
   FileTreeItem,
   Freshness,
   ImpactReport,
+  Incident,
   Neighborhood,
   OrphanReport,
   ReportStructure,
@@ -59,6 +60,13 @@ export interface EngineClient {
   dependents(entityId: string): Promise<UsageHit[]>;
   dependencies(entityId: string): Promise<UsageHit[]>;
   orphans(projectId: string, limit?: number): Promise<OrphanReport>;
+  incidents(projectId: string, limit?: number): Promise<Incident[]>;
+  recordSolution(
+    projectId: string,
+    errorId: string,
+    description: string,
+    worked?: boolean,
+  ): Promise<void>;
   compare(
     leftProjectId: string,
     rightProjectId: string,
@@ -226,6 +234,23 @@ class TauriEngineClient implements EngineClient {
   /** Entities nothing in the project refers to. Candidates, not conclusions. */
   orphans(projectId: string, limit = 300): Promise<OrphanReport> {
     return this.query('query.orphans', { project_id: projectId, limit });
+  }
+
+  /** Runtime errors read from logs, most recurrent first. */
+  incidents(projectId: string, limit = 200): Promise<Incident[]> {
+    return this.query('query.incidents', { project_id: projectId, limit });
+  }
+
+  // A write, so it goes through its own command rather than the query
+  // passthrough, which stays read-only.
+  async recordSolution(
+    projectId: string,
+    errorId: string,
+    description: string,
+    worked = true,
+  ): Promise<void> {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('record_solution', { projectId, errorId, description, worked });
   }
 
   compare(

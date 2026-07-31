@@ -428,6 +428,50 @@ class Annotation:
         }
 
 
+@dataclass
+class Solution:
+    """What a person did that made an error stop happening.
+
+    Keyed by the error's ``identity_key`` so it outlives the log that first
+    showed the failure. ``worked = False`` is kept deliberately: a remedy that
+    did not work saves the next person the same dead end.
+    """
+
+    id: str = field(default_factory=new_ulid)
+    project_id: str = ""
+    error_key: str = ""
+    description: str = ""
+    author: str | None = None
+    worked: bool = True
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+
+    @classmethod
+    def from_row(cls, row: Mapping[str, Any]) -> Solution:
+        return cls(
+            id=row["id"],
+            project_id=row["project_id"],
+            error_key=row["error_key"],
+            description=row["description"],
+            author=row["author"],
+            worked=bool(row["worked"]),
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "project_id": self.project_id,
+            "error_key": self.error_key,
+            "description": self.description,
+            "author": self.author,
+            "worked": self.worked,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+
 @dataclass(frozen=True)
 class ScannedFile:
     """A file as the scanner saw it on disk, before it meets the database.

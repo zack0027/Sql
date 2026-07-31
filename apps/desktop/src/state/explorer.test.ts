@@ -218,6 +218,45 @@ describe('annotations', () => {
   });
 });
 
+describe('incidents', () => {
+  const INITIAL = useExplorerStore.getState();
+
+  beforeEach(() => {
+    useExplorerStore.setState({ ...INITIAL, projectId: 'P' }, true);
+    setClient(new MockEngineClient());
+  });
+
+  it('lists failures with how often each happened', async () => {
+    await useExplorerStore.getState().loadIncidents();
+    const found = useExplorerStore.getState().incidents;
+    expect(found[0].name).toBe('ORA-01400');
+    expect(found[0].times_seen).toBe(2);
+  });
+
+  it('reports the code an error probably means as an inference', async () => {
+    await useExplorerStore.getState().loadIncidents();
+    const affected = useExplorerStore.getState().incidents[0].affects[0];
+    const same = affected.probably_same_as[0];
+    // The log names a schema the source never declares, so the two entities are
+    // never merged — this is the correspondence, declared as a guess.
+    expect(same.confidence).toBeLessThan(1);
+    expect(same.reason).toContain('esquema');
+    expect(same.file_path).toContain('.sql');
+  });
+
+  it('records what fixed it', async () => {
+    const store = useExplorerStore.getState();
+    await store.loadIncidents();
+    const target = useExplorerStore.getState().incidents[0];
+    await useExplorerStore
+      .getState()
+      .solve(target.id, 'Faltaba la secuencia en PROD.', true);
+
+    const after = useExplorerStore.getState().incidents[0];
+    expect(after.solutions[0].description).toBe('Faltaba la secuencia en PROD.');
+  });
+});
+
 describe('orphans', () => {
   const INITIAL = useExplorerStore.getState();
 

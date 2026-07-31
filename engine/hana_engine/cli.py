@@ -365,6 +365,56 @@ def _print_side(title: str, entities: dict, relations: dict) -> None:
     print()
 
 
+def command_incidents(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
+    found = engine.incidents(args.project_id, limit=args.limit)
+    if args.json:
+        _print(found, True)
+        return 0
+    if not found:
+        print("(ningun error encontrado en los logs analizados)")
+        return 0
+
+    print(f"Errores encontrados en los logs ({len(found)}), los mas repetidos primero:")
+    print()
+    for incident in found:
+        seen = incident["times_seen"]
+        print(f"  {incident['name']}  x{seen}   {incident['qualified_name'] or ''}")
+        if incident["message"]:
+            print(f"      {incident['message'][:100]}")
+        for target in incident["affects"]:
+            print(f"      afecta a  {target['entity_type']:<16} {target['qualified_name'] or target['name']}")
+            for same in target["probably_same_as"]:
+                # An inference, and labelled as one: the log carries a schema
+                # the source never declared.
+                print(
+                    f"          ~ probablemente {same['qualified_name'] or same['name']}"
+                    f"  {same['file_path']}:{same['start_line']}  [inferido {same['confidence']:.2f}]"
+                )
+        for solution in incident["solutions"]:
+            mark = "resuelto" if solution["worked"] else "no funciono"
+            print(f"      {mark}: {solution['description']}")
+        print()
+    return 0
+
+
+def command_solve(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
+    entity = _resolve_one(engine, args)
+    if entity is None:
+        return 2
+    try:
+        solution = engine.record_solution(
+            args.project_id, entity.id, args.description, worked=not args.failed
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print(solution.to_dict(), True)
+        return 0
+    print(f"Anotado para {entity.name}. Sobrevivira a los reanalisis del log.")
+    return 0
+
+
 def command_orphans(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
     report = engine.queries.orphan_report(args.project_id, limit=args.limit)
     if args.json:
@@ -594,6 +644,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="seguir también las aristas de contención (arrastra el proyecto entero)",
     )
     impact_parser.set_defaults(handler=command_impact)
+
+    incidents_parser = subparsers.add_parser(
+        "incidents", help="errores encontrados en los logs, y que los resolvio"
+    )
+    incidents_parser.add_argument("project_id")
+    incidents_parser.add_argument("--limit", type=int, default=200)
+    incidents_parser.set_defaults(handler=command_incidents)
+
+    solve_parser = subparsers.add_parser(
+        "solve", help="anotar que resolvio un error"
+    )
+    solve_parser.add_argument("project_id")
+    solve_parser.add_argument("entity", help="nombre o id del error")
+    solve_parser.add_argument("description", help="que se hizo")
+    solve_parser.add_argument(
+        "--failed", action="store_true", help="no funciono (se guarda igual)"
+    )
+    solve_parser.set_defaults(handler=command_solve)
 
     compare_parser = subparsers.add_parser(
         "compare", help="diferencias entre dos proyectos analizados (DEV vs PROD)"

@@ -14,9 +14,15 @@ from pathlib import Path
 from typing import Any
 
 from .domain.analysis import AnalyzerRegistry
-from .domain.models import AnalysisRun, Annotation, Project, ScannedFile
+from .domain.models import (
+    AnalysisRun,
+    Annotation,
+    Project,
+    ScannedFile,
+    Solution,
+)
 from .domain.naming import annotation_key
-from .domain.types import ProjectStatus
+from .domain.types import EntityType, ProjectStatus
 from .indexing.policy import ScanPolicy
 from .indexing.scanner import ScanSecurityError, resolve_project_root
 from .persistence.database import has_fts5, open_knowledge_base
@@ -279,6 +285,58 @@ class KnowledgeEngine:
     def annotations(self, project_id: str) -> list[dict[str, Any]]:
         return self.repos.annotations.resolved(project_id)
 
+    # -- errors and what fixed them -----------------------------------------
+
+    def incidents(self, project_id: str, *, limit: int = 200) -> list[dict[str, Any]]:
+        """Runtime errors from the logs, with their solutions attached.
+
+        The two halves meet here: the analyzer found the failures, a person
+        wrote down the remedies, and they are keyed the same way so a solution
+        recorded two years ago is waiting on the tenth recurrence.
+        """
+        found = self.queries.incidents(project_id, limit=limit)
+        solutions = self.repos.solutions.for_project(project_id)
+        for incident in found:
+            incident["solutions"] = [
+                item.to_dict() for item in solutions.get(incident["identity_key"], [])
+            ]
+        return found
+
+    def record_solution(
+        self,
+        project_id: str,
+        error_id: str,
+        description: str,
+        *,
+        worked: bool = True,
+        author: str | None = None,
+    ) -> Solution:
+        """Write down what fixed an error, keyed so it survives the log.
+
+        Takes the error's id because that is what a caller has on screen, and
+        stores its identity key, because the id belongs to a row that the next
+        analysis of that log will delete and rebuild.
+        """
+        error = self.repos.entities.get(error_id)
+        if error is None:
+            raise ValueError(f"no existe el error {error_id!r}")
+        if error.entity_type is not EntityType.ERROR:
+            raise ValueError("solo se pueden resolver entidades de tipo Error")
+        solution = self.repos.solutions.add(
+            project_id,
+            error.identity_key,
+            description,
+            worked=worked,
+            author=author,
+        )
+        self.connection.commit()
+        return solution
+
+    def forget_solution(self, solution_id: str) -> bool:
+        removed = self.repos.solutions.delete(solution_id)
+        self.connection.commit()
+        return removed
+
     # -- reporting ----------------------------------------------------------
 
     def status(self) -> EngineStatus:
@@ -351,6 +409,7 @@ def build_default_registry() -> AnalyzerRegistry:
     """
     from .analyzers.apex import ApexAnalyzer
     from .analyzers.jrxml import JrxmlAnalyzer
+    from .analyzers.logs import LogAnalyzer
     from .analyzers.moca import MocaAnalyzer
     from .analyzers.sql import SqlAnalyzer
     from .analyzers.structured import CodeAnalyzer, JsonAnalyzer
@@ -362,6 +421,7 @@ def build_default_registry() -> AnalyzerRegistry:
         SqlAnalyzer(),
         ApexAnalyzer(),
         JsonAnalyzer(),
+        LogAnalyzer(),
         CodeAnalyzer(),
     ):
         registry.register(analyzer)

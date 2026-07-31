@@ -87,6 +87,8 @@ const QUERY_METHODS: &[&str] = &[
     "query.freshness",
     "query.impact",
     "query.orphans",
+    "query.compare",
+    "query.incidents",
     // Reading what a person recorded is a query like any other. *Writing* one
     // is not, and goes through `set_annotation` / `clear_annotation` below —
     // this list stays read-only, which is the only thing making it a safeguard.
@@ -137,6 +139,30 @@ pub async fn set_annotation(
             "target_id": target_id,
             "verdict": verdict,
             "note": note,
+        }),
+    )
+    .await
+}
+
+/// Write down what fixed an error.
+///
+/// A write, so it is its own command. The query passthrough stays read-only.
+#[tauri::command]
+pub async fn record_solution(
+    state: State<'_, AppState>,
+    project_id: String,
+    error_id: String,
+    description: String,
+    worked: bool,
+) -> CommandResult<Value> {
+    call(
+        Arc::clone(&state.sidecar),
+        "solution.add",
+        json!({
+            "project_id": project_id,
+            "error_id": error_id,
+            "description": description,
+            "worked": worked,
         }),
     )
     .await

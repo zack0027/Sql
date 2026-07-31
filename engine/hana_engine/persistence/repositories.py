@@ -24,6 +24,7 @@ from ..domain.models import (
     Project,
     Relationship,
     ScannedFile,
+    Solution,
     utc_now,
 )
 from ..domain.types import (
@@ -1136,6 +1137,75 @@ class AnnotationRepository(_Repository):
         return out
 
 
+# ---------------------------------------------------------------------------
+# Solutions — the half of the knowledge no analyzer can find
+# ---------------------------------------------------------------------------
+class SolutionRepository(_Repository):
+    """What people did that made errors stop. See ``migrations/005_solutions.sql``."""
+
+    def add(
+        self,
+        project_id: str,
+        error_key: str,
+        description: str,
+        *,
+        worked: bool = True,
+        author: str | None = None,
+    ) -> Solution:
+        text = description.strip()
+        if not text:
+            raise ValueError("una solución sin texto no dice nada")
+
+        now = utc_now()
+        self._execute(
+            """
+            INSERT INTO solutions
+                (id, project_id, error_key, description, author, worked,
+                 created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(project_id, error_key, description)
+            DO UPDATE SET worked = excluded.worked,
+                          author = excluded.author,
+                          updated_at = excluded.updated_at
+            """,
+            (new_ulid(), project_id, error_key, text, author, int(worked), now, now),
+        )
+        stored = self.for_error(project_id, error_key)
+        return next(item for item in stored if item.description == text)
+
+    def for_error(self, project_id: str, error_key: str) -> list[Solution]:
+        rows = self._execute(
+            """
+            SELECT * FROM solutions
+            WHERE project_id = ? AND error_key = ?
+            ORDER BY worked DESC, updated_at DESC
+            """,
+            (project_id, error_key),
+        ).fetchall()
+        return [Solution.from_row(row) for row in rows]
+
+    def for_project(self, project_id: str) -> dict[str, list[Solution]]:
+        rows = self._execute(
+            "SELECT * FROM solutions WHERE project_id = ? ORDER BY worked DESC, updated_at DESC",
+            (project_id,),
+        ).fetchall()
+        grouped: dict[str, list[Solution]] = {}
+        for row in rows:
+            solution = Solution.from_row(row)
+            grouped.setdefault(solution.error_key, []).append(solution)
+        return grouped
+
+    def delete(self, solution_id: str) -> bool:
+        cursor = self._execute("DELETE FROM solutions WHERE id = ?", (solution_id,))
+        return cursor.rowcount > 0
+
+    def count(self, project_id: str) -> int:
+        row = self._execute(
+            "SELECT COUNT(*) AS n FROM solutions WHERE project_id = ?", (project_id,)
+        ).fetchone()
+        return int(row["n"])
+
+
 class Repositories:
     """One handle carrying every repository for a connection."""
 
@@ -1151,3 +1221,4 @@ class Repositories:
         self.errors = AnalysisErrorRepository(connection)
         self.settings = SettingsRepository(connection)
         self.annotations = AnnotationRepository(connection)
+        self.solutions = SolutionRepository(connection)

@@ -23,6 +23,7 @@ import type {
   GraphEdgeHit,
   ImpactNode,
   ImpactReport,
+  Incident,
   Neighborhood,
   OrphanReport,
   ReportStructure,
@@ -155,6 +156,43 @@ const DEMO_ORPHAN_CAVEAT =
   'Candidatos a revisar, no cosas que se puedan borrar. HANA lee el código de ' +
   'forma estática: lo que se invoca dinámicamente, desde un planificador, desde ' +
   'otra aplicación o desde fuera de la carpeta analizada, no lo ve.';
+
+/** Failures as a log would show them; the recurring one is listed first. */
+const DEMO_INCIDENTS: Incident[] = [
+  {
+    ...entity('E_ORA01400', 'Error', 'ORA-01400', 'logs/inspeccion.log', 3),
+    qualified_name: 'ORA-01400 · UC_INSP_ENT.NUMCTL',
+    identity_key: 'Error||UC_INSP_ENT.NUMCTL|ORA-01400',
+    message: 'cannot insert NULL into ("WMS"."UC_INSP_ENT"."NUMCTL")',
+    times_seen: 2,
+    first_seen: '2026-07-28T03:12:04Z',
+    last_seen: '2026-07-29T03:11:58Z',
+    affects: [
+      {
+        ...entity('E_LOG_TABLE', 'OracleTable', 'WMS.UC_INSP_ENT', 'logs/inspeccion.log', 3, 0.3),
+        probably_same_as: [
+          {
+            ...entity('E_TABLE', 'OracleTable', 'UC_INSP_ENT', 'sql/guardar_inspeccion.sql', 11, 0.65),
+            reason:
+              'El log lo nombra con esquema (WMS) y el código no lo declara. ' +
+              'Probablemente sean el mismo objeto.',
+          },
+        ],
+      },
+    ],
+    solutions: [],
+  },
+  {
+    ...entity('E_ORA00942', 'Error', 'ORA-00942', 'logs/inspeccion.log', 8),
+    identity_key: 'Error|||ORA-00942',
+    message: 'table or view does not exist',
+    times_seen: 1,
+    first_seen: '2026-07-28T03:14:51Z',
+    last_seen: '2026-07-28T03:14:51Z',
+    affects: [],
+    solutions: [],
+  },
+];
 
 /** Enough real source for the viewer to have something to highlight. */
 const DEMO_SOURCES: Record<string, string> = {
@@ -516,6 +554,34 @@ export class MockEngineClient implements EngineClient {
       warning: null,
       truncated: false,
     };
+  }
+
+  /** Two recorded failures, one recurring, so the panel has both states. */
+  private readonly fixes = new Map<string, string[]>();
+
+  async incidents(_projectId: string, _limit = 200): Promise<Incident[]> {
+    return DEMO_INCIDENTS.map((incident) => ({
+      ...incident,
+      solutions: (this.fixes.get(incident.id) ?? []).map((description, index) => ({
+        id: `S_${incident.id}_${index}`,
+        project_id: _projectId,
+        error_key: incident.identity_key,
+        description,
+        author: null,
+        worked: true,
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      })),
+    }));
+  }
+
+  async recordSolution(
+    _projectId: string,
+    errorId: string,
+    description: string,
+  ): Promise<void> {
+    const current = this.fixes.get(errorId) ?? [];
+    this.fixes.set(errorId, [...current, description]);
   }
 
   async annotations(projectId: string): Promise<Annotation[]> {

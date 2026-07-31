@@ -52,6 +52,7 @@ pub fn run() {
             commands::run_query,
             commands::set_annotation,
             commands::clear_annotation,
+            commands::record_solution,
             commands::read_project_file,
         ])
         .on_window_event(|window, event| {

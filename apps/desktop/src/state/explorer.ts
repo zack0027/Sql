@@ -24,6 +24,7 @@ import type {
   FileTreeItem,
   Freshness,
   ImpactReport,
+  Incident,
   Neighborhood,
   OrphanReport,
   ReportStructure,
@@ -36,6 +37,7 @@ export type CenterTab =
   | 'graph'
   | 'impact'
   | 'orphans'
+  | 'incidents'
   | 'compare'
   | 'er'
   | 'report'
@@ -79,6 +81,10 @@ interface ExplorerState {
   orphans: OrphanReport | null;
   loadingOrphans: boolean;
 
+  /** Runtime failures read from logs, most recurrent first. */
+  incidents: Incident[];
+  loadingIncidents: boolean;
+
   /** The other project being diffed against, and the result. */
   compareAgainst: string | null;
   comparison: ComparisonReport | null;
@@ -120,6 +126,8 @@ interface ExplorerState {
   setTab: (tab: CenterTab) => void;
   setScope: (scope: Scope) => void;
   loadOrphans: () => Promise<void>;
+  loadIncidents: () => Promise<void>;
+  solve: (errorId: string, description: string, worked: boolean) => Promise<void>;
   compareWith: (projectId: string) => Promise<void>;
   loadAnnotations: () => Promise<void>;
   annotate: (
@@ -241,6 +249,8 @@ const EMPTY = {
   changes: null,
   orphans: null,
   loadingOrphans: false,
+  incidents: [] as Incident[],
+  loadingIncidents: false,
   compareAgainst: null,
   comparison: null,
   loadingComparison: false,
@@ -296,6 +306,37 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     }
     if (tab === 'orphans' && !get().orphans && !get().loadingOrphans) {
       void get().loadOrphans();
+    }
+    if (tab === 'incidents' && !get().loadingIncidents) {
+      void get().loadIncidents();
+    }
+  },
+
+  async loadIncidents() {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    set({ loadingIncidents: true });
+    try {
+      const client = await getClient();
+      set({ incidents: await client.incidents(projectId) });
+    } catch (error) {
+      set({ error: describe(error) });
+    } finally {
+      set({ loadingIncidents: false });
+    }
+  },
+
+  async solve(errorId: string, description: string, worked: boolean) {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    try {
+      const client = await getClient();
+      await client.recordSolution(projectId, errorId, description, worked);
+      // Refetched rather than patched in place: the engine decides the order,
+      // and what worked comes before what did not.
+      await get().loadIncidents();
+    } catch (error) {
+      set({ error: describe(error) });
     }
   },
 

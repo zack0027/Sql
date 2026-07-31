@@ -36,7 +36,8 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from ..domain.types import EntityType, RelationType
+from ..domain.confidence import PROBABLE_INFERENCE
+from ..domain.types import EntityType, RelationType, VerificationStatus
 from .compare import ComparisonReport, compare_projects
 from .impact import (
     DEFAULT_DEPTH,
@@ -641,6 +642,123 @@ class QueryEngine:
                 "la carpeta analizada, no lo ve."
             ),
         }
+
+    # -- ¿Qué ha fallado, cuántas veces, y qué lo resolvió? ------------------
+
+    def incidents(
+        self, project_id: str, *, limit: int = 200
+    ) -> list[dict[str, Any]]:
+        """Runtime errors found in logs, most recurrent first.
+
+        Distinct from :meth:`files_with_errors`, which reports HANA's own
+        trouble reading a file. These are failures that happened in production.
+
+        Recurrence is the count of evidence rows: an error's identity is its
+        code plus the object it names, so the same failure across ten logs is
+        one entity with ten sightings, and nothing had to be counted specially
+        to know that.
+        """
+        rows = self.connection.execute(
+            f"""
+            SELECT {_ENTITY_COLUMNS}, e.identity_key, e.description,
+                   COUNT(ev.id) AS times_seen,
+                   MIN(ev.created_at) AS first_seen,
+                   MAX(ev.created_at) AS last_seen
+            FROM entities e
+            LEFT JOIN files f ON f.id = e.source_file_id
+            LEFT JOIN evidence ev ON ev.entity_id = e.id
+            WHERE e.project_id = ? AND e.entity_type = ?
+            GROUP BY e.id
+            ORDER BY times_seen DESC, e.normalized_name
+            LIMIT ?
+            """,
+            (project_id, EntityType.ERROR.value, limit),
+        ).fetchall()
+
+        incidents: list[dict[str, Any]] = []
+        for row in rows:
+            hit = EntityHit.of(row).to_dict()
+            hit["identity_key"] = row["identity_key"]
+            hit["message"] = row["description"]
+            hit["times_seen"] = row["times_seen"]
+            hit["first_seen"] = row["first_seen"]
+            hit["last_seen"] = row["last_seen"]
+            hit["affects"] = self._affected_by(row["id"])
+            incidents.append(hit)
+        return incidents
+
+    def _affected_by(self, error_id: str) -> list[dict[str, Any]]:
+        rows = self.connection.execute(
+            f"""
+            SELECT {_ENTITY_COLUMNS}, e.identity_key, e.project_id
+            FROM relationships r
+            JOIN entities e ON e.id = r.target_entity_id
+            LEFT JOIN files f ON f.id = e.source_file_id
+            WHERE r.source_entity_id = ? AND r.relation_type = ?
+            ORDER BY e.entity_type, e.normalized_name
+            """,
+            (error_id, RelationType.ERROR_AFFECTS_ENTITY.value),
+        ).fetchall()
+
+        affected: list[dict[str, Any]] = []
+        for row in rows:
+            hit = EntityHit.of(row).to_dict()
+            hit["probably_same_as"] = self._same_but_for_the_schema(
+                row["project_id"], row["identity_key"]
+            )
+            affected.append(hit)
+        return affected
+
+    def _same_but_for_the_schema(
+        self, project_id: str, identity_key: str
+    ) -> list[dict[str, Any]]:
+        """Entities identical to this one except for the schema component.
+
+        Logs always name objects with their schema; source code usually does
+        not. So `ORA-01400 on "WMS"."UC_INSP_ENT"."NUMCTL"` produces an entity
+        that never meets the `UC_INSP_ENT.NUMCTL` the scripts declared, and the
+        error ends up attached to a twin with no code behind it — which is most
+        of the value of reading the log in the first place.
+
+        Merging them is not an option and never will be: unknown does not match
+        known, or a bare `UC_INSP_ENT` in one script would be silently absorbed
+        into `WMS.UC_INSP_ENT` from another. The two entities stay separate.
+
+        What is recorded instead is the correspondence, **as an inference with
+        its own confidence**, computed here rather than stored: it is not a fact
+        about the code, it is a reading of two facts, and a caller is expected
+        to present it as such.
+        """
+        parts = identity_key.split("|")
+        if len(parts) != 4:
+            return []
+        entity_type, schema, container, name = parts
+        if not schema:
+            # The other direction is not symmetric on purpose. An unqualified
+            # entity matching several schemas would be a guess between them.
+            return []
+
+        rows = self.connection.execute(
+            f"""
+            SELECT {_ENTITY_COLUMNS}
+            FROM entities e
+            LEFT JOIN files f ON f.id = e.source_file_id
+            WHERE e.project_id = ? AND e.identity_key = ?
+            """,
+            (project_id, "|".join([entity_type, "", container, name])),
+        ).fetchall()
+        return [
+            {
+                **EntityHit.of(row).to_dict(),
+                "confidence": PROBABLE_INFERENCE,
+                "verification_status": VerificationStatus.INFERRED.value,
+                "reason": (
+                    f"El log lo nombra con esquema ({schema}) y el código no lo "
+                    "declara. Probablemente sean el mismo objeto."
+                ),
+            }
+            for row in rows
+        ]
 
     # -- entity-relationship model ------------------------------------------
 

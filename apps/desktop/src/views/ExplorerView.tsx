@@ -20,6 +20,7 @@ import {
 import type { EntityHit, UsageHit } from '@hana/shared-types';
 
 import { CodeViewer } from '../components/CodeViewer';
+import { ComparePanel } from '../components/ComparePanel';
 import { ErDiagram } from '../components/ErDiagram';
 import { GraphCanvas } from '../components/GraphCanvas';
 import { ImpactPanel } from '../components/ImpactPanel';
@@ -58,6 +59,8 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
   const project = useAppStore((state) =>
     state.projects.find((item) => item.id === state.activeProjectId),
   );
+  // The comparison tab needs the others: it diffs this project against one.
+  const projects = useAppStore((state) => state.projects);
   const explorer = useExplorerStore();
   const [filter, setFilter] = useState('');
   const left = useResizable('hana.panel.left', 280, { min: 200, max: 520, side: 'left' });
@@ -177,6 +180,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
                 ['graph', 'Grafo'],
                 ['impact', 'Impacto'],
                 ['orphans', 'Sin usar'],
+                ['compare', 'Comparar'],
                 ['er', 'Diagrama ER'],
                 ['report', 'Reporte'],
                 ['code', 'Código'],
@@ -237,6 +241,17 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
               loading={explorer.loadingOrphans}
               onSelect={(entity) => void explorer.selectEntity(entity)}
               onOpenEvidence={(path, line) => void explorer.openEvidence(path, line)}
+            />
+          )}
+
+          {explorer.tab === 'compare' && (
+            <ComparePanel
+              report={explorer.comparison}
+              projects={projects}
+              currentId={explorer.projectId}
+              againstId={explorer.compareAgainst}
+              loading={explorer.loadingComparison}
+              onPick={(id) => void explorer.compareWith(id)}
             />
           )}
 

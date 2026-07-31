@@ -37,6 +37,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from ..domain.types import EntityType, RelationType
+from .compare import ComparisonReport, compare_projects
 from .impact import (
     DEFAULT_DEPTH,
     DEFAULT_MAX_NODES,
@@ -967,6 +968,16 @@ class QueryEngine:
             include_containment=include_containment,
             max_nodes=max_nodes,
             entity_of=self.get,
+        )
+
+    # -- ¿En qué se diferencian dos entornos? -------------------------------
+
+    def compare(
+        self, left_project_id: str, right_project_id: str, *, limit: int = 500
+    ) -> ComparisonReport | None:
+        """Diff two analysed projects by their graphs. See :mod:`.compare`."""
+        return compare_projects(
+            self.connection, left_project_id, right_project_id, limit=limit
         )
 
     # -- internals ----------------------------------------------------------

@@ -388,6 +388,51 @@ export interface OrphanReport {
   caveat: string;
 }
 
+export interface ComparisonSide {
+  project_id: string;
+  name: string;
+  root_path: string;
+  entities: number;
+  relationships: number;
+}
+
+/** One claim, named by its two ends rather than by ids. */
+export interface ComparedClaim {
+  key: string;
+  relation_type: RelationType;
+  source_name: string;
+  source_type: EntityType;
+  target_name: string;
+  target_type: EntityType;
+  confidence: number;
+  status: VerificationStatus;
+  file_path: string | null;
+  start_line: number | null;
+}
+
+/**
+ * Two analysed projects, compared by their graphs.
+ *
+ * `comparable` is false when the two file trees barely overlap — probably not
+ * two versions of the same code. The differences below would then say almost
+ * everything changed, which is a badly posed comparison rather than a finding,
+ * so `warning` must be shown before any of them.
+ */
+export interface ComparisonReport {
+  left: ComparisonSide;
+  right: ComparisonSide;
+  entities_only_left: Record<string, EntityHit[]>;
+  entities_only_right: Record<string, EntityHit[]>;
+  relations_only_left: Record<string, ComparedClaim[]>;
+  relations_only_right: Record<string, ComparedClaim[]>;
+  shared_entities: number;
+  shared_relations: number;
+  path_overlap: number;
+  comparable: boolean;
+  warning: string | null;
+  truncated: boolean;
+}
+
 /** One thing a change to the root could reach, and how the change gets there. */
 export interface ImpactNode {
   entity: EntityHit;

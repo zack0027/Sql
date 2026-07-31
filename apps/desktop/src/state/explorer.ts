@@ -20,6 +20,7 @@ import type {
   ChangesResult,
   EntityHit,
   ErModel,
+  ComparisonReport,
   FileTreeItem,
   Freshness,
   ImpactReport,
@@ -35,6 +36,7 @@ export type CenterTab =
   | 'graph'
   | 'impact'
   | 'orphans'
+  | 'compare'
   | 'er'
   | 'report'
   | 'code'
@@ -77,6 +79,11 @@ interface ExplorerState {
   orphans: OrphanReport | null;
   loadingOrphans: boolean;
 
+  /** The other project being diffed against, and the result. */
+  compareAgainst: string | null;
+  comparison: ComparisonReport | null;
+  loadingComparison: boolean;
+
   /** Verdicts a person recorded, keyed by the id they currently point at. */
   annotations: Map<string, Annotation>;
 
@@ -113,6 +120,7 @@ interface ExplorerState {
   setTab: (tab: CenterTab) => void;
   setScope: (scope: Scope) => void;
   loadOrphans: () => Promise<void>;
+  compareWith: (projectId: string) => Promise<void>;
   loadAnnotations: () => Promise<void>;
   annotate: (
     targetKind: 'entity' | 'relationship',
@@ -233,6 +241,9 @@ const EMPTY = {
   changes: null,
   orphans: null,
   loadingOrphans: false,
+  compareAgainst: null,
+  comparison: null,
+  loadingComparison: false,
   annotations: new Map<string, Annotation>(),
   impact: null,
   impactOf: null,
@@ -285,6 +296,26 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     }
     if (tab === 'orphans' && !get().orphans && !get().loadingOrphans) {
       void get().loadOrphans();
+    }
+  },
+
+  async compareWith(projectId: string) {
+    const mine = get().projectId;
+    if (!mine) return;
+    if (!projectId) {
+      set({ compareAgainst: null, comparison: null });
+      return;
+    }
+    set({ compareAgainst: projectId, loadingComparison: true });
+    try {
+      const client = await getClient();
+      const report = await client.compare(mine, projectId);
+      // A slower earlier request must not overwrite a newer choice's answer.
+      if (get().compareAgainst === projectId) set({ comparison: report });
+    } catch (error) {
+      set({ error: describe(error), comparison: null });
+    } finally {
+      set({ loadingComparison: false });
     }
   },
 

@@ -13,6 +13,7 @@ import type {
   AnalysisRun,
   Annotation,
   ChangesResult,
+  ComparisonReport,
   EngineStatus,
   EntityHit,
   EntityType,
@@ -473,6 +474,47 @@ export class MockEngineClient implements EngineClient {
       by_type: byType,
       truncated: found.length >= limit,
       caveat: DEMO_ORPHAN_CAVEAT,
+    };
+  }
+
+  /**
+   * A stand-in comparison.
+   *
+   * Every mock project shares one demo graph, so a faithful diff would always
+   * be empty and the panel's interesting states would never be seen. The right
+   * side is treated as an older version missing the inferred APEX page — enough
+   * to exercise grouping, the shared counts and the empty case.
+   */
+  async compare(
+    leftProjectId: string,
+    rightProjectId: string,
+  ): Promise<ComparisonReport | null> {
+    const left = this.projects.find((item) => item.id === leftProjectId);
+    const right = this.projects.find((item) => item.id === rightProjectId);
+    if (!left || !right) return null;
+
+    const missing = DEMO_ENTITIES.filter((item) => item.id === 'E_PAGE');
+    const side = (project: Project, entities: number) => ({
+      project_id: project.id,
+      name: project.name,
+      root_path: project.root_path,
+      entities,
+      relationships: DEMO_EDGES.length,
+    });
+
+    return {
+      left: side(left, DEMO_ENTITIES.length),
+      right: side(right, DEMO_ENTITIES.length - missing.length),
+      entities_only_left: { ApexPage: missing },
+      entities_only_right: {},
+      relations_only_left: {},
+      relations_only_right: {},
+      shared_entities: DEMO_ENTITIES.length - missing.length,
+      shared_relations: DEMO_EDGES.length,
+      path_overlap: 1,
+      comparable: true,
+      warning: null,
+      truncated: false,
     };
   }
 

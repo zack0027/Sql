@@ -309,6 +309,62 @@ def command_impact(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
     return 0
 
 
+def command_compare(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
+    report = engine.queries.compare(args.left, args.right, limit=args.limit)
+    if report is None:
+        print("error: alguno de los dos proyectos no existe", file=sys.stderr)
+        return 2
+    if args.json:
+        _print(report.to_dict(), True)
+        return 0
+
+    # ASCII on purpose: the Windows console is cp1252 and an arrow raises.
+    print(f"{report.left.name}  <->  {report.right.name}")
+    print(
+        f"  {report.left.entities} entidades / {report.left.relationships} relaciones"
+        f"   ·   {report.right.entities} / {report.right.relationships}"
+    )
+    print(f"  en común: {report.shared_entities} entidades, {report.shared_relations} claims")
+    print()
+
+    # Printed before the differences, because it changes how they read.
+    if report.warning:
+        print(f"AVISO: {report.warning}")
+        print()
+
+    _print_side("Solo en " + report.left.name, report.entities_only_left, report.relations_only_left)
+    _print_side("Solo en " + report.right.name, report.entities_only_right, report.relations_only_right)
+
+    if not any(
+        (
+            report.entities_only_left,
+            report.entities_only_right,
+            report.relations_only_left,
+            report.relations_only_right,
+        )
+    ):
+        print("Los dos grafos dicen lo mismo.")
+    if report.truncated:
+        print("\n(alguna lista quedó recortada por el límite)")
+    return 0
+
+
+def _print_side(title: str, entities: dict, relations: dict) -> None:
+    if not entities and not relations:
+        return
+    print(f"== {title} ==")
+    for entity_type in sorted(entities):
+        print(f"  {entity_type}")
+        for hit in entities[entity_type]:
+            where = f"{hit['file_path']}:{hit['start_line']}" if hit["file_path"] else ""
+            print(f"      {hit['name']:<34} {where}")
+    for relation_type in sorted(relations):
+        print(f"  {relation_type}")
+        for claim in relations[relation_type]:
+            print(f"      {claim['source_name']} -> {claim['target_name']}")
+    print()
+
+
 def command_orphans(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
     report = engine.queries.orphan_report(args.project_id, limit=args.limit)
     if args.json:
@@ -538,6 +594,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="seguir también las aristas de contención (arrastra el proyecto entero)",
     )
     impact_parser.set_defaults(handler=command_impact)
+
+    compare_parser = subparsers.add_parser(
+        "compare", help="diferencias entre dos proyectos analizados (DEV vs PROD)"
+    )
+    compare_parser.add_argument("left", help="id del primer proyecto")
+    compare_parser.add_argument("right", help="id del segundo proyecto")
+    compare_parser.add_argument("--limit", type=int, default=500)
+    compare_parser.set_defaults(handler=command_compare)
 
     orphans_parser = subparsers.add_parser(
         "orphans", help="candidatos a revisar: nada del proyecto los referencia"

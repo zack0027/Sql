@@ -13,6 +13,7 @@ import type {
   AnalysisRun,
   Annotation,
   ChangesResult,
+  ComparisonReport,
   EngineStatus,
   EntityHit,
   EntityType,
@@ -58,6 +59,10 @@ export interface EngineClient {
   dependents(entityId: string): Promise<UsageHit[]>;
   dependencies(entityId: string): Promise<UsageHit[]>;
   orphans(projectId: string, limit?: number): Promise<OrphanReport>;
+  compare(
+    leftProjectId: string,
+    rightProjectId: string,
+  ): Promise<ComparisonReport | null>;
   annotations(projectId: string): Promise<Annotation[]>;
   setAnnotation(
     projectId: string,
@@ -221,6 +226,16 @@ class TauriEngineClient implements EngineClient {
   /** Entities nothing in the project refers to. Candidates, not conclusions. */
   orphans(projectId: string, limit = 300): Promise<OrphanReport> {
     return this.query('query.orphans', { project_id: projectId, limit });
+  }
+
+  compare(
+    leftProjectId: string,
+    rightProjectId: string,
+  ): Promise<ComparisonReport | null> {
+    return this.query('query.compare', {
+      left_project_id: leftProjectId,
+      right_project_id: rightProjectId,
+    });
   }
 
   annotations(projectId: string): Promise<Annotation[]> {

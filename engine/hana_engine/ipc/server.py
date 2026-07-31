@@ -161,6 +161,7 @@ class EngineServer:
             "query.freshness": self._query_freshness,
             "query.impact": self._query_impact,
             "query.orphans": self._query_orphans,
+            "query.compare": self._query_compare,
             # The only methods through which a human writes into the graph.
             "annotation.list": self._annotation_list,
             "annotation.set": self._annotation_set,
@@ -487,6 +488,14 @@ class EngineServer:
             self._require(params, "project_id"),
             limit=int(params.get("limit") or 300),
         )
+
+    def _query_compare(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        report = self.engine.queries.compare(
+            self._require(params, "left_project_id"),
+            self._require(params, "right_project_id"),
+            limit=int(params.get("limit") or 500),
+        )
+        return report.to_dict() if report is not None else None
 
     # -- annotations --------------------------------------------------------
 

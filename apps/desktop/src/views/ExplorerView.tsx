@@ -23,6 +23,7 @@ import { CodeViewer } from '../components/CodeViewer';
 import { ErDiagram } from '../components/ErDiagram';
 import { GraphCanvas } from '../components/GraphCanvas';
 import { ImpactPanel } from '../components/ImpactPanel';
+import { OrphanPanel } from '../components/OrphanPanel';
 import { ReportPreview } from '../components/ReportPreview';
 import {
   buildFileTree,
@@ -175,6 +176,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
               [
                 ['graph', 'Grafo'],
                 ['impact', 'Impacto'],
+                ['orphans', 'Sin usar'],
                 ['er', 'Diagrama ER'],
                 ['report', 'Reporte'],
                 ['code', 'Código'],
@@ -225,6 +227,15 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
                 );
                 if (node) void explorer.selectEntity(node.entity);
               }}
+              onOpenEvidence={(path, line) => void explorer.openEvidence(path, line)}
+            />
+          )}
+
+          {explorer.tab === 'orphans' && (
+            <OrphanPanel
+              report={explorer.orphans}
+              loading={explorer.loadingOrphans}
+              onSelect={(entity) => void explorer.selectEntity(entity)}
               onOpenEvidence={(path, line) => void explorer.openEvidence(path, line)}
             />
           )}
@@ -689,6 +700,92 @@ function ChangesPanel(): JSX.Element {
   );
 }
 
+/**
+ * Confirm or reject what HANA inferred.
+ *
+ * The note is the part that matters. A verdict without one records that
+ * somebody once clicked; a verdict with one records why, which is the only form
+ * in which this is useful to the next person — or to the same person in March.
+ *
+ * The reassurance about reanalysis is on screen deliberately. Without it, the
+ * reasonable assumption is that the next analysis wipes this, and nobody
+ * bothers.
+ */
+function VerdictBox({ entity }: { entity: EntityHit }): JSX.Element {
+  const explorer = useExplorerStore();
+  const stored = explorer.annotations.get(entity.id);
+  const [note, setNote] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+    setNote('');
+  }, [entity.id]);
+
+  if (stored) {
+    return (
+      <div className={styles.verdict}>
+        <span
+          className={
+            stored.verdict === 'confirmed' ? styles.verdictYes : styles.verdictNo
+          }
+        >
+          {stored.verdict === 'confirmed' ? 'Confirmado' : 'Descartado'} por ti
+        </span>
+        {stored.note && <p className={styles.verdictNote}>{stored.note}</p>}
+        <button
+          className={styles.verdictUndo}
+          onClick={() =>
+            void explorer.withdrawAnnotation('entity', stored.target_key)
+          }
+        >
+          retirar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.verdict}>
+      {!open ? (
+        <button className={styles.verdictOpen} onClick={() => setOpen(true)}>
+          ¿Esto es correcto?
+        </button>
+      ) : (
+        <>
+          <input
+            className={styles.verdictInput}
+            placeholder="Por qué (opcional, pero es lo que da valor)"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <div className={styles.verdictActions}>
+            <button
+              className={styles.verdictYesButton}
+              onClick={() =>
+                void explorer.annotate('entity', entity.id, 'confirmed', note || undefined)
+              }
+            >
+              Es correcto
+            </button>
+            <button
+              className={styles.verdictNoButton}
+              onClick={() =>
+                void explorer.annotate('entity', entity.id, 'rejected', note || undefined)
+              }
+            >
+              Está mal
+            </button>
+          </div>
+          <p className={styles.verdictHint}>
+            Tu criterio sobrevive a los reanálisis.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function DetailsPanel(): JSX.Element {
   const { selected, incoming, outgoing, loadingDetails } = useExplorerStore();
 
@@ -726,6 +823,8 @@ function DetailsPanel(): JSX.Element {
           value={`${selected.file_path}${selected.start_line ? `:${selected.start_line}` : ''}`}
         />
       )}
+
+      <VerdictBox entity={selected} />
 
       {loadingDetails && <p className={styles.muted}>Cargando relaciones…</p>}
 

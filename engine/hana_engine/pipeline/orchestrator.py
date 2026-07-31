@@ -789,6 +789,13 @@ class AnalysisPipeline:
         self.repos.entities.delete_orphans_of_file(file_id)
 
     def _finalize_project(self, project: Project) -> None:
+        # Before anything else: give a person's verdicts back to the rows that
+        # were just rebuilt. Reanalysing a file deletes its relationships and
+        # writes them again from the source, so without this step every manual
+        # judgement in the project would be quietly undone by the next run —
+        # and quietly is the worst way to lose somebody's work.
+        self.repos.annotations.apply_to_project(project.id)
+
         extensions = self.repos.files.count_by_extension(project.id)
         detected: dict[str, int] = {}
         for record in self.repos.files.list_by_project(project.id):

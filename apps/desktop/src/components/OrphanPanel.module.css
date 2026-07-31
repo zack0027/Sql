@@ -1,0 +1,134 @@
+/**
+ * Candidates to review.
+ *
+ * The caveat is styled to be read, not skimmed: full width, amber, above the
+ * list. It is the difference between a useful screen and one that gets somebody
+ * to delete a procedure a scheduler calls every night.
+ */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.caveat {
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--inferred-border);
+  background: var(--inferred-dim);
+  color: var(--inferred-text);
+  font-size: 11.5px;
+  line-height: 1.55;
+  animation: slide-down var(--speed-calm) var(--ease-out) backwards;
+}
+
+.placeholder {
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 0 18px;
+}
+
+.group {
+  animation: fade-in var(--speed-quick) var(--ease-out) backwards;
+}
+
+.groupHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 16px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(10px);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.groupCount {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  transition: background var(--speed-quick) var(--ease-out);
+}
+
+.row:hover {
+  background: var(--surface-hover);
+}
+
+.rowName {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rowName:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.qualified {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.where {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.where:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.truncated {
+  margin: 14px 16px 0;
+  color: var(--inferred-text);
+  font-size: 11.5px;
+}

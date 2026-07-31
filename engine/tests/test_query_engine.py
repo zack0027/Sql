@@ -229,6 +229,72 @@ class TestApexItems:
         assert hits[0].start_line == 11
 
 
+class TestOrphans:
+    """Candidates to review — the wording matters as much as the query."""
+
+    @pytest.fixture
+    def with_package(self, db_path, project_dir):
+        """A project including the package body, which has uncalled routines."""
+        shutil.copy(FIXTURES / "sql" / "pkg_inspeccion.pkb", project_dir / "sql")
+        instance = KnowledgeEngine(db_path, registry=build_default_registry())
+        project = instance.open_project(project_dir)
+        instance.analyze_project(project.id)
+        instance.project_id = project.id
+        yield instance
+        instance.close()
+
+    def test_it_finds_a_routine_nobody_calls(self, with_package):
+        """Only answerable because the call graph exists."""
+        report = with_package.queries.orphan_report(with_package.project_id)
+        names = {
+            hit["normalized_name"]
+            for hits in report["by_type"].values()
+            for hit in hits
+        }
+        assert "RESUMEN" in names
+
+    def test_a_routine_that_is_called_is_not_listed(self, with_package):
+        report = with_package.queries.orphan_report(with_package.project_id)
+        names = {
+            hit["normalized_name"]
+            for hits in report["by_type"].values()
+            for hit in hits
+        }
+        assert "TOTAL_NETO" not in names
+        assert "REGISTRAR_EVENTO" not in names
+
+    def test_containment_does_not_count_as_a_reference(self, engine):
+        """Every entity is inside a file; if that counted, nothing would list."""
+        report = engine.queries.orphan_report(engine.project_id)
+        assert isinstance(report["total"], int)
+
+    def test_kinds_that_are_never_a_target_are_not_reported(self, engine):
+        """Listing every APEX page and every JSON property is noise, not a finding."""
+        report = engine.queries.orphan_report(engine.project_id)
+        assert "ApexPage" not in report["by_type"]
+        assert "JsonProperty" not in report["by_type"]
+        assert "MocaCommand" not in report["by_type"]
+
+    def test_but_nothing_is_hidden_from_someone_who_asks(self, engine):
+        pages = engine.queries.orphans(
+            engine.project_id, entity_type=EntityType.APEX_PAGE
+        )
+        assert any(hit["normalized_name"] == "117" for hit in pages)
+
+    def test_the_caveat_travels_with_the_answer(self, engine):
+        """Absence of evidence is not evidence of absence, and it must say so."""
+        report = engine.queries.orphan_report(engine.project_id)
+        assert "no lo ve" in report["caveat"]
+        assert "borrar" in report["caveat"]
+
+    def test_truncation_is_reported(self, with_package):
+        """Needs a project that actually has candidates, or nothing is cut."""
+        assert with_package.queries.orphan_report(with_package.project_id)["total"] >= 2
+        report = with_package.queries.orphan_report(with_package.project_id, limit=1)
+        assert report["truncated"] is True
+        assert report["total"] == 1
+
+
 class TestReportsAndImages:
     def test_reports_using_a_table(self, engine):
         hits = engine.queries.reports_using_table(table_id(engine))

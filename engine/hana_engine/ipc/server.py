@@ -160,6 +160,11 @@ class EngineServer:
             "query.report_structure": self._query_report_structure,
             "query.freshness": self._query_freshness,
             "query.impact": self._query_impact,
+            "query.orphans": self._query_orphans,
+            # The only methods through which a human writes into the graph.
+            "annotation.list": self._annotation_list,
+            "annotation.set": self._annotation_set,
+            "annotation.clear": self._annotation_clear,
         }
 
     # -- lifecycle ----------------------------------------------------------
@@ -476,6 +481,56 @@ class EngineServer:
             max_nodes=int(params.get("max_nodes") or DEFAULT_MAX_NODES),
         )
         return report.to_dict() if report is not None else None
+
+    def _query_orphans(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self.engine.queries.orphan_report(
+            self._require(params, "project_id"),
+            limit=int(params.get("limit") or 300),
+        )
+
+    # -- annotations --------------------------------------------------------
+
+    def _annotation_list(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        return self.engine.annotations(self._require(params, "project_id"))
+
+    def _annotation_set(self, params: dict[str, Any]) -> dict[str, Any]:
+        project_id = self._require(params, "project_id")
+        kind = params.get("target_kind") or "entity"
+        verdict = self._require(params, "verdict")
+        note = params.get("note")
+        author = params.get("author")
+        try:
+            if kind == "entity":
+                annotation = self.engine.annotate_entity(
+                    project_id,
+                    self._require(params, "target_id"),
+                    verdict,
+                    note=note,
+                    author=author,
+                )
+            elif kind == "relationship":
+                annotation = self.engine.annotate_relationship(
+                    project_id,
+                    self._require(params, "target_id"),
+                    verdict,
+                    note=note,
+                    author=author,
+                )
+            else:
+                raise ValueError(f"target_kind desconocido: {kind!r}")
+        except ValueError as exc:
+            # A bad verdict or a target that no longer exists is the caller's
+            # mistake, not a crash — say which, in words.
+            raise RpcError("invalid_annotation", str(exc)) from exc
+        return annotation.to_dict()
+
+    def _annotation_clear(self, params: dict[str, Any]) -> dict[str, Any]:
+        removed = self.engine.clear_annotation(
+            self._require(params, "project_id"),
+            params.get("target_kind") or "entity",
+            self._require(params, "target_key"),
+        )
+        return {"removed": removed}
 
     def _query_reports_using_table(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         hits = self.engine.queries.reports_using_table(

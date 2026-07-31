@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from .domain.analysis import AnalyzerRegistry
-from .domain.models import AnalysisRun, Project, ScannedFile
+from .domain.models import AnalysisRun, Annotation, Project, ScannedFile
+from .domain.naming import annotation_key
 from .domain.types import ProjectStatus
 from .indexing.policy import ScanPolicy
 from .indexing.scanner import ScanSecurityError, resolve_project_root
@@ -205,6 +206,78 @@ class KnowledgeEngine:
 
     def latest_run(self, project_id: str) -> AnalysisRun | None:
         return self.repos.runs.latest(project_id)
+
+    # -- human judgement ----------------------------------------------------
+
+    def annotate_entity(
+        self,
+        project_id: str,
+        entity_id: str,
+        verdict: str,
+        *,
+        note: str | None = None,
+        author: str | None = None,
+    ) -> Annotation:
+        """Record a person's verdict on an entity.
+
+        Takes the id because that is what a caller has in hand, and stores the
+        identity key, because that is what survives a reanalysis.
+        """
+        entity = self.repos.entities.get(entity_id)
+        if entity is None:
+            raise ValueError(f"no existe la entidad {entity_id!r}")
+        annotation = self.repos.annotations.set(
+            project_id, "entity", entity.identity_key, verdict, note=note, author=author
+        )
+        self.repos.annotations.apply_to_project(project_id)
+        self.connection.commit()
+        return annotation
+
+    def annotate_relationship(
+        self,
+        project_id: str,
+        relationship_id: str,
+        verdict: str,
+        *,
+        note: str | None = None,
+        author: str | None = None,
+    ) -> Annotation:
+        relationship = self.repos.relationships.get(relationship_id)
+        if relationship is None:
+            raise ValueError(f"no existe la relación {relationship_id!r}")
+        source = self.repos.entities.get(relationship.source_entity_id)
+        target = self.repos.entities.get(relationship.target_entity_id)
+        if source is None or target is None:
+            raise ValueError("la relación apunta a una entidad que ya no existe")
+        annotation = self.repos.annotations.set(
+            project_id,
+            "relationship",
+            annotation_key(
+                source.identity_key, relationship.relation_type, target.identity_key
+            ),
+            verdict,
+            note=note,
+            author=author,
+        )
+        self.repos.annotations.apply_to_project(project_id)
+        self.connection.commit()
+        return annotation
+
+    def clear_annotation(
+        self, project_id: str, target_kind: str, target_key: str
+    ) -> bool:
+        """Withdraw a verdict.
+
+        The row it marked keeps ``manual`` until the next analysis rebuilds it.
+        Reverting it here would mean guessing what the analyzer had said before
+        a person overruled it, and that is not recorded anywhere.
+        """
+        removed = self.repos.annotations.clear(project_id, target_kind, target_key)
+        self.connection.commit()
+        return removed
+
+    def annotations(self, project_id: str) -> list[dict[str, Any]]:
+        return self.repos.annotations.resolved(project_id)
 
     # -- reporting ----------------------------------------------------------
 

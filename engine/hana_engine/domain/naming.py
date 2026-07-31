@@ -124,6 +124,24 @@ def relationship_identity_key(
     )
 
 
+def annotation_key(
+    source_identity_key: str,
+    relation_type: RelationType,
+    target_identity_key: str,
+) -> str:
+    """Semantic key for annotating a relationship.
+
+    Deliberately different from :func:`relationship_identity_key`, which embeds
+    entity ids and the file that proved the claim. A person rejecting "this APEX
+    item maps to that column" is ruling on the claim itself, not on whichever
+    file happened to demonstrate it — and not on ids, which are handed out fresh
+    when a file changes and its entities are rebuilt.
+    """
+    return "|".join(
+        [source_identity_key, relation_type.value, target_identity_key]
+    )
+
+
 def split_qualified_name(raw: str) -> tuple[str | None, str]:
     """Split ``SCHEMA.OBJECT`` into its parts, tolerating quotes.
 

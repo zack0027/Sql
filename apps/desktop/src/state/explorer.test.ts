@@ -174,3 +174,73 @@ describe('impact', () => {
     expect(report!.nodes.some((node) => node.entity.id === 'E_COLUMN')).toBe(false);
   });
 });
+
+describe('annotations', () => {
+  const INITIAL = useExplorerStore.getState();
+
+  beforeEach(() => {
+    useExplorerStore.setState({ ...INITIAL, projectId: 'P' }, true);
+    setClient(new MockEngineClient());
+  });
+
+  it('records a verdict against the entity on screen', async () => {
+    const store = useExplorerStore.getState();
+    useExplorerStore.setState({ selected: entity('E_PAGE', 'ApexPage') });
+    await store.annotate('entity', 'E_PAGE', 'confirmed', 'es la 117');
+
+    const stored = useExplorerStore.getState().annotations.get('E_PAGE');
+    expect(stored?.verdict).toBe('confirmed');
+    expect(stored?.note).toBe('es la 117');
+  });
+
+  it('replaces a verdict rather than stacking a second one', async () => {
+    const store = useExplorerStore.getState();
+    await store.annotate('entity', 'E_PAGE', 'confirmed');
+    await store.annotate('entity', 'E_PAGE', 'rejected', 'me equivoqué');
+
+    const all = [...useExplorerStore.getState().annotations.values()];
+    expect(all).toHaveLength(1);
+    expect(all[0].verdict).toBe('rejected');
+  });
+
+  it('withdraws a verdict', async () => {
+    const store = useExplorerStore.getState();
+    await store.annotate('entity', 'E_PAGE', 'confirmed');
+    await useExplorerStore
+      .getState()
+      .withdrawAnnotation('entity', 'E_PAGE');
+    expect(useExplorerStore.getState().annotations.size).toBe(0);
+  });
+
+  it('keys them by what they currently point at', async () => {
+    await useExplorerStore.getState().annotate('entity', 'E_TABLE', 'confirmed');
+    expect(useExplorerStore.getState().annotations.has('E_TABLE')).toBe(true);
+  });
+});
+
+describe('orphans', () => {
+  const INITIAL = useExplorerStore.getState();
+
+  beforeEach(() => {
+    useExplorerStore.setState({ ...INITIAL, projectId: 'P' }, true);
+    setClient(new MockEngineClient());
+  });
+
+  it('carries the caveat with the answer', async () => {
+    await useExplorerStore.getState().loadOrphans();
+    const report = useExplorerStore.getState().orphans!;
+    // The wording comes from the engine so every surface says the same thing.
+    expect(report.caveat).toContain('no lo ve');
+    expect(report.caveat).toContain('borrar');
+  });
+
+  it('does not list something that is referenced', async () => {
+    await useExplorerStore.getState().loadOrphans();
+    const report = useExplorerStore.getState().orphans!;
+    const listed = Object.values(report.by_type)
+      .flat()
+      .map((hit) => hit.id);
+    // E_COLUMN is read by a query and mapped from an APEX item.
+    expect(listed).not.toContain('E_COLUMN');
+  });
+});

@@ -380,6 +380,54 @@ class AnalysisError:
         )
 
 
+@dataclass
+class Annotation:
+    """A person's verdict on something an analyzer claimed.
+
+    Keyed by ``target_key`` — the semantic identity of the thing judged — and
+    never by an id, because reanalysing a file can delete a row and recreate it
+    with a fresh one. See ``migrations/004_annotations.sql`` for why this lives
+    apart from the rows it judges.
+    """
+
+    id: str = field(default_factory=new_ulid)
+    project_id: str = ""
+    target_kind: str = "entity"  # 'entity' | 'relationship'
+    target_key: str = ""
+    verdict: str = "confirmed"  # 'confirmed' | 'rejected'
+    note: str | None = None
+    author: str | None = None
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+
+    @classmethod
+    def from_row(cls, row: Mapping[str, Any]) -> Annotation:
+        return cls(
+            id=row["id"],
+            project_id=row["project_id"],
+            target_kind=row["target_kind"],
+            target_key=row["target_key"],
+            verdict=row["verdict"],
+            note=row["note"],
+            author=row["author"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "project_id": self.project_id,
+            "target_kind": self.target_kind,
+            "target_key": self.target_key,
+            "verdict": self.verdict,
+            "note": self.note,
+            "author": self.author,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+
 @dataclass(frozen=True)
 class ScannedFile:
     """A file as the scanner saw it on disk, before it meets the database.

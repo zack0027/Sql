@@ -11,6 +11,7 @@
 import type {
   AnalysisIssue,
   AnalysisRun,
+  Annotation,
   ChangesResult,
   EngineStatus,
   EntityHit,
@@ -20,6 +21,7 @@ import type {
   Freshness,
   ImpactReport,
   Neighborhood,
+  OrphanReport,
   ReportStructure,
   ProgressEvent,
   Project,
@@ -55,6 +57,20 @@ export interface EngineClient {
   uses(entityId: string, includeStructural?: boolean): Promise<UsageHit[]>;
   dependents(entityId: string): Promise<UsageHit[]>;
   dependencies(entityId: string): Promise<UsageHit[]>;
+  orphans(projectId: string, limit?: number): Promise<OrphanReport>;
+  annotations(projectId: string): Promise<Annotation[]>;
+  setAnnotation(
+    projectId: string,
+    targetKind: 'entity' | 'relationship',
+    targetId: string,
+    verdict: 'confirmed' | 'rejected',
+    note?: string,
+  ): Promise<Annotation>;
+  clearAnnotation(
+    projectId: string,
+    targetKind: 'entity' | 'relationship',
+    targetKey: string,
+  ): Promise<void>;
   impact(
     entityId: string,
     options?: {
@@ -200,6 +216,42 @@ class TauriEngineClient implements EngineClient {
 
   dependencies(entityId: string): Promise<UsageHit[]> {
     return this.query('query.dependencies', { entity_id: entityId });
+  }
+
+  /** Entities nothing in the project refers to. Candidates, not conclusions. */
+  orphans(projectId: string, limit = 300): Promise<OrphanReport> {
+    return this.query('query.orphans', { project_id: projectId, limit });
+  }
+
+  annotations(projectId: string): Promise<Annotation[]> {
+    return this.query('annotation.list', { project_id: projectId });
+  }
+
+  // Writes go through their own commands, not the read-only query passthrough.
+  async setAnnotation(
+    projectId: string,
+    targetKind: 'entity' | 'relationship',
+    targetId: string,
+    verdict: 'confirmed' | 'rejected',
+    note?: string,
+  ): Promise<Annotation> {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return invoke('set_annotation', {
+      projectId,
+      targetKind,
+      targetId,
+      verdict,
+      note: note ?? null,
+    });
+  }
+
+  async clearAnnotation(
+    projectId: string,
+    targetKind: 'entity' | 'relationship',
+    targetKey: string,
+  ): Promise<void> {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('clear_annotation', { projectId, targetKind, targetKey });
   }
 
   /** Transitive impact: everything a change to this entity could reach. */

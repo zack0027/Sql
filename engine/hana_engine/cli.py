@@ -309,6 +309,73 @@ def command_impact(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
     return 0
 
 
+def command_orphans(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
+    report = engine.queries.orphan_report(args.project_id, limit=args.limit)
+    if args.json:
+        _print(report, True)
+        return 0
+
+    print(f"Candidatos a revisar ({report['total']}):")
+    print()
+    for entity_type in sorted(report["by_type"]):
+        hits = report["by_type"][entity_type]
+        print(f"  {entity_type} ({len(hits)})")
+        for hit in hits:
+            where = (
+                f"{hit['file_path']}:{hit['start_line']}"
+                if hit["file_path"]
+                else "(sin archivo)"
+            )
+            print(f"      {hit['name']:<34} {where}")
+        print()
+    if report["truncated"]:
+        print("  (lista recortada por el límite)")
+    # Printed last on purpose: it is the part that must not be skimmed past.
+    print(report["caveat"])
+    return 0
+
+
+def command_annotate(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
+    entity = _resolve_one(engine, args)
+    if entity is None:
+        return 2
+    verdict = "rejected" if args.reject else "confirmed"
+    try:
+        annotation = engine.annotate_entity(
+            args.project_id, entity.id, verdict, note=args.note
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print(annotation.to_dict(), True)
+        return 0
+    label = "descartada" if verdict == "rejected" else "confirmada"
+    print(f"{entity.entity_type} {entity.name}: inferencia {label}.")
+    if args.note:
+        print(f"  nota: {args.note}")
+    print("  Sobrevivirá a los reanálisis.")
+    return 0
+
+
+def command_annotations(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
+    stored = engine.annotations(args.project_id)
+    if args.json:
+        _print(stored, True)
+        return 0
+    if not stored:
+        print("(sin anotaciones)")
+        return 0
+    print(f"Anotaciones ({len(stored)}):")
+    for item in stored:
+        # An annotation matching nothing right now is worth seeing, not hiding.
+        state = "" if item["resolved_id"] else "   (no coincide con nada ahora mismo)"
+        print(f"  {item['verdict']:<10} {item['target_kind']:<13} {item['target_key']}{state}")
+        if item["note"]:
+            print(f"      {item['note']}")
+    return 0
+
+
 def command_tables(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
     written = True if args.writes else (False if args.reads else None)
     hits = engine.queries.tables_of_file(args.project_id, args.file, written=written)
@@ -471,6 +538,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="seguir también las aristas de contención (arrastra el proyecto entero)",
     )
     impact_parser.set_defaults(handler=command_impact)
+
+    orphans_parser = subparsers.add_parser(
+        "orphans", help="candidatos a revisar: nada del proyecto los referencia"
+    )
+    orphans_parser.add_argument("project_id")
+    orphans_parser.add_argument("--limit", type=int, default=300)
+    orphans_parser.set_defaults(handler=command_orphans)
+
+    annotate_parser = subparsers.add_parser(
+        "annotate", help="confirmar o descartar una inferencia"
+    )
+    annotate_parser.add_argument("project_id")
+    annotate_parser.add_argument("entity", help="nombre o id")
+    annotate_parser.add_argument(
+        "--reject", action="store_true", help="descartarla en vez de confirmarla"
+    )
+    annotate_parser.add_argument("--note", help="por qué; es lo que da valor a la anotación")
+    annotate_parser.set_defaults(handler=command_annotate)
+
+    annotations_parser = subparsers.add_parser(
+        "annotations", help="anotaciones registradas"
+    )
+    annotations_parser.add_argument("project_id")
+    annotations_parser.set_defaults(handler=command_annotations)
 
     tables_parser = subparsers.add_parser("tables", help="tablas que toca un archivo")
     tables_parser.add_argument("project_id")

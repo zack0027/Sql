@@ -50,6 +50,8 @@ pub fn run() {
             commands::analyze_project,
             commands::cancel_analysis,
             commands::run_query,
+            commands::set_annotation,
+            commands::clear_annotation,
             commands::read_project_file,
         ])
         .on_window_event(|window, event| {

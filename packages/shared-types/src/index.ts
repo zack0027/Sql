@@ -354,6 +354,40 @@ export interface UsageHit {
   evidence: QueryEvidence;
 }
 
+/**
+ * A person's verdict on something an analyzer claimed.
+ *
+ * `resolved_id` is the id of whatever it currently points at, looked up rather
+ * than stored — it changes when a file is edited and its entities are rebuilt.
+ * `null` means the annotation matches nothing in the graph right now, which is
+ * worth showing rather than treating as a reason to delete it.
+ */
+export interface Annotation {
+  id: string;
+  project_id: string;
+  target_kind: 'entity' | 'relationship';
+  target_key: string;
+  verdict: 'confirmed' | 'rejected';
+  note: string | null;
+  author: string | null;
+  resolved_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Entities nothing in the project refers to.
+ *
+ * Candidates to review, never "safe to delete" — `caveat` carries the wording
+ * so every surface says the same thing.
+ */
+export interface OrphanReport {
+  total: number;
+  by_type: Record<string, EntityHit[]>;
+  truncated: boolean;
+  caveat: string;
+}
+
 /** One thing a change to the root could reach, and how the change gets there. */
 export interface ImpactNode {
   entity: EntityHit;

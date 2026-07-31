@@ -16,6 +16,7 @@ import { create } from 'zustand';
 
 import type {
   AnalysisIssue,
+  Annotation,
   ChangesResult,
   EntityHit,
   ErModel,
@@ -23,6 +24,7 @@ import type {
   Freshness,
   ImpactReport,
   Neighborhood,
+  OrphanReport,
   ReportStructure,
   UsageHit,
 } from '@hana/shared-types';
@@ -32,6 +34,7 @@ import { getClient } from '../api/client';
 export type CenterTab =
   | 'graph'
   | 'impact'
+  | 'orphans'
   | 'er'
   | 'report'
   | 'code'
@@ -71,6 +74,12 @@ interface ExplorerState {
   issues: AnalysisIssue[];
   changes: ChangesResult | null;
 
+  orphans: OrphanReport | null;
+  loadingOrphans: boolean;
+
+  /** Verdicts a person recorded, keyed by the id they currently point at. */
+  annotations: Map<string, Annotation>;
+
   /** Transitive impact of the selection, and which entity it was computed for. */
   impact: ImpactReport | null;
   impactOf: string | null;
@@ -103,6 +112,18 @@ interface ExplorerState {
   reset: () => void;
   setTab: (tab: CenterTab) => void;
   setScope: (scope: Scope) => void;
+  loadOrphans: () => Promise<void>;
+  loadAnnotations: () => Promise<void>;
+  annotate: (
+    targetKind: 'entity' | 'relationship',
+    targetId: string,
+    verdict: 'confirmed' | 'rejected',
+    note?: string,
+  ) => Promise<void>;
+  withdrawAnnotation: (
+    targetKind: 'entity' | 'relationship',
+    targetKey: string,
+  ) => Promise<void>;
   loadImpact: () => Promise<void>;
   setImpactDepth: (depth: number) => void;
   toggleImpactDirection: () => void;
@@ -210,6 +231,9 @@ const EMPTY = {
   highlight: null,
   issues: [] as AnalysisIssue[],
   changes: null,
+  orphans: null,
+  loadingOrphans: false,
+  annotations: new Map<string, Annotation>(),
   impact: null,
   impactOf: null,
   impactDepth: 4,
@@ -241,6 +265,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         client.freshness(projectId),
       ]);
       set({ files, issues, changes, freshness });
+      await get().loadAnnotations();
     } catch (error) {
       set({ error: describe(error) });
     }
@@ -257,6 +282,72 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     if (tab === 'er' && !get().er && !get().loadingEr) void get().loadEr();
     if (tab === 'impact' && get().impactOf !== get().selected?.id) {
       void get().loadImpact();
+    }
+    if (tab === 'orphans' && !get().orphans && !get().loadingOrphans) {
+      void get().loadOrphans();
+    }
+  },
+
+  async loadOrphans() {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    set({ loadingOrphans: true });
+    try {
+      const client = await getClient();
+      set({ orphans: await client.orphans(projectId) });
+    } catch (error) {
+      set({ error: describe(error) });
+    } finally {
+      set({ loadingOrphans: false });
+    }
+  },
+
+  async loadAnnotations() {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    try {
+      const client = await getClient();
+      const stored = await client.annotations(projectId);
+      const byId = new Map<string, Annotation>();
+      for (const item of stored) {
+        // Keyed by what it currently points at. One that matches nothing has
+        // nothing on screen to attach to, and is not dropped from the engine.
+        if (item.resolved_id) byId.set(item.resolved_id, item);
+      }
+      set({ annotations: byId });
+    } catch (error) {
+      set({ error: describe(error) });
+    }
+  },
+
+  async annotate(targetKind, targetId, verdict, note) {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    try {
+      const client = await getClient();
+      await client.setAnnotation(projectId, targetKind, targetId, verdict, note);
+      await get().loadAnnotations();
+      // The verdict changes `verification_status` on the row, so whatever is
+      // on screen is now describing the old value.
+      const selected = get().selected;
+      if (selected) {
+        const refreshed = await client.entity(selected.id);
+        if (refreshed) set({ selected: refreshed });
+      }
+    } catch (error) {
+      set({ error: describe(error) });
+    }
+  },
+
+  async withdrawAnnotation(targetKind, targetKey) {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    try {
+      const client = await getClient();
+      await client.clearAnnotation(projectId, targetKind, targetKey);
+      await get().loadAnnotations();
+    } catch (error) {
+      set({ error: describe(error) });
     }
   },
 

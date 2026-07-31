@@ -176,6 +176,40 @@ class Neighborhood:
         }
 
 
+#: Kinds where "nothing refers to this" is a finding rather than a fact about
+#: the shape of the graph.
+#:
+#: The test that decides membership: can an analyzer ever produce an edge
+#: *into* this kind? Where the answer is no, every entity of that kind is
+#: unreferenced by construction, and reporting them all is not information —
+#: it is noise that buries the findings that matter. Measured, not assumed:
+#: only these kinds are ever a target of a non-structural edge today.
+#:
+#: Excluded for that reason, each a different story:
+#:
+#: * ``ApexPage`` — pages are entry points; nothing in a project points at one.
+#: * ``JsonProperty``, ``MocaCommand`` — structure of a file, not code anyone
+#:   calls.
+#: * ``OraclePackage`` — packages contain routines, nothing depends on the
+#:   package itself. "A package nobody uses" is really "none of its routines is
+#:   called", a different query.
+#: * ``JasperReport`` — the encargo asked for "reports nobody references", and
+#:   it cannot be answered honestly yet: no analyzer produces an edge into a
+#:   report, so the answer would be every report in the project. It becomes
+#:   answerable the day something links a launcher to its report.
+#: * ``JavaScriptFunction``, ``PythonFunction`` — declared but never resolved as
+#:   call targets, so the same applies.
+#:
+#: None of them is hidden: asking for a kind by name reaches any of them.
+_REVIEWABLE_TYPES = (
+    EntityType.ORACLE_TABLE.value,
+    EntityType.ORACLE_VIEW.value,
+    EntityType.ORACLE_COLUMN.value,
+    EntityType.ORACLE_PROCEDURE.value,
+    EntityType.ORACLE_FUNCTION.value,
+    EntityType.APEX_ITEM.value,
+)
+
 _ENTITY_COLUMNS = """
     e.id, e.entity_type, e.name, e.normalized_name, e.qualified_name,
     e.confidence, e.verification_status, e.start_line, f.relative_path
@@ -530,6 +564,82 @@ class QueryEngine:
             (project_id, threshold, limit),
         ).fetchall()
         return [EntityHit.of(row) for row in rows]
+
+    # -- candidates for review ----------------------------------------------
+
+    def orphans(
+        self,
+        project_id: str,
+        *,
+        entity_type: EntityType | None = None,
+        limit: int = 300,
+    ) -> list[dict[str, Any]]:
+        """Entities nothing in the project refers to.
+
+        Columns nobody reads, reports nobody references, APEX items with no use,
+        procedures nobody calls. Useful — and dangerous to phrase carelessly.
+
+        These are **candidates to review**, never "safe to delete". Absence of
+        evidence is not evidence of absence: anything invoked dynamically, from
+        a scheduler, from another application, or from code outside the analysed
+        folder is invisible to a static reader. The caller is expected to say so
+        on screen; the ``caveat`` field carries the wording so every surface says
+        the same thing.
+
+        Structural edges are ignored on purpose. Every entity is contained by
+        its file, so counting that as a reference would find nothing at all.
+
+        Only the kinds in :data:`_REVIEWABLE_TYPES` are reported unless one is
+        asked for by name. Nothing is hidden — ``entity_type`` reaches any kind
+        — but a JSON property or a MOCA pipeline segment is never referenced by
+        anything, by construction, so including them turns a list of two real
+        findings into a list of thirty-seven where nobody spots the two.
+        """
+        placeholders = ",".join("?" for _ in _STRUCTURAL_RELATIONS)
+        sql = f"""
+            SELECT {_ENTITY_COLUMNS}
+            FROM entities e
+            LEFT JOIN files f ON f.id = e.source_file_id
+            WHERE e.project_id = ?
+              AND NOT EXISTS (
+                    SELECT 1 FROM relationships r
+                    WHERE r.target_entity_id = e.id
+                      AND r.relation_type NOT IN ({placeholders})
+              )
+        """
+        params: list[Any] = [project_id, *_STRUCTURAL_RELATIONS]
+        if entity_type is not None:
+            sql += " AND e.entity_type = ?"
+            params.append(entity_type.value)
+        else:
+            kinds = ",".join("?" for _ in _REVIEWABLE_TYPES)
+            sql += f" AND e.entity_type IN ({kinds})"
+            params.extend(_REVIEWABLE_TYPES)
+        sql += " ORDER BY e.entity_type, e.normalized_name LIMIT ?"
+        params.append(limit)
+
+        rows = self.connection.execute(sql, params).fetchall()
+        return [EntityHit.of(row).to_dict() for row in rows]
+
+    def orphan_report(
+        self, project_id: str, *, limit: int = 300
+    ) -> dict[str, Any]:
+        """:meth:`orphans` grouped by kind, with the caveat attached."""
+        found = self.orphans(project_id, limit=limit)
+        by_type: dict[str, list[dict[str, Any]]] = {}
+        for hit in found:
+            by_type.setdefault(hit["entity_type"], []).append(hit)
+        return {
+            "total": len(found),
+            "by_type": by_type,
+            "truncated": len(found) >= limit,
+            "caveat": (
+                "Candidatos a revisar, no cosas que se puedan borrar. HANA lee "
+                "el código de forma estática: lo que se invoca dinámicamente, "
+                "desde un planificador, desde otra aplicación o desde fuera de "
+                "la carpeta analizada, no lo ve."
+            ),
+        }
 
     # -- entity-relationship model ------------------------------------------
 

@@ -86,6 +86,11 @@ const QUERY_METHODS: &[&str] = &[
     "query.report_structure",
     "query.freshness",
     "query.impact",
+    "query.orphans",
+    // Reading what a person recorded is a query like any other. *Writing* one
+    // is not, and goes through `set_annotation` / `clear_annotation` below —
+    // this list stays read-only, which is the only thing making it a safeguard.
+    "annotation.list",
 ];
 
 /// Run one read-only query against the knowledge graph.
@@ -107,6 +112,54 @@ pub async fn run_query(
     tauri::async_runtime::spawn_blocking(move || sidecar.request(name, params))
         .await
         .map_err(|error| format!("fallo interno del host: {error}"))?
+}
+
+/// Record a person's verdict on an entity or a relationship.
+///
+/// Its own command rather than a name in `QUERY_METHODS`, because this one
+/// writes. Keeping the passthrough strictly read-only is what makes the
+/// allowlist mean anything.
+#[tauri::command]
+pub async fn set_annotation(
+    state: State<'_, AppState>,
+    project_id: String,
+    target_kind: String,
+    target_id: String,
+    verdict: String,
+    note: Option<String>,
+) -> CommandResult<Value> {
+    call(
+        Arc::clone(&state.sidecar),
+        "annotation.set",
+        json!({
+            "project_id": project_id,
+            "target_kind": target_kind,
+            "target_id": target_id,
+            "verdict": verdict,
+            "note": note,
+        }),
+    )
+    .await
+}
+
+/// Withdraw a verdict.
+#[tauri::command]
+pub async fn clear_annotation(
+    state: State<'_, AppState>,
+    project_id: String,
+    target_kind: String,
+    target_key: String,
+) -> CommandResult<Value> {
+    call(
+        Arc::clone(&state.sidecar),
+        "annotation.clear",
+        json!({
+            "project_id": project_id,
+            "target_kind": target_kind,
+            "target_key": target_key,
+        }),
+    )
+    .await
 }
 
 /// Largest file the viewer will load. Beyond this the editor is useless anyway

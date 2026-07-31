@@ -16,6 +16,7 @@ from ..domain.ids import new_ulid
 from ..domain.models import (
     AnalysisError,
     AnalysisRun,
+    Annotation,
     Entity,
     Evidence,
     FileRecord,
@@ -951,6 +952,190 @@ class SettingsRepository(_Repository):
         )
 
 
+# ---------------------------------------------------------------------------
+# Annotations — the only place a human writes into the graph
+# ---------------------------------------------------------------------------
+class AnnotationRepository(_Repository):
+    """Verdicts a person recorded, and the reapplying that keeps them alive.
+
+    See ``migrations/004_annotations.sql``. The short version: reanalysing a
+    file deletes its relationships and rebuilds them, so a verdict stored on
+    the row itself would vanish. These are stored apart and stamped back on
+    after every run.
+    """
+
+    def set(
+        self,
+        project_id: str,
+        target_kind: str,
+        target_key: str,
+        verdict: str,
+        *,
+        note: str | None = None,
+        author: str | None = None,
+    ) -> Annotation:
+        if target_kind not in ("entity", "relationship"):
+            raise ValueError(f"target_kind desconocido: {target_kind!r}")
+        if verdict not in ("confirmed", "rejected"):
+            raise ValueError(f"verdict desconocido: {verdict!r}")
+
+        now = utc_now()
+        self._execute(
+            """
+            INSERT INTO annotations
+                (id, project_id, target_kind, target_key, verdict, note, author,
+                 created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(project_id, target_kind, target_key)
+            DO UPDATE SET verdict = excluded.verdict,
+                          note = excluded.note,
+                          author = excluded.author,
+                          updated_at = excluded.updated_at
+            """,
+            (
+                new_ulid(),
+                project_id,
+                target_kind,
+                target_key,
+                verdict,
+                note,
+                author,
+                now,
+                now,
+            ),
+        )
+        stored = self.get(project_id, target_kind, target_key)
+        assert stored is not None
+        return stored
+
+    def get(
+        self, project_id: str, target_kind: str, target_key: str
+    ) -> Annotation | None:
+        row = self._execute(
+            """
+            SELECT * FROM annotations
+            WHERE project_id = ? AND target_kind = ? AND target_key = ?
+            """,
+            (project_id, target_kind, target_key),
+        ).fetchone()
+        return Annotation.from_row(row) if row else None
+
+    def clear(self, project_id: str, target_kind: str, target_key: str) -> bool:
+        cursor = self._execute(
+            """
+            DELETE FROM annotations
+            WHERE project_id = ? AND target_kind = ? AND target_key = ?
+            """,
+            (project_id, target_kind, target_key),
+        )
+        return cursor.rowcount > 0
+
+    def for_project(self, project_id: str) -> list[Annotation]:
+        rows = self._execute(
+            "SELECT * FROM annotations WHERE project_id = ? ORDER BY updated_at DESC",
+            (project_id,),
+        ).fetchall()
+        return [Annotation.from_row(row) for row in rows]
+
+    def count(self, project_id: str) -> int:
+        row = self._execute(
+            "SELECT COUNT(*) AS n FROM annotations WHERE project_id = ?",
+            (project_id,),
+        ).fetchone()
+        return int(row["n"])
+
+    def apply_to_project(self, project_id: str) -> int:
+        """Stamp `verification_status = 'manual'` on everything a person judged.
+
+        Run after each analysis. Rows the annotation no longer matches are left
+        alone: an entity that disappeared from the code has nothing to mark, and
+        the annotation waits in case it comes back.
+
+        Only the status is written. Confidence stays as the analyzer left it,
+        because confidence answers "how sure is HANA", and a human verdict is a
+        different fact — it is recorded as one, alongside, rather than dressed up
+        as the machine having become more certain.
+        """
+        marked = self._execute(
+            """
+            UPDATE entities SET verification_status = 'manual', updated_at = ?
+            WHERE project_id = ?
+              AND identity_key IN (
+                    SELECT target_key FROM annotations
+                    WHERE project_id = ? AND target_kind = 'entity'
+              )
+              AND verification_status != 'manual'
+            """,
+            (utc_now(), project_id, project_id),
+        ).rowcount
+
+        marked += self._execute(
+            """
+            UPDATE relationships SET status = 'manual', updated_at = ?
+            WHERE project_id = ?
+              AND id IN (
+                    SELECT r.id
+                    FROM relationships r
+                    JOIN entities s ON s.id = r.source_entity_id
+                    JOIN entities t ON t.id = r.target_entity_id
+                    JOIN annotations a
+                      ON a.project_id = r.project_id
+                     AND a.target_kind = 'relationship'
+                     AND a.target_key =
+                         s.identity_key || '|' || r.relation_type || '|' || t.identity_key
+                    WHERE r.project_id = ?
+              )
+              AND status != 'manual'
+            """,
+            (utc_now(), project_id, project_id),
+        ).rowcount
+        return marked
+
+    def resolved(self, project_id: str) -> list[dict[str, Any]]:
+        """Annotations with the id of whatever they currently point at.
+
+        The id is what the interface keys on, and it is looked up rather than
+        stored: it changes when a file is edited and its entities are rebuilt.
+        ``None`` means the annotation currently matches nothing in the graph —
+        worth showing as such, not worth deleting.
+        """
+        entities = self._execute(
+            """
+            SELECT a.*, e.id AS resolved_id
+            FROM annotations a
+            LEFT JOIN entities e
+              ON e.project_id = a.project_id AND e.identity_key = a.target_key
+            WHERE a.project_id = ? AND a.target_kind = 'entity'
+            """,
+            (project_id,),
+        ).fetchall()
+
+        relationships = self._execute(
+            """
+            SELECT a.*, r.id AS resolved_id
+            FROM annotations a
+            LEFT JOIN relationships r
+              ON r.project_id = a.project_id
+             AND EXISTS (
+                    SELECT 1 FROM entities s, entities t
+                    WHERE s.id = r.source_entity_id AND t.id = r.target_entity_id
+                      AND s.identity_key || '|' || r.relation_type || '|' || t.identity_key
+                          = a.target_key
+             )
+            WHERE a.project_id = ? AND a.target_kind = 'relationship'
+            """,
+            (project_id,),
+        ).fetchall()
+
+        out: list[dict[str, Any]] = []
+        for row in [*entities, *relationships]:
+            payload = Annotation.from_row(row).to_dict()
+            payload["resolved_id"] = row["resolved_id"]
+            out.append(payload)
+        out.sort(key=lambda item: item["updated_at"], reverse=True)
+        return out
+
+
 class Repositories:
     """One handle carrying every repository for a connection."""
 
@@ -965,3 +1150,4 @@ class Repositories:
         self.runs = AnalysisRunRepository(connection)
         self.errors = AnalysisErrorRepository(connection)
         self.settings = SettingsRepository(connection)
+        self.annotations = AnnotationRepository(connection)

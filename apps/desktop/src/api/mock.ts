@@ -11,6 +11,7 @@
 import type {
   AnalysisIssue,
   AnalysisRun,
+  Annotation,
   ChangesResult,
   EngineStatus,
   EntityHit,
@@ -22,6 +23,7 @@ import type {
   ImpactNode,
   ImpactReport,
   Neighborhood,
+  OrphanReport,
   ReportStructure,
   ProgressEvent,
   Project,
@@ -137,6 +139,21 @@ const DEMO_EDGES: GraphEdgeHit[] = [
   edge('E_REPORT', 'REPORT_REFERENCES_IMAGE', 'E_IMAGE', 'reports/Usr-RptInspeccion.jrxml', 41,
     'images/checkboxOn.png'),
 ];
+
+/** Mirrors `_REVIEWABLE_TYPES` in the engine's query layer. */
+const REVIEWABLE_KINDS = new Set<string>([
+  'OracleTable',
+  'OracleView',
+  'OracleColumn',
+  'OracleProcedure',
+  'OracleFunction',
+  'ApexItem',
+]);
+
+const DEMO_ORPHAN_CAVEAT =
+  'Candidatos a revisar, no cosas que se puedan borrar. HANA lee el código de ' +
+  'forma estática: lo que se invoca dinámicamente, desde un planificador, desde ' +
+  'otra aplicación o desde fuera de la carpeta analizada, no lo ve.';
 
 /** Enough real source for the viewer to have something to highlight. */
 const DEMO_SOURCES: Record<string, string> = {
@@ -429,6 +446,71 @@ export class MockEngineClient implements EngineClient {
     return DEMO_EDGES.filter((edge) => edge.source_id === entityId).map((edge) =>
       this.usageOf(edge, entityId),
     );
+  }
+
+  /** Verdicts recorded this session, keyed the way the engine keys them. */
+  private readonly notes = new Map<string, Annotation>();
+
+  async orphans(_projectId: string, limit = 300): Promise<OrphanReport> {
+    const referenced = new Set(
+      DEMO_EDGES.filter(
+        (edge) =>
+          edge.relation_type !== 'FILE_CONTAINS_ENTITY' &&
+          edge.relation_type !== 'ENTITY_DEFINED_IN_FILE',
+      ).map((edge) => edge.target_id),
+    );
+    const found = DEMO_ENTITIES.filter(
+      (entity) =>
+        REVIEWABLE_KINDS.has(entity.entity_type) && !referenced.has(entity.id),
+    ).slice(0, limit);
+
+    const byType: Record<string, EntityHit[]> = {};
+    for (const entity of found) {
+      (byType[entity.entity_type] ??= []).push(entity);
+    }
+    return {
+      total: found.length,
+      by_type: byType,
+      truncated: found.length >= limit,
+      caveat: DEMO_ORPHAN_CAVEAT,
+    };
+  }
+
+  async annotations(projectId: string): Promise<Annotation[]> {
+    return [...this.notes.values()].filter((item) => item.project_id === projectId);
+  }
+
+  async setAnnotation(
+    projectId: string,
+    targetKind: 'entity' | 'relationship',
+    targetId: string,
+    verdict: 'confirmed' | 'rejected',
+    note?: string,
+  ): Promise<Annotation> {
+    const now = new Date().toISOString();
+    const key = `${targetKind}|${targetId}`;
+    const stored: Annotation = {
+      id: `A_${key}`,
+      project_id: projectId,
+      target_kind: targetKind,
+      target_key: targetId,
+      verdict,
+      note: note ?? null,
+      author: null,
+      resolved_id: targetId,
+      created_at: this.notes.get(key)?.created_at ?? now,
+      updated_at: now,
+    };
+    this.notes.set(key, stored);
+    return stored;
+  }
+
+  async clearAnnotation(
+    _projectId: string,
+    targetKind: 'entity' | 'relationship',
+    targetKey: string,
+  ): Promise<void> {
+    this.notes.delete(`${targetKind}|${targetKey}`);
   }
 
   /**

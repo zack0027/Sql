@@ -29,6 +29,7 @@ def project_dir(tmp_path: Path) -> Path:
 
     shutil.copy(FIXTURES / "sql" / "guardar_inspeccion.sql", root / "sql")
     shutil.copy(FIXTURES / "sql" / "consulta_inspecciones.sql", root / "sql")
+    shutil.copy(FIXTURES / "sql" / "pkg_inspeccion.pkb", root / "sql")
     shutil.copy(FIXTURES / "jrxml" / "Usr-RptInspeccion.jrxml", root / "reports")
     shutil.copy(FIXTURES / "moca" / "confirmar_inspeccion.mcmd", root / "moca")
     shutil.copy(FIXTURES / "json" / "apex_inspeccion.json", root / "config")
@@ -66,7 +67,7 @@ class TestTheGraphIsBuilt:
     def test_the_run_completes_without_errors(self, analyzed):
         _, _, run = analyzed
         assert run.status.value == "completed"
-        assert run.files_analyzed == 5
+        assert run.files_analyzed == 6
         assert run.entities_created > 0
         assert run.relationships_created > 0
 
@@ -148,6 +149,28 @@ class TestRelationships:
         ]
         assert "images/checkboxOn.png" in images
 
+    def test_the_call_graph_crosses_files(self, analyzed):
+        """`guardar_inspeccion.sql` calls a routine the package body declares.
+
+        Neither analyzer run saw both files — an analyzer only ever gets one.
+        The two halves meet because a routine declared inside a package and a
+        call that names `pkg_inspeccion.registrar_evento` produce the same
+        identity key.
+        """
+        engine, project, _ = analyzed
+        routine = find(
+            engine, project.id, EntityType.ORACLE_PROCEDURE, "REGISTRAR_EVENTO"
+        )
+        assert routine is not None
+        assert routine.qualified_name == "PKG_INSPECCION.REGISTRAR_EVENTO"
+
+        callers = {
+            engine.repos.entities.get(edge.source_entity_id).normalized_name
+            for edge in engine.repos.relationships.incoming(routine.id)
+            if edge.relation_type is RelationType.PROCEDURE_CALLS_PROCEDURE
+        }
+        assert {"CERRAR_INSPECCION", "sql/guardar_inspeccion.sql"} <= callers
+
     def test_the_report_includes_its_subreport(self, analyzed):
         engine, project, _ = analyzed
         report = find(
@@ -221,6 +244,24 @@ class TestIncrementalWithAnalyzers:
         assert run.files_analyzed == 0
         assert engine.repos.entities.count(project.id) == before
         assert engine.repos.relationships.count(project.id) == relationships_before
+
+    def test_the_call_graph_survives_a_reanalysis_with_the_same_ids(self, analyzed):
+        """Ids must be stable, or every saved annotation would point at a ghost."""
+        engine, project, _ = analyzed
+
+        def graph() -> set[tuple[str, str]]:
+            rows = engine.connection.execute(
+                "SELECT source_entity_id, target_entity_id FROM relationships"
+                " WHERE project_id = ? AND relation_type = ?",
+                (project.id, RelationType.PROCEDURE_CALLS_PROCEDURE.value),
+            ).fetchall()
+            return {(row["source_entity_id"], row["target_entity_id"]) for row in rows}
+
+        before = graph()
+        assert before
+
+        engine.analyze_project(project.id)
+        assert graph() == before
 
     def test_editing_a_file_updates_only_its_knowledge(self, analyzed, project_dir):
         engine, project, _ = analyzed

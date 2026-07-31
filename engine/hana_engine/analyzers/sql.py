@@ -18,6 +18,7 @@ qualified name, an INSERT column list or an UPDATE SET clause.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from ..domain.analysis import (
     AnalysisContext,
@@ -27,6 +28,7 @@ from ..domain.analysis import (
     RelationshipDraft,
 )
 from ..domain.confidence import CONFIRMED
+from ..domain.naming import normalize_name
 from ..domain.types import EntityType, RelationType
 from .sqltext import (
     IDENTIFIER,
@@ -64,6 +66,12 @@ _BUILTIN_PACKAGES = frozenset(
     }
 )
 
+#: Oracle's old outer-join marker, `r.prtnum(+)`, is character-for-character a
+#: qualified call. Nothing but a `+` ever sits inside those parentheses.
+_OUTER_JOIN_MARKER = re.compile(r"\s*\+\s*\)")
+
+_ROUTINE_TYPES = frozenset({EntityType.ORACLE_PROCEDURE, EntityType.ORACLE_FUNCTION})
+
 #: `insert into T (a, b, c)` — the column list.
 _INSERT_COLUMNS = re.compile(
     rf"\binsert\s+into\s+({QUALIFIED})\s*\(([^)]*)\)", re.IGNORECASE
@@ -82,21 +90,29 @@ class SqlAnalyzer(Analyzer):
         ".trg", ".spc", ".bdy", ".vw",
     )
     priority = 50
+    #: 3 — learned the call graph: which routine calls which, and from where.
     #: 2 — learned join conditions (table-to-table links) and comma-separated
     #: FROM lists, the old-style join.
-    version = 2
+    version = 3
 
     def analyze(self, context: AnalysisContext) -> AnalysisResult:
         result = AnalysisResult()
         cleaned = blank_noise(context.content)
         excluded = cte_names(cleaned)
 
-        self._collect_declarations(context, cleaned, result)
-        self._collect_calls(context, cleaned, result)
+        declared = self._collect_declarations(context, cleaned, result)
 
+        # Statements are resolved before calls because a call can sit inside
+        # one — `select pkg.total(x) from dual` — and then the query is the
+        # honest caller.
         statements = find_statements(cleaned)
+        analysed: list[_AnalysedStatement] = []
         for ordinal, statement in enumerate(statements, start=1):
-            self._collect_statement(context, statement, ordinal, excluded, result)
+            analysed.append(
+                self._collect_statement(context, statement, ordinal, excluded, result)
+            )
+
+        self._collect_calls(context, cleaned, declared, analysed, result)
 
         result.metadata["sql_statements"] = len(statements)
         return result
@@ -110,10 +126,10 @@ class SqlAnalyzer(Analyzer):
         ordinal: int,
         excluded: set[str],
         result: AnalysisResult,
-    ) -> None:
+    ) -> _AnalysedStatement:
         tables = table_references(statement, excluded)
         if not tables:
-            return
+            return _AnalysedStatement(statement, None, {})
 
         span = context.span_of_offsets(statement.start, statement.end)
         query = EntityDraft(
@@ -170,6 +186,7 @@ class SqlAnalyzer(Analyzer):
             context, statement, query, by_qualifier, written_table, result
         )
         self._collect_joins(context, statement, by_qualifier, result)
+        return _AnalysedStatement(statement, query, by_qualifier)
 
     def _collect_joins(
         self,
@@ -294,88 +311,327 @@ class SqlAnalyzer(Analyzer):
 
     def _collect_declarations(
         self, context: AnalysisContext, cleaned: str, result: AnalysisResult
-    ) -> None:
-        for pattern, entity_type in (
-            (_PACKAGE, EntityType.ORACLE_PACKAGE),
-            (_PROCEDURE, EntityType.ORACLE_PROCEDURE),
-            (_FUNCTION, EntityType.ORACLE_FUNCTION),
-        ):
-            for match in pattern.finditer(cleaned):
-                schema, name = split_schema(match.group(1))
-                if not name:
-                    continue
-                span = context.span_of_offsets(match.start(1), match.start(1))
-                draft = EntityDraft(
-                    entity_type,
-                    name,
+    ) -> list[_Declared]:
+        declared: list[_Declared] = []
+
+        for declaration in _find_declarations(cleaned):
+            span = context.span_of_offsets(
+                declaration.name_offset, declaration.name_offset
+            )
+            draft = EntityDraft(
+                declaration.entity_type,
+                declaration.name,
+                span=span,
+                schema=declaration.schema,
+                container=declaration.container,
+                qualified_name=declaration.qualified_name,
+                evidence_snippet=context.snippet(span),
+                metadata={"declared_in": context.relative_path},
+            )
+            result.entities.append(draft)
+            result.relationships.append(
+                RelationshipDraft(
+                    source_ref=draft.ref,
+                    relation_type=RelationType.ENTITY_DEFINED_IN_FILE,
+                    target_ref=_file_ref(context),
                     span=span,
-                    schema=schema,
-                    qualified_name=f"{schema}.{name}" if schema else None,
                     evidence_snippet=context.snippet(span),
-                    metadata={"declared_in": context.relative_path},
+                    confidence=CONFIRMED,
                 )
-                result.entities.append(draft)
-                result.relationships.append(
-                    RelationshipDraft(
-                        source_ref=draft.ref,
-                        relation_type=RelationType.ENTITY_DEFINED_IN_FILE,
-                        target_ref=_file_ref(context),
-                        span=span,
-                        evidence_snippet=context.snippet(span),
-                        confidence=CONFIRMED,
-                    )
-                )
+            )
+            declared.append(_Declared(declaration, draft))
+
+        return declared
 
     def _collect_calls(
-        self, context: AnalysisContext, cleaned: str, result: AnalysisResult
+        self,
+        context: AnalysisContext,
+        cleaned: str,
+        declared: list[_Declared],
+        analysed: list[_AnalysedStatement],
+        result: AnalysisResult,
     ) -> None:
-        declared = {
-            match.group(1).upper()
-            for pattern in (_PACKAGE, _PROCEDURE, _FUNCTION)
-            for match in pattern.finditer(cleaned)
-        }
+        """Record who calls what.
+
+        The edge that matters is caller → called. A package listing a routine
+        is containment, not a call, and answering "what breaks if I change
+        this?" with a containment edge would name the package and stop there.
+
+        Only qualified calls are reported. A bare `foo(...)` is far more often
+        a built-in or a local variable, and there is no way from one file to
+        tell which — inventing the edge would put a false claim in the graph.
+        """
+        regions = _routine_regions(declared, len(cleaned))
+        declaration_spans = [
+            (item.declaration.start, item.declaration.end) for item in declared
+        ]
+        local_packages, local_routines = _local_index(declared)
 
         for match in _QUALIFIED_CALL.finditer(cleaned):
             package = unquote(match.group(1))
             routine = unquote(match.group(2))
             if package.upper() in _BUILTIN_PACKAGES:
                 continue
-            # `t.column(...)` is not a call; a qualifier that matched a
-            # declaration in this file is the package we are inside of.
-            if routine.upper() in declared:
+            # A qualified declaration — `create procedure wms.registrar(...)` —
+            # is character-for-character a call. It is a definition, not a use.
+            if any(start <= match.start() < end for start, end in declaration_spans):
+                continue
+            if _OUTER_JOIN_MARKER.match(cleaned, match.end()):
+                continue
+            if _is_column_of_a_table(match.start(), package, analysed):
                 continue
 
             span = context.span_of_offsets(match.start(1), match.end(2))
-            package_draft = EntityDraft(
-                EntityType.ORACLE_PACKAGE,
-                package,
-                span=span,
-                evidence_snippet=context.snippet(span),
-            )
-            routine_draft = EntityDraft(
-                EntityType.ORACLE_PROCEDURE,
-                routine,
-                span=span,
-                container=package.upper(),
-                qualified_name=f"{package.upper()}.{routine.upper()}",
-                evidence_snippet=context.snippet(span),
-            )
-            result.entities.extend([package_draft, routine_draft])
+            snippet = context.snippet(span)
+
+            package_draft = local_packages.get(package.upper())
+            if package_draft is None:
+                package_draft = EntityDraft(
+                    EntityType.ORACLE_PACKAGE,
+                    package,
+                    span=span,
+                    evidence_snippet=snippet,
+                )
+                result.entities.append(package_draft)
+
+            # Within this file we know whether the target is a procedure or a
+            # function, so we say so. From another file we cannot tell, and a
+            # call site never reveals it — so it is recorded as a procedure and
+            # the metadata says the kind was not established.
+            routine_draft = local_routines.get((package.upper(), routine.upper()))
+            declared_here = routine_draft is not None
+            if routine_draft is None:
+                routine_draft = EntityDraft(
+                    EntityType.ORACLE_PROCEDURE,
+                    routine,
+                    span=span,
+                    container=package.upper(),
+                    qualified_name=f"{package.upper()}.{routine.upper()}",
+                    evidence_snippet=snippet,
+                    metadata={"routine_kind": "unknown"},
+                )
+                result.entities.append(routine_draft)
+
             result.relationships.append(
                 RelationshipDraft(
                     source_ref=package_draft.ref,
                     relation_type=RelationType.ENTITY_DEPENDS_ON_ENTITY,
                     target_ref=routine_draft.ref,
                     span=span,
-                    evidence_snippet=context.snippet(span),
+                    evidence_snippet=snippet,
                     confidence=CONFIRMED,
                 )
             )
 
+            caller_ref, caller_kind = _caller_at(
+                match.start(), regions, analysed, context
+            )
+            if caller_ref == routine_draft.ref:
+                # Direct recursion. True, but an edge from a thing to itself
+                # adds nothing to an impact answer and draws a loop on every
+                # diagram.
+                continue
+
+            result.relationships.append(
+                RelationshipDraft(
+                    source_ref=caller_ref,
+                    relation_type=RelationType.PROCEDURE_CALLS_PROCEDURE,
+                    target_ref=routine_draft.ref,
+                    span=span,
+                    evidence_snippet=snippet,
+                    confidence=CONFIRMED,
+                    metadata={
+                        "caller_kind": caller_kind,
+                        "target_declared_in_file": declared_here,
+                    },
+                )
+            )
+
+
+@dataclass(frozen=True)
+class _Declaration:
+    """A PL/SQL declaration, with the stretch of text it occupies."""
+
+    entity_type: EntityType
+    name: str
+    schema: str | None
+    container: str | None
+    name_offset: int
+    start: int
+    end: int
+
+    @property
+    def qualified_name(self) -> str | None:
+        if self.container:
+            return f"{self.container}.{normalize_name(self.name, self.entity_type)}"
+        return f"{self.schema}.{self.name}" if self.schema else None
+
+
+@dataclass(frozen=True)
+class _Declared:
+    """A declaration paired with the draft that was emitted for it."""
+
+    declaration: _Declaration
+    draft: EntityDraft
+
+
+@dataclass(frozen=True)
+class _AnalysedStatement:
+    """A statement, the query entity it produced, and its table qualifiers.
+
+    ``query`` is None when the statement named no table, which happens for
+    `select pkg.total(x) from dual` — worth knowing, because then the file is
+    the only honest caller left.
+    """
+
+    statement: Statement
+    query: EntityDraft | None
+    by_qualifier: dict[str, EntityDraft]
+
+
+def _find_declarations(cleaned: str) -> list[_Declaration]:
+    """Every package, procedure and function declared in the file, in order.
+
+    A routine's ``container`` is the package it sits inside, which is what lets
+    `procedure registrar_evento` in a package body and a call to
+    `pkg_inspeccion.registrar_evento` elsewhere resolve to the same entity.
+    Without it the two would be different rows and the call graph would have a
+    hole exactly where the interesting edges are.
+    """
+    packages: list[tuple[int, str]] = []
+    found: list[_Declaration] = []
+
+    for match in _PACKAGE.finditer(cleaned):
+        schema, name = split_schema(match.group(1))
+        if not name:
+            continue
+        normalized = normalize_name(name, EntityType.ORACLE_PACKAGE)
+        packages.append((match.start(), normalized))
+        found.append(
+            _Declaration(
+                EntityType.ORACLE_PACKAGE,
+                name,
+                schema,
+                None,
+                match.start(1),
+                match.start(),
+                match.end(),
+            )
+        )
+
+    packages.sort()
+
+    for pattern, entity_type in (
+        (_PROCEDURE, EntityType.ORACLE_PROCEDURE),
+        (_FUNCTION, EntityType.ORACLE_FUNCTION),
+    ):
+        for match in pattern.finditer(cleaned):
+            schema, name = split_schema(match.group(1))
+            if not name:
+                continue
+            found.append(
+                _Declaration(
+                    entity_type,
+                    name,
+                    schema,
+                    _enclosing_package(packages, match.start()),
+                    match.start(1),
+                    match.start(),
+                    match.end(),
+                )
+            )
+
+    found.sort(key=lambda declaration: declaration.start)
+    return found
+
+
+def _enclosing_package(packages: list[tuple[int, str]], offset: int) -> str | None:
+    """The package a routine at ``offset`` belongs to, if any."""
+    enclosing = None
+    for start, name in packages:
+        if start < offset:
+            enclosing = name
+        else:
+            break
+    return enclosing
+
+
+def _routine_regions(
+    declared: list[_Declared], total: int
+) -> list[tuple[int, int, EntityDraft]]:
+    """Half-open ranges of text owned by each routine.
+
+    A routine runs until the next one is declared. That is approximate — the
+    gap between `end pkg_a;` and the next `procedure` nominally belongs to
+    neither — but nothing is called there, and a real PL/SQL parser is a far
+    larger commitment than the question warrants.
+    """
+    routines = [
+        item for item in declared if item.declaration.entity_type in _ROUTINE_TYPES
+    ]
+    regions: list[tuple[int, int, EntityDraft]] = []
+    for index, item in enumerate(routines):
+        nxt = index + 1
+        following = routines[nxt].declaration.start if nxt < len(routines) else total
+        regions.append((item.declaration.start, following, item.draft))
+    return regions
+
+
+def _local_index(
+    declared: list[_Declared],
+) -> tuple[dict[str, EntityDraft], dict[tuple[str, str], EntityDraft]]:
+    """Declarations of this file, keyed the way a call site names them."""
+    packages: dict[str, EntityDraft] = {}
+    routines: dict[tuple[str, str], EntityDraft] = {}
+    for item in declared:
+        draft = item.draft
+        if draft.entity_type is EntityType.ORACLE_PACKAGE:
+            packages.setdefault(draft.normalized_name, draft)
+        elif draft.entity_type in _ROUTINE_TYPES and draft.container:
+            routines.setdefault((draft.container, draft.normalized_name), draft)
+    return packages, routines
+
+
+def _is_column_of_a_table(
+    offset: int, qualifier: str, analysed: list[_AnalysedStatement]
+) -> bool:
+    """True when `x.y(` is a column of a table in the surrounding statement.
+
+    Inside a query, a qualifier that names one of its own tables or aliases is
+    a column reference, not a package.
+    """
+    for item in analysed:
+        if item.statement.start <= offset < item.statement.end:
+            return qualifier.upper() in item.by_qualifier
+    return False
+
+
+def _caller_at(
+    offset: int,
+    regions: list[tuple[int, int, EntityDraft]],
+    analysed: list[_AnalysedStatement],
+    context: AnalysisContext,
+) -> tuple[str, str]:
+    """Who is making the call at ``offset``, and what kind of thing it is.
+
+    In order of preference: the routine that encloses it, the query it sits
+    inside, and failing both the file itself. The last case is the loose body
+    of a script or an anonymous block — real code with a real caller, so
+    reporting no caller at all would lose the edge, and inventing a routine
+    would put a thing in the graph that does not exist.
+    """
+    for start, end, draft in regions:
+        if start <= offset < end:
+            return draft.ref, "routine"
+    for item in analysed:
+        if item.query is not None and item.statement.start <= offset < item.statement.end:
+            return item.query.ref, "query"
+    return _file_ref(context), "file"
+
 
 def _file_ref(context: AnalysisContext) -> str:
     """Identity key of the File entity the pipeline creates for this file."""
-    from ..domain.naming import entity_identity_key, normalize_name
+    from ..domain.naming import entity_identity_key
 
     return entity_identity_key(
         EntityType.FILE, normalize_name(context.relative_path, EntityType.FILE)

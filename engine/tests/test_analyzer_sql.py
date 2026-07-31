@@ -233,6 +233,159 @@ class TestPlSql:
         assert "DBMS_OUTPUT" not in names(result, EntityType.ORACLE_PACKAGE)
 
 
+def calls(result) -> set[tuple[str, str]]:
+    """(caller, called) pairs, by normalised name, from PROCEDURE_CALLS_PROCEDURE."""
+    by_ref = {draft.ref: draft for draft in result.entities}
+
+    def label(ref: str) -> str:
+        draft = by_ref.get(ref)
+        return draft.normalized_name if draft else ref
+
+    return {
+        (label(edge.source_ref), label(edge.target_ref))
+        for edge in result.relationships
+        if edge.relation_type is RelationType.PROCEDURE_CALLS_PROCEDURE
+    }
+
+
+class TestCallGraph:
+    """Who calls what — the edge that answers "what breaks if I change this?"."""
+
+    def test_a_routine_calls_its_sibling(self):
+        result = analyze(
+            "create or replace package body pkg_x as\n"
+            "  procedure segundo is begin null; end;\n"
+            "  procedure primero is begin pkg_x.segundo(1); end;\n"
+            "end;",
+            path="sql/pkg_x.pkb",
+        )
+        assert ("PRIMERO", "SEGUNDO") in calls(result)
+
+    def test_the_caller_is_the_enclosing_routine_not_the_package(self):
+        """A package listing a routine is containment; only a call is a call."""
+        result = analyze(
+            "create or replace package body pkg_x as\n"
+            "  procedure primero is begin pkg_otro.hacer(1); end;\n"
+            "end;",
+            path="sql/pkg_x.pkb",
+        )
+        assert ("PRIMERO", "HACER") in calls(result)
+        assert ("PKG_X", "HACER") not in calls(result)
+
+    def test_a_call_to_an_external_package(self):
+        result = analyze("begin pkg_auditoria.anotar(1); end;")
+        assert any(called == "ANOTAR" for _, called in calls(result))
+
+    def test_builtins_are_not_calls(self):
+        result = analyze("begin dbms_output.put_line('hola'); end;")
+        assert calls(result) == set()
+
+    def test_a_column_with_the_outer_join_operator_is_not_a_call(self):
+        """`e.prtnum(+)` is character-for-character a qualified call."""
+        result = analyze(
+            "select 1 from uc_insp_ent e, prtmst p where p.prtnum = e.prtnum(+)"
+        )
+        assert calls(result) == set()
+
+    def test_a_column_of_a_table_in_the_statement_is_not_a_call(self):
+        result = analyze("select e.numctl(1) from uc_insp_ent e")
+        assert calls(result) == set()
+
+    def test_a_call_in_an_anonymous_block_is_attributed_to_the_file(self):
+        """Real code with a real caller — but no routine to name, so the file."""
+        result = analyze(
+            "begin pkg_inspeccion.registrar_evento(1); end;",
+            path="sql/suelto.sql",
+        )
+        callers = {caller for caller, _ in calls(result)}
+        assert callers == {"File|||sql/suelto.sql"}
+        edge = next(
+            edge
+            for edge in result.relationships
+            if edge.relation_type is RelationType.PROCEDURE_CALLS_PROCEDURE
+        )
+        assert edge.metadata["caller_kind"] == "file"
+
+    def test_a_call_inside_a_query_is_attributed_to_the_query(self):
+        result = analyze("select pkg_calc.total(e.numctl) from uc_insp_ent e")
+        edge = next(
+            edge
+            for edge in result.relationships
+            if edge.relation_type is RelationType.PROCEDURE_CALLS_PROCEDURE
+        )
+        assert edge.metadata["caller_kind"] == "query"
+
+    def test_a_qualified_declaration_is_not_a_call(self):
+        """`create procedure wms.registrar(...)` defines; it does not use."""
+        result = analyze(
+            "create or replace procedure wms.registrar(p_id number) is\n"
+            "begin null; end;"
+        )
+        assert calls(result) == set()
+
+    def test_an_unqualified_call_is_not_reported(self):
+        """`foo(...)` is far more often a built-in or a local variable."""
+        result = analyze("begin calcular_total(1); end;")
+        assert calls(result) == set()
+
+    def test_a_routine_in_a_package_is_scoped_by_it(self):
+        """What lets a declaration and a call elsewhere be the same entity."""
+        result = analyze(
+            "create or replace package body pkg_x as\n"
+            "  procedure hacer is begin null; end;\n"
+            "end;",
+            path="sql/pkg_x.pkb",
+        )
+        routine = next(
+            draft
+            for draft in result.entities
+            if draft.entity_type is EntityType.ORACLE_PROCEDURE
+        )
+        assert routine.container == "PKG_X"
+        assert routine.qualified_name == "PKG_X.HACER"
+
+    def test_a_call_to_a_local_function_keeps_it_a_function(self):
+        """A call site cannot reveal the kind, but this file already declared it."""
+        result = analyze(
+            "create or replace package body pkg_x as\n"
+            "  function total return number is begin return 1; end;\n"
+            "  procedure usar is begin dbms_output.put_line(pkg_x.total); end;\n"
+            "  procedure otra is l number; begin l := pkg_x.total(1); end;\n"
+            "end;",
+            path="sql/pkg_x.pkb",
+        )
+        kinds = {
+            draft.entity_type
+            for draft in result.entities
+            if draft.normalized_name == "TOTAL"
+        }
+        assert kinds == {EntityType.ORACLE_FUNCTION}
+
+    def test_direct_recursion_does_not_produce_a_self_edge(self):
+        result = analyze(
+            "create or replace package body pkg_x as\n"
+            "  procedure bajar(p number) is begin pkg_x.bajar(p - 1); end;\n"
+            "end;",
+            path="sql/pkg_x.pkb",
+        )
+        assert calls(result) == set()
+
+    def test_the_package_still_contains_its_routines(self):
+        """Containment is true and useful; it is just not a call."""
+        result = analyze("begin pkg_auditoria.anotar(1); end;")
+        assert any(
+            edge.relation_type is RelationType.ENTITY_DEPENDS_ON_ENTITY
+            for edge in result.relationships
+        )
+
+    def test_every_call_is_confirmed_by_direct_syntax(self):
+        result = analyze("begin pkg_auditoria.anotar(1); end;")
+        for edge in result.relationships:
+            if edge.relation_type is RelationType.PROCEDURE_CALLS_PROCEDURE:
+                assert edge.confidence == 1.0
+                assert edge.evidence_snippet
+
+
 class TestRealFixtures:
     def test_guardar_inspeccion(self):
         sql = (FIXTURES / "guardar_inspeccion.sql").read_text(encoding="utf-8")
@@ -242,6 +395,20 @@ class TestRealFixtures:
         columns = names(result, EntityType.ORACLE_COLUMN)
         assert {"NUMCTL", "PRTNUM", "MUESTRA_SIZE_VER", "NETWGT"} <= columns
         assert "PKG_INSPECCION" in names(result, EntityType.ORACLE_PACKAGE)
+
+    def test_pkg_inspeccion_call_graph(self):
+        sql = (FIXTURES / "pkg_inspeccion.pkb").read_text(encoding="utf-8")
+        result = analyze(sql, path="sql/pkg_inspeccion.pkb")
+
+        assert calls(result) == {
+            ("CERRAR_INSPECCION", "TOTAL_NETO"),
+            ("CERRAR_INSPECCION", "REGISTRAR_EVENTO"),
+            ("CERRAR_INSPECCION", "ANOTAR"),
+        }
+        # The body also writes tables, and that must keep working.
+        assert {"UC_INSP_LOG", "UC_INSP_ENT", "UC_INSP_RSM"} <= targets(
+            result, RelationType.QUERY_WRITES_TABLE
+        )
 
     def test_consulta_inspecciones(self):
         sql = (FIXTURES / "consulta_inspecciones.sql").read_text(encoding="utf-8")

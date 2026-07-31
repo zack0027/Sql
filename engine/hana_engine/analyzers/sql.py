@@ -26,6 +26,7 @@ from ..domain.analysis import (
     Analyzer,
     EntityDraft,
     RelationshipDraft,
+    SourceSpan,
 )
 from ..domain.confidence import CONFIRMED
 from ..domain.naming import normalize_name
@@ -90,10 +91,12 @@ class SqlAnalyzer(Analyzer):
         ".trg", ".spc", ".bdy", ".vw",
     )
     priority = 50
+    #: 4 — records which table a column belongs to as an edge, not only as a
+    #: container, so impact can walk from a column to what reads its table.
     #: 3 — learned the call graph: which routine calls which, and from where.
     #: 2 — learned join conditions (table-to-table links) and comma-separated
     #: FROM lists, the old-style join.
-    version = 3
+    version = 4
 
     def analyze(self, context: AnalysisContext) -> AnalysisResult:
         result = AnalysisResult()
@@ -272,6 +275,31 @@ class SqlAnalyzer(Analyzer):
                     target_ref=column.ref,
                     span=span,
                     evidence_snippet=context.snippet(span),
+                    confidence=CONFIRMED,
+                )
+            )
+            # The owner was already established — it is what `container` holds,
+            # and it only ever comes from explicit syntax. Recording it as an
+            # edge states nothing new; it makes the fact walkable, which is what
+            # lets a column's impact reach the reports that read its table.
+            #
+            # The evidence spans from the table reference to the column, because
+            # neither line proves the ownership alone: `update uc_insp_ent e`
+            # says what `e` is, and `set e.estado = ...` says what belongs to it.
+            # Citing only the second would open a line that never names the table.
+            ownership = span
+            if owner.span is not None:
+                ownership = SourceSpan(
+                    min(owner.span.start_line, span.start_line),
+                    max(owner.span.end_line, span.end_line),
+                )
+            result.relationships.append(
+                RelationshipDraft(
+                    source_ref=owner.ref,
+                    relation_type=RelationType.TABLE_HAS_COLUMN,
+                    target_ref=column.ref,
+                    span=ownership,
+                    evidence_snippet=context.snippet(ownership),
                     confidence=CONFIRMED,
                 )
             )

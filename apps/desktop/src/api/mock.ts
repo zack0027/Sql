@@ -19,6 +19,8 @@ import type {
   FileTreeItem,
   Freshness,
   GraphEdgeHit,
+  ImpactNode,
+  ImpactReport,
   Neighborhood,
   ReportStructure,
   ProgressEvent,
@@ -123,6 +125,9 @@ const DEMO_EDGES: GraphEdgeHit[] = [
     'insert into uc_insp_ent ('),
   edge('E_QUERY', 'QUERY_USES_COLUMN', 'E_COLUMN', 'sql/guardar_inspeccion.sql', 18,
     'muestra_size_ver'),
+  // What lets a column's impact reach the report that reads its table.
+  edge('E_TABLE', 'TABLE_HAS_COLUMN', 'E_COLUMN', 'sql/guardar_inspeccion.sql', 11,
+    'insert into uc_insp_ent (... muestra_size_ver)'),
   edge('E_ITEM', 'APEX_ITEM_MAPS_TO_COLUMN', 'E_COLUMN', 'sql/guardar_inspeccion.sql', 18,
     'insert into uc_insp_ent (... muestra_size_ver) values (... :P117_MUESTRA_SIZE_VER)'),
   edge('E_PAGE', 'APEX_PAGE_CONTAINS_ITEM', 'E_ITEM', 'sql/guardar_inspeccion.sql', 21,
@@ -424,6 +429,82 @@ export class MockEngineClient implements EngineClient {
     return DEMO_EDGES.filter((edge) => edge.source_id === entityId).map((edge) =>
       this.usageOf(edge, entityId),
     );
+  }
+
+  /**
+   * The same breadth-first walk the engine does, over the demo edges.
+   *
+   * Reimplemented rather than faked with a fixed list, because the panel it
+   * feeds is judged on depth, path and degraded confidence — a canned answer
+   * would let all three break without a test noticing.
+   */
+  async impact(
+    entityId: string,
+    options: {
+      depth?: number;
+      direction?: 'incoming' | 'outgoing';
+      includeContainment?: boolean;
+    } = {},
+  ): Promise<ImpactReport | null> {
+    const root = DEMO_ENTITIES.find((item) => item.id === entityId);
+    if (!root) return null;
+
+    const depth = options.depth ?? 4;
+    const backwards = (options.direction ?? 'incoming') === 'incoming';
+    const nodes: ImpactNode[] = [];
+    const seen = new Set<string>([entityId]);
+    let frontier: { id: string; path: string[]; worst: number; soft: boolean }[] = [
+      { id: entityId, path: [entityId], worst: 1, soft: false },
+    ];
+
+    for (let level = 1; level <= depth && frontier.length; level += 1) {
+      const next: typeof frontier = [];
+      for (const current of frontier) {
+        const edges = DEMO_EDGES.filter(
+          (edge) =>
+            (backwards ? edge.target_id : edge.source_id) === current.id &&
+            (options.includeContainment ||
+              (edge.relation_type !== 'FILE_CONTAINS_ENTITY' &&
+                edge.relation_type !== 'ENTITY_DEFINED_IN_FILE')),
+        );
+        for (const edge of edges) {
+          const otherId = backwards ? edge.source_id : edge.target_id;
+          if (seen.has(otherId)) continue;
+          const entity = DEMO_ENTITIES.find((item) => item.id === otherId);
+          if (!entity) continue;
+          seen.add(otherId);
+          const worst = Math.min(current.worst, edge.confidence);
+          const soft = current.soft || edge.status !== 'confirmed';
+          const path = [...current.path, otherId];
+          nodes.push({
+            entity,
+            depth: level,
+            path,
+            min_confidence: worst,
+            inferred_in_path: soft,
+            relation_type: edge.relation_type,
+            evidence: edge.evidence,
+          });
+          next.push({ id: otherId, path, worst, soft });
+        }
+      }
+      frontier = next;
+    }
+
+    const byType: Record<string, number> = {};
+    for (const node of nodes) {
+      byType[node.entity.entity_type] = (byType[node.entity.entity_type] ?? 0) + 1;
+    }
+
+    return {
+      root,
+      nodes,
+      truncated: false,
+      max_depth_reached: nodes.reduce((most, node) => Math.max(most, node.depth), 0),
+      by_type: byType,
+      direction: options.direction ?? 'incoming',
+      include_containment: options.includeContainment ?? false,
+    };
   }
 
   async tablesOfFile(

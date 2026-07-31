@@ -22,6 +22,9 @@ The ten questions the product promises to answer without a language model:
 8. ``changes_since``         — ¿qué cambió desde el análisis anterior?
 9. ``files_with_errors``     — ¿qué archivos presentan errores de análisis?
 10. ``low_confidence``       — ¿qué entidades tienen baja confianza?
+
+And the transitive one, which lives in :mod:`.impact` because it is a graph
+walk rather than a query: ``impact`` — ¿qué se rompe si toco esto?
 """
 
 from __future__ import annotations
@@ -34,6 +37,12 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from ..domain.types import EntityType, RelationType
+from .impact import (
+    DEFAULT_DEPTH,
+    DEFAULT_MAX_NODES,
+    ImpactReport,
+    analyze_impact,
+)
 
 #: Relations that mean "this thing reads that table".
 _READ_RELATIONS = (
@@ -827,6 +836,28 @@ class QueryEngine:
             if edge.source_id in known and edge.target_id in known
         ]
         return result
+
+    # -- ¿Qué se rompe si toco esto? ----------------------------------------
+
+    def impact(
+        self,
+        entity_id: str,
+        *,
+        depth: int = DEFAULT_DEPTH,
+        direction: str = "incoming",
+        include_containment: bool = False,
+        max_nodes: int = DEFAULT_MAX_NODES,
+    ) -> ImpactReport | None:
+        """Everything a change to this entity could reach. See :mod:`.impact`."""
+        return analyze_impact(
+            self.connection,
+            entity_id,
+            depth=depth,
+            direction=direction,
+            include_containment=include_containment,
+            max_nodes=max_nodes,
+            entity_of=self.get,
+        )
 
     # -- internals ----------------------------------------------------------
 

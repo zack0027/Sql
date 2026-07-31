@@ -18,6 +18,7 @@ import type {
   ErModel,
   FileTreeItem,
   Freshness,
+  ImpactReport,
   Neighborhood,
   ReportStructure,
   ProgressEvent,
@@ -54,6 +55,14 @@ export interface EngineClient {
   uses(entityId: string, includeStructural?: boolean): Promise<UsageHit[]>;
   dependents(entityId: string): Promise<UsageHit[]>;
   dependencies(entityId: string): Promise<UsageHit[]>;
+  impact(
+    entityId: string,
+    options?: {
+      depth?: number;
+      direction?: 'incoming' | 'outgoing';
+      includeContainment?: boolean;
+    },
+  ): Promise<ImpactReport | null>;
   tablesOfFile(
     projectId: string,
     relativePath: string,
@@ -191,6 +200,23 @@ class TauriEngineClient implements EngineClient {
 
   dependencies(entityId: string): Promise<UsageHit[]> {
     return this.query('query.dependencies', { entity_id: entityId });
+  }
+
+  /** Transitive impact: everything a change to this entity could reach. */
+  impact(
+    entityId: string,
+    options: {
+      depth?: number;
+      direction?: 'incoming' | 'outgoing';
+      includeContainment?: boolean;
+    } = {},
+  ): Promise<ImpactReport | null> {
+    return this.query('query.impact', {
+      entity_id: entityId,
+      depth: options.depth ?? null,
+      direction: options.direction ?? 'incoming',
+      include_containment: options.includeContainment ?? false,
+    });
   }
 
   tablesOfFile(

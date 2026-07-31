@@ -22,6 +22,7 @@ import type { EntityHit, UsageHit } from '@hana/shared-types';
 import { CodeViewer } from '../components/CodeViewer';
 import { ErDiagram } from '../components/ErDiagram';
 import { GraphCanvas } from '../components/GraphCanvas';
+import { ImpactPanel } from '../components/ImpactPanel';
 import { ReportPreview } from '../components/ReportPreview';
 import {
   buildFileTree,
@@ -173,6 +174,7 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
             {(
               [
                 ['graph', 'Grafo'],
+                ['impact', 'Impacto'],
                 ['er', 'Diagrama ER'],
                 ['report', 'Reporte'],
                 ['code', 'Código'],
@@ -205,6 +207,25 @@ export function ExplorerView({ onBack }: { onBack: () => void }): JSX.Element {
                 if (node) void explorer.selectEntity(node.entity);
               }}
               onExpand={(id) => void explorer.expandNode(id)}
+            />
+          )}
+
+          {explorer.tab === 'impact' && (
+            <ImpactPanel
+              report={explorer.impact}
+              selected={explorer.selected}
+              loading={explorer.loadingImpact}
+              depth={explorer.impactDepth}
+              reverse={explorer.impactReverse}
+              onDepthChange={(value) => explorer.setImpactDepth(value)}
+              onToggleDirection={() => explorer.toggleImpactDirection()}
+              onSelect={(id) => {
+                const node = explorer.impact?.nodes.find(
+                  (item) => item.entity.id === id,
+                );
+                if (node) void explorer.selectEntity(node.entity);
+              }}
+              onOpenEvidence={(path, line) => void explorer.openEvidence(path, line)}
             />
           )}
 

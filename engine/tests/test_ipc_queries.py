@@ -172,6 +172,43 @@ class TestQueriesOverTheWire:
         names = {hit["normalized_name"] for hit in responses["1"]["result"]}
         assert "P117_MUESTRA_SIZE_VER" in names
 
+    def test_impact_travels_over_the_wire(self, served):
+        server, project_id = served
+        resolved = ask(
+            server,
+            [{"id": "1", "method": "query.resolve",
+              "params": {"project_id": project_id,
+                         "name": "UC_INSP_ENT.NETWGT",
+                         "entity_type": "OracleColumn"}}],
+        )["1"]["result"]
+        assert resolved, "no se resolvió la columna"
+
+        responses = ask(
+            server,
+            [{"id": "1", "method": "query.impact",
+              "params": {"entity_id": resolved[0]["id"], "depth": 3}}],
+        )
+        report = responses["1"]["result"]
+        assert report["nodes"]
+        assert report["truncated"] is False
+        # The whole payload the panel needs, including the proof.
+        assert {
+            "entity", "depth", "path", "min_confidence", "inferred_in_path",
+            "relation_type", "evidence",
+        } <= set(report["nodes"][0])
+        assert report["nodes"][0]["evidence"]["file_path"]
+
+    def test_an_impossible_direction_is_refused_by_name(self, served):
+        """A bad argument must not surface as a Python traceback."""
+        server, _ = served
+        responses = ask(
+            server,
+            [{"id": "1", "method": "query.impact",
+              "params": {"entity_id": "x", "direction": "sideways"}}],
+        )
+        assert responses["1"]["ok"] is False
+        assert responses["1"]["error"]["code"] == "invalid_direction"
+
     def test_changes_and_errors_and_review(self, served):
         server, project_id = served
         responses = ask(

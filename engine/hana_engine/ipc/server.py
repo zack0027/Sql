@@ -37,6 +37,7 @@ from ..engine import KnowledgeEngine, ProjectPathError
 from ..indexing.policy import ScanPolicy
 from ..models.provider import get_provider
 from ..pipeline.orchestrator import CancellationToken, ProgressEvent
+from ..query.impact import DEFAULT_DEPTH, DEFAULT_MAX_NODES
 
 PROTOCOL_VERSION = 1
 
@@ -158,6 +159,7 @@ class EngineServer:
             "query.er_model": self._query_er_model,
             "query.report_structure": self._query_report_structure,
             "query.freshness": self._query_freshness,
+            "query.impact": self._query_impact,
         }
 
     # -- lifecycle ----------------------------------------------------------
@@ -458,6 +460,22 @@ class EngineServer:
             entity_type=EntityType(entity_type) if entity_type else None,
         )
         return [hit.to_dict() for hit in hits]
+
+    def _query_impact(self, params: dict[str, Any]) -> dict[str, Any] | None:
+        direction = params.get("direction") or "incoming"
+        if direction not in ("incoming", "outgoing"):
+            raise RpcError(
+                "invalid_direction",
+                f"direction debe ser 'incoming' u 'outgoing', no {direction!r}",
+            )
+        report = self.engine.queries.impact(
+            self._require(params, "entity_id"),
+            depth=int(params.get("depth") or DEFAULT_DEPTH),
+            direction=direction,
+            include_containment=bool(params.get("include_containment")),
+            max_nodes=int(params.get("max_nodes") or DEFAULT_MAX_NODES),
+        )
+        return report.to_dict() if report is not None else None
 
     def _query_reports_using_table(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         hits = self.engine.queries.reports_using_table(

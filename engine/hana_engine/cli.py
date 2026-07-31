@@ -20,6 +20,7 @@ from .engine import KnowledgeEngine, ProjectPathError
 from .indexing.policy import ScanPolicy
 from .indexing.scanner import scan_project
 from .pipeline.orchestrator import ProgressEvent
+from .query.impact import DEFAULT_DEPTH
 
 
 def _print(value: Any, as_json: bool) -> None:
@@ -257,6 +258,57 @@ def command_depends(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
     return 0
 
 
+def command_impact(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
+    entity = _resolve_one(engine, args)
+    if entity is None:
+        return 2
+    report = engine.queries.impact(
+        entity.id,
+        depth=args.depth,
+        direction="outgoing" if args.reverse else "incoming",
+        include_containment=args.containment,
+    )
+    if report is None:
+        print(f"error: no existe la entidad {args.entity!r}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print(report.to_dict(), True)
+        return 0
+
+    question = "de qué depende" if args.reverse else "qué se rompe si cambia"
+    print(f"{entity.name} — {question}:")
+    if not report.nodes:
+        print("  (nada llega hasta aquí)")
+        return 0
+
+    for entity_type, count in sorted(report.by_type.items()):
+        print(f"  {count:>4}  {entity_type}")
+    print()
+
+    for node in report.nodes:
+        evidence = node.evidence
+        where = (
+            f"{evidence['file_path']}:{evidence['start_line']}"
+            if evidence.get("file_path")
+            else "(sin archivo)"
+        )
+        # A path that crosses an inference must never read as certainty.
+        flag = (
+            f"  [inferido {node.min_confidence:.2f}]" if node.inferred_in_path else ""
+        )
+        print(
+            f"  {node.depth}  {node.entity['entity_type']:<18}"
+            f" {node.entity['name']:<34} {where}{flag}"
+        )
+
+    if report.truncated:
+        print(
+            "\n  AVISO: se alcanzó el límite de nodos; esta lista está incompleta.",
+            file=sys.stderr,
+        )
+    return 0
+
+
 def command_tables(args: argparse.Namespace, engine: KnowledgeEngine) -> int:
     written = True if args.writes else (False if args.reads else None)
     hits = engine.queries.tables_of_file(args.project_id, args.file, written=written)
@@ -401,6 +453,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--on", action="store_true", help="invertir: de qué depende ella"
     )
     depends_parser.set_defaults(handler=command_depends)
+
+    impact_parser = subparsers.add_parser(
+        "impact", help="qué se rompe si cambia una entidad (transitivo)"
+    )
+    impact_parser.add_argument("project_id")
+    impact_parser.add_argument("entity", help="nombre o id")
+    impact_parser.add_argument(
+        "--depth", type=int, default=DEFAULT_DEPTH, help="saltos a seguir"
+    )
+    impact_parser.add_argument(
+        "--reverse", action="store_true", help="invertir: de qué depende ella"
+    )
+    impact_parser.add_argument(
+        "--containment",
+        action="store_true",
+        help="seguir también las aristas de contención (arrastra el proyecto entero)",
+    )
+    impact_parser.set_defaults(handler=command_impact)
 
     tables_parser = subparsers.add_parser("tables", help="tablas que toca un archivo")
     tables_parser.add_argument("project_id")

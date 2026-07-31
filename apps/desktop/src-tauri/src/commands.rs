@@ -85,6 +85,7 @@ const QUERY_METHODS: &[&str] = &[
     "query.er_model",
     "query.report_structure",
     "query.freshness",
+    "query.impact",
 ];
 
 /// Run one read-only query against the knowledge graph.

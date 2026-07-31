@@ -7,11 +7,13 @@
  * there was no way to tell the two apart.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { EntityHit, UsageHit } from '@hana/shared-types';
 
-import { erFocusOf } from './explorer';
+import { setClient } from '../api/client';
+import { MockEngineClient } from '../api/mock';
+import { erFocusOf, useExplorerStore } from './explorer';
 
 function entity(id: string, type: EntityHit['entity_type']): EntityHit {
   return {
@@ -98,5 +100,77 @@ describe('erFocusOf', () => {
     expect(
       erFocusOf({ scope: 'selection', selected: null, fileTables: [] }),
     ).toBeNull();
+  });
+});
+
+/**
+ * Impact is the one tab whose answer is a chain rather than a list, so the
+ * things worth pinning down are the chain's length, where it stops, and whether
+ * it passed through a guess on the way.
+ */
+describe('impact', () => {
+  const INITIAL = useExplorerStore.getState();
+
+  beforeEach(() => {
+    useExplorerStore.setState({ ...INITIAL, projectId: 'P' }, true);
+    setClient(new MockEngineClient());
+  });
+
+  async function impactOf(id: string, type: EntityHit['entity_type']) {
+    useExplorerStore.setState({ selected: entity(id, type) });
+    await useExplorerStore.getState().loadImpact();
+    return useExplorerStore.getState().impact;
+  }
+
+  it('reaches the report two hops from a column', async () => {
+    const report = await impactOf('E_COLUMN', 'OracleColumn');
+    const jasper = report!.nodes.find((node) => node.entity.id === 'E_REPORT');
+    expect(jasper?.depth).toBe(2);
+    expect(jasper?.path).toEqual(['E_COLUMN', 'E_TABLE', 'E_REPORT']);
+  });
+
+  it('marks a path that crossed an inference', async () => {
+    const report = await impactOf('E_COLUMN', 'OracleColumn');
+    const page = report!.nodes.find((node) => node.entity.id === 'E_PAGE');
+    expect(page?.inferred_in_path).toBe(true);
+    expect(page?.min_confidence).toBeCloseTo(0.9);
+  });
+
+  it('leaves a fully confirmed path unmarked', async () => {
+    const report = await impactOf('E_COLUMN', 'OracleColumn');
+    const jasper = report!.nodes.find((node) => node.entity.id === 'E_REPORT');
+    expect(jasper?.inferred_in_path).toBe(false);
+    expect(jasper?.min_confidence).toBe(1);
+  });
+
+  it('stops where the depth says', async () => {
+    useExplorerStore.setState({ impactDepth: 1 });
+    const report = await impactOf('E_COLUMN', 'OracleColumn');
+    expect(report!.nodes.every((node) => node.depth === 1)).toBe(true);
+    expect(report!.nodes.some((node) => node.entity.id === 'E_REPORT')).toBe(false);
+  });
+
+  it('asks the other question when reversed', async () => {
+    useExplorerStore.setState({ impactReverse: true });
+    const report = await impactOf('E_REPORT', 'JasperReport');
+    const ids = report!.nodes.map((node) => node.entity.id);
+    expect(ids).toContain('E_TABLE');
+  });
+
+  it('groups the results by kind', async () => {
+    const report = await impactOf('E_COLUMN', 'OracleColumn');
+    expect(report!.by_type.JasperReport).toBe(1);
+    expect(report!.by_type.ApexPage).toBe(1);
+  });
+
+  it('has nothing to say when nothing is selected', async () => {
+    useExplorerStore.setState({ selected: null, impact: null });
+    await useExplorerStore.getState().loadImpact();
+    expect(useExplorerStore.getState().impact).toBeNull();
+  });
+
+  it('never lists the entity you asked about', async () => {
+    const report = await impactOf('E_COLUMN', 'OracleColumn');
+    expect(report!.nodes.some((node) => node.entity.id === 'E_COLUMN')).toBe(false);
   });
 });

@@ -21,6 +21,7 @@ import type {
   ErModel,
   FileTreeItem,
   Freshness,
+  ImpactReport,
   Neighborhood,
   ReportStructure,
   UsageHit,
@@ -30,6 +31,7 @@ import { getClient } from '../api/client';
 
 export type CenterTab =
   | 'graph'
+  | 'impact'
   | 'er'
   | 'report'
   | 'code'
@@ -69,6 +71,13 @@ interface ExplorerState {
   issues: AnalysisIssue[];
   changes: ChangesResult | null;
 
+  /** Transitive impact of the selection, and which entity it was computed for. */
+  impact: ImpactReport | null;
+  impactOf: string | null;
+  impactDepth: number;
+  impactReverse: boolean;
+  loadingImpact: boolean;
+
   er: ErModel | null;
   /** Table the diagram is centred on; null when it shows the whole project. */
   erFocus: string | null;
@@ -94,6 +103,9 @@ interface ExplorerState {
   reset: () => void;
   setTab: (tab: CenterTab) => void;
   setScope: (scope: Scope) => void;
+  loadImpact: () => Promise<void>;
+  setImpactDepth: (depth: number) => void;
+  toggleImpactDirection: () => void;
   loadEr: () => Promise<void>;
   loadReport: (entityId: string) => Promise<void>;
   search: (text: string) => Promise<void>;
@@ -198,6 +210,11 @@ const EMPTY = {
   highlight: null,
   issues: [] as AnalysisIssue[],
   changes: null,
+  impact: null,
+  impactOf: null,
+  impactDepth: 4,
+  impactReverse: false,
+  loadingImpact: false,
   er: null,
   erFocus: null,
   loadingEr: false,
@@ -238,6 +255,43 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     // Fetched only when opened: expensive enough to be worth the delay, and
     // cheap enough to keep afterwards.
     if (tab === 'er' && !get().er && !get().loadingEr) void get().loadEr();
+    if (tab === 'impact' && get().impactOf !== get().selected?.id) {
+      void get().loadImpact();
+    }
+  },
+
+  async loadImpact() {
+    const entity = get().selected;
+    if (!entity) {
+      set({ impact: null, impactOf: null });
+      return;
+    }
+    const target = entity.id;
+    set({ loadingImpact: true, impactOf: target });
+    try {
+      const client = await getClient();
+      const report = await client.impact(target, {
+        depth: get().impactDepth,
+        direction: get().impactReverse ? 'outgoing' : 'incoming',
+      });
+      // A slower earlier request must not overwrite a newer selection's answer.
+      if (get().impactOf === target) set({ impact: report });
+    } catch (error) {
+      set({ error: describe(error), impact: null });
+    } finally {
+      set({ loadingImpact: false });
+    }
+  },
+
+  setImpactDepth(depth: number) {
+    if (get().impactDepth === depth) return;
+    set({ impactDepth: depth });
+    if (get().tab === 'impact') void get().loadImpact();
+  },
+
+  toggleImpactDirection() {
+    set({ impactReverse: !get().impactReverse });
+    if (get().tab === 'impact') void get().loadImpact();
   },
 
   setScope(scope: Scope) {
@@ -330,8 +384,9 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       // is opened at the line where the entity is defined, so the code tab is
       // showing the same thing the graph is.
       if (get().scope === 'selection') {
-        set({ er: null });
+        set({ er: null, impact: null, impactOf: null });
         if (get().tab === 'er') void get().loadEr();
+        if (get().tab === 'impact') void get().loadImpact();
         if (entity.file_path) {
           void get().openEvidence(entity.file_path, entity.start_line, null, {
             keepTab: true,

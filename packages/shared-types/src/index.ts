@@ -57,6 +57,9 @@ export const RelationType = {
   QUERY_READS_TABLE: 'QUERY_READS_TABLE',
   QUERY_WRITES_TABLE: 'QUERY_WRITES_TABLE',
   QUERY_USES_COLUMN: 'QUERY_USES_COLUMN',
+  /** A column belongs to a table. Without this edge, the impact of a column
+   *  could not reach the reports and pipelines that read its table. */
+  TABLE_HAS_COLUMN: 'TABLE_HAS_COLUMN',
   PROCEDURE_CALLS_PROCEDURE: 'PROCEDURE_CALLS_PROCEDURE',
   APEX_PAGE_CONTAINS_ITEM: 'APEX_PAGE_CONTAINS_ITEM',
   APEX_ITEM_MAPS_TO_COLUMN: 'APEX_ITEM_MAPS_TO_COLUMN',
@@ -349,6 +352,35 @@ export interface UsageHit {
   relation_type: RelationType;
   direction: 'incoming' | 'outgoing';
   evidence: QueryEvidence;
+}
+
+/** One thing a change to the root could reach, and how the change gets there. */
+export interface ImpactNode {
+  entity: EntityHit;
+  depth: number;
+  /** Entity ids from the root to here, inclusive. */
+  path: string[];
+  /** Confidence of the weakest link in that path, not of the last edge. */
+  min_confidence: number;
+  inferred_in_path: boolean;
+  relation_type: RelationType;
+  evidence: QueryEvidence;
+}
+
+/**
+ * Transitive impact. Deliberately an over-approximation: missing something that
+ * really does break is far worse than listing something that does not, so every
+ * node carries its path and the reader judges each one.
+ */
+export interface ImpactReport {
+  root: EntityHit;
+  nodes: ImpactNode[];
+  /** True when the node budget ran out. An incomplete answer must say so. */
+  truncated: boolean;
+  max_depth_reached: number;
+  by_type: Record<string, number>;
+  direction: 'incoming' | 'outgoing';
+  include_containment: boolean;
 }
 
 export interface GraphNodeHit {

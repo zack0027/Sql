@@ -64,6 +64,10 @@ class RelationType(StrEnum):
     QUERY_READS_TABLE = "QUERY_READS_TABLE"
     QUERY_WRITES_TABLE = "QUERY_WRITES_TABLE"
     QUERY_USES_COLUMN = "QUERY_USES_COLUMN"
+    #: A column belongs to a table. The fact was always known — it is what
+    #: ``container`` records — but until it was an edge, nothing could walk from
+    #: a column to the reports and pipelines that read its table.
+    TABLE_HAS_COLUMN = "TABLE_HAS_COLUMN"
     PROCEDURE_CALLS_PROCEDURE = "PROCEDURE_CALLS_PROCEDURE"
     APEX_PAGE_CONTAINS_ITEM = "APEX_PAGE_CONTAINS_ITEM"
     APEX_ITEM_MAPS_TO_COLUMN = "APEX_ITEM_MAPS_TO_COLUMN"

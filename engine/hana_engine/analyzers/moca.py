@@ -42,6 +42,9 @@ _ASSIGNMENT = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*@?([A-Za-z_][A-Za-z0
 #: A command name is the leading verb sequence of a segment.
 _COMMAND_NAME = re.compile(r"^\s*([a-zA-Z][a-zA-Z0-9_]*(?:\s+[a-zA-Z][a-zA-Z0-9_]*)*)")
 
+#: Runs of whitespace, including the line breaks a multi-line command carries.
+_WHITESPACE = re.compile(r"\s+")
+
 
 class MocaAnalyzer(Analyzer):
     """Extracts MOCA commands, their variables and any embedded SQL."""
@@ -49,6 +52,9 @@ class MocaAnalyzer(Analyzer):
     name = "moca"
     supported_extensions = (".mcmd", ".moca", ".mcom")
     priority = 55
+    #: 2 — command names no longer carry the line breaks of a multi-line
+    #: segment. Bumped so names already stored get rebuilt.
+    version = 2
 
     def can_analyze(self, file_path: str, content: str) -> bool:
         if super().can_analyze(file_path, content):
@@ -103,7 +109,13 @@ class MocaAnalyzer(Analyzer):
         end: int,
     ) -> EntityDraft:
         match = _COMMAND_NAME.match(text.lstrip("[ \n"))
-        label = match.group(1).strip() if match else f"segmento#{ordinal}"
+        # `\s+` between words matches newlines too, so a command written across
+        # lines produced a name with a line break inside it — which broke the
+        # column layout of the CLI and drew a box of the wrong height in the
+        # graph. The name is a label; the original text is kept in the evidence.
+        label = _WHITESPACE.sub(" ", match.group(1)).strip() if match else ""
+        if not label:
+            label = f"segmento#{ordinal}"
         span = context.span_of_offsets(start, end)
         return EntityDraft(
             EntityType.MOCA_COMMAND,

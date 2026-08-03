@@ -215,7 +215,7 @@ pub async fn read_project_file(
         .get("root_path")
         .and_then(Value::as_str)
         .ok_or("el proyecto no tiene ruta")?;
-    let root = jarvis_root(root_path)?;
+    let root = canonical_root(root_path)?;
 
     if !state.is_allowed(&root) {
         return Err(format!(
@@ -256,7 +256,12 @@ pub async fn read_project_file(
     }))
 }
 
-fn jarvis_root(path: &str) -> CommandResult<PathBuf> {
+/// Canonicalise a project root before it is compared against the allowed list.
+///
+/// A path reached through a symlink, a relative segment or a different letter
+/// case must resolve to the same root, or the boundary check could be walked
+/// around by spelling the folder differently.
+fn canonical_root(path: &str) -> CommandResult<PathBuf> {
     hana_fs::resolve_project_root(path).map_err(|error| error.to_string())
 }
 

@@ -424,6 +424,7 @@ fn dispatch(app: &AppHandle, pending: &Pending, frame: Value) {
 /// 1. `HANA_ENGINE_CMD` — an explicit override, used by integration tests.
 /// 2. A bundled `hana-engine` binary next to the executable — the packaged app.
 /// 3. `python -m hana_engine.ipc.server` — the development checkout.
+///
 /// The third element says the bundled engine was missing and Python was tried
 /// instead. That distinction is the whole diagnosis when a packaged copy fails
 /// on someone else's machine: the fallback quietly succeeds on a developer's

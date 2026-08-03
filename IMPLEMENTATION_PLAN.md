@@ -1,7 +1,12 @@
 # HANA Knowledge Engine — Plan de Implementación
 
 > Estado del documento: **vivo**. Se actualiza al cerrar cada etapa.
-> Última actualización: cierre de la **Etapa 1 (Fundación + Proyectos/Archivos)**.
+> Última actualización: cierre de la **Etapa 6, secciones 1 a 3 y 5**.
+>
+> Las secciones 1 a 3 (estado inicial, principio rector y decisiones) describen
+> el punto de partida y no se reescriben: valen precisamente porque dicen qué se
+> decidió antes de saber cómo iba a salir. La sección 4 sí lleva el estado real,
+> incluidas las cosas que acabaron haciéndose de otra manera.
 
 ---
 
@@ -118,7 +123,7 @@ mantiene el índice sincronizado sin código de aplicación.
 
 ## 4. Etapas
 
-### Etapa 1 — Fundación + Proyectos y Archivos ✅ (esta entrega)
+### Etapa 1 — Fundación + Proyectos y Archivos ✅
 
 - [x] Monorepo, workspaces, scripts de desarrollo.
 - [x] Modelo de dominio completo (entidades, relaciones, evidencia, confianza).
@@ -134,35 +139,61 @@ mantiene el índice sincronizado sin código de aplicación.
 - [x] Pantalla de inicio funcional.
 - [x] Pruebas automáticas (pytest + cargo test + vitest).
 
-### Etapa 2 — Motor de análisis (Fase 3 del enunciado)
+### Etapa 2 — Motor de análisis (Fase 3 del enunciado) ✅
 
-- [ ] `SqlAnalyzer`: SELECT/INSERT/UPDATE/DELETE/MERGE, tablas, vistas, alias,
+- [x] `SqlAnalyzer`: SELECT/INSERT/UPDATE/DELETE/MERGE, tablas, vistas, alias,
       columnas calificadas, CTE, subconsultas; lectura vs escritura.
-- [ ] `PlSqlAnalyzer`: procedimientos, funciones, packages, llamadas.
-- [ ] `ApexAnalyzer`: `:P117_ITEM`, `:APP_USER`; inferencia de página (0.9).
-- [ ] `MocaAnalyzer`: pipelines `|`, `@variables`, `publish data`, `catch(@?)`.
-- [ ] `JrxmlAnalyzer`: parser XML real, fields/parameters/variables/queries/
+- [x] PL/SQL: procedimientos, funciones, packages, llamadas. **No** salió un
+      `PlSqlAnalyzer` aparte: un `.sql` mezcla las dos cosas y separarlos habría
+      obligado a leer el archivo dos veces para partir el mismo texto. Vive en
+      `SqlAnalyzer`.
+- [x] `ApexAnalyzer`: `:P117_ITEM`, `:APP_USER`; inferencia de página (0.9).
+- [x] `MocaAnalyzer`: pipelines `|`, `@variables`, `publish data`, `catch(@?)`.
+- [x] `JrxmlAnalyzer`: parser XML real, fields/parameters/variables/queries/
       subreports/imágenes; campos usados no definidos; parámetros no usados.
-- [ ] `JsonAnalyzer`, `JavaScriptAnalyzer`, `PythonAnalyzer`.
-- [ ] Fixtures y pruebas por analizador.
+- [x] `JsonAnalyzer` y `CodeAnalyzer`. JavaScript y Python quedaron en un solo
+      analizador: comparten el trabajo de "declaraciones e imports", y el que
+      importa de verdad es el de Python, que usa `ast` en vez de expresiones
+      regulares.
+- [x] Fixtures y pruebas por analizador.
 
-### Etapa 3 — Grafo y búsqueda (Fase 4)
+### Etapa 3 — Grafo y búsqueda (Fase 4) ✅
 
-- [ ] Consultas de grafo con expansión por niveles.
-- [ ] Búsqueda global FTS5 sobre entidades, rutas, evidencias.
-- [ ] React Flow con carga progresiva; panel de detalles y evidencias.
+- [x] Consultas de grafo con expansión por niveles.
+- [x] Búsqueda global FTS5 sobre entidades, rutas, evidencias.
+- [x] Lienzo de grafo con carga progresiva; panel de detalles y evidencias.
+      **Sin React Flow**: arrastraba seis dependencias que la red de destino no
+      alcanza, y lo que hacía falta —anillos acotados, expansión bajo demanda y
+      una diferencia visual entre un hecho y una inferencia— cabe en SVG propio.
+      Ver `docs/OFFLINE_DEPENDENCIES.md`.
 
-### Etapa 4 — Experiencia (Fase 5)
+### Etapa 4 — Experiencia (Fase 5) ✅
 
-- [ ] Explorador de proyecto de tres paneles, redimensionables.
-- [ ] Monaco Editor solo lectura con salto a línea y resaltado.
-- [ ] Progreso, cancelación, filtros, historial, configuración.
-- [ ] Las 10 consultas deterministas sin modelo de lenguaje.
+- [x] Explorador de proyecto de tres paneles, redimensionables.
+- [x] Monaco Editor solo lectura con salto a línea y resaltado.
+- [x] Progreso, cancelación, filtros, historial, configuración.
+- [x] Las 10 consultas deterministas sin modelo de lenguaje.
 
-### Etapa 5 — Empaquetado (Fase 6)
+### Etapa 5 — Empaquetado (Fase 6) ✅ salvo la firma
 
-- [ ] Congelar el sidecar Python (PyInstaller) y firmarlo como binario externo.
-- [ ] Instalador de Windows, verificación sin internet.
+- [x] Congelar el sidecar Python (PyInstaller).
+- [ ] **Firmarlo.** Requiere comprar un certificado; sin él, SmartScreen avisa
+      y los antivirus corporativos matan el binario. Ver `docs/FIRMA_DE_CODIGO.md`
+      y `docs/DISTRIBUCION.md`.
+- [x] Instalador de Windows, verificación sin internet
+      (`engine/tests/test_offline.py`).
+
+### Etapa 6 — Impacto, juicio humano y conocimiento operativo
+
+- [x] **1.** Aprovisionamiento de `vendor/` en CI y atribución correcta del
+      archivo en las consultas por archivo.
+- [x] **2.** Grafo de llamadas PL/SQL (`PROCEDURE_CALLS_PROCEDURE`, que estaba
+      en el dominio sin producirse nunca) y análisis de impacto transitivo.
+- [x] **3.** Anotaciones manuales que sobreviven al reanálisis, candidatos a
+      revisar, comparación entre entornos, y errores de log con sus soluciones.
+- [ ] **4.** El modelo local, los embeddings y la conexión a Oracle siguen
+      deliberadamente sin hacer. Ver el encargo de la etapa.
+- [x] **5.** Arreglos menores y este documento.
 
 ---
 
@@ -184,6 +215,10 @@ mantiene el índice sincronizado sin código de aplicación.
 ---
 
 ## 6. Criterio de "terminado" de la Etapa 1
+
+> Se conserva tal cual porque los puntos 4, 5 y 6 siguen siendo la comprobación
+> que de verdad demuestra que el análisis incremental está sano, y se ejecutan
+> en cada suite. El punto 3 usa `open-project`, que hoy se llama `open`.
 
 Se considera cerrada cuando, en una máquina sin internet:
 

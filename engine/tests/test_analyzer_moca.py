@@ -46,6 +46,38 @@ class TestMoca:
         result = self.analyze("[select a || b from t] | publish data where x = 1")
         assert len(names(result, EntityType.MOCA_COMMAND)) == 2
 
+    def test_a_multiline_command_gets_a_one_line_name(self):
+        """A real pipeline wraps its clauses; a name with a line break in it
+        broke the CLI's columns and drew a box of the wrong height."""
+        result = self.analyze("publish data\n     where dun = 1")
+        name = next(
+            draft.name
+            for draft in result.entities
+            if draft.entity_type is EntityType.MOCA_COMMAND
+        )
+        assert "\n" not in name
+        assert name == "publish data where dun #1"
+
+    def test_a_carriage_return_is_collapsed_too(self):
+        """Windows-authored pipelines carry `\\r\\n`, not `\\n`."""
+        result = self.analyze("publish data\r\n     where mes = 1")
+        name = next(
+            draft.name
+            for draft in result.entities
+            if draft.entity_type is EntityType.MOCA_COMMAND
+        )
+        assert "\r" not in name and "\n" not in name
+
+    def test_the_original_text_is_still_in_the_evidence(self):
+        """The name is a label; nothing about the source may be lost."""
+        result = self.analyze("publish data\n     where dun = 1")
+        command = next(
+            draft
+            for draft in result.entities
+            if draft.entity_type is EntityType.MOCA_COMMAND
+        )
+        assert "where dun" in command.evidence_snippet
+
     def test_variables_are_detected(self):
         result = self.analyze("[select 1 from t where numctl = @numctl]")
         assert "NUMCTL" in names(result, EntityType.MOCA_VARIABLE)
